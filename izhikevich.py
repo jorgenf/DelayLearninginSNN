@@ -13,5 +13,5 @@ a = 0.02/units.ms
 b = 0.2/units.ms
 c = -65*units.mV
 d = 2*units.mV/units.ms
-v_th = 30*units.mV
+v_max = 30 * units.mV
 I = 15*units.mV

@@ -20,7 +20,7 @@ a = iz.a
 b = iz.b
 c = iz.c
 d = iz.d
-v_th = iz.v_th
+v_th = iz.v_max
 I = 10 * mV
 ref_t = 10 * ms
 
