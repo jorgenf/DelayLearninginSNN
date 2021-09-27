@@ -12,7 +12,7 @@ start_time = time.time()
 DURATION = 500
 TIMESTEP = 1
 defaultclock.dt = 0.001*ms
-N = 4
+N = 5
 I_N = 2
 D_MAX = 1
 D_MIN = 10
@@ -25,7 +25,7 @@ b = iz.b
 c = iz.c
 d = iz.d
 v_th = iz.v_max
-I = 10 * mV
+I = 20 * mV
 ref_t = 2 * ms
 reset = iz.reset
 
@@ -37,19 +37,22 @@ iz_pop = NeuronGroup(N, iz.eqs
 iz_pop.v = iz.c
 
 # Create input
-in_0 = [(0,x*ms) for x in np.arange(0, DURATION, TIMESTEP) if np.random.random() < F_P]
-in_1 = [(1,x*ms) for x in np.arange(0, DURATION, TIMESTEP) if np.random.random() < F_P]
-input = sorted(in_0 + in_1, key=lambda x: x[1])
+in_0 = []
+in_1 = []
+in_2 = []
+in_3 = []
+in_4 = []
+input = sorted(in_0 + in_1 + in_2 + in_3 + in_4, key=lambda x: x[1])
 
 input_pop = SpikeGeneratorGroup(I_N, [x[0] for x in input], [x[1] for x in input])
 # Create connections
 input_syn = Synapses(input_pop, iz_pop, on_pre="v+=I")
-input_syn.connect(i=[0,1], j=[0,1])
+input_syn.connect(i=[0,1,2,3,4], j=[0,1,2,3,4])
 synapse = Synapses(iz_pop, iz_pop, on_pre="v+=I")
-
-synapse.connect(i=[0,0,1,1,2,2,3,3,0,3,1,2], j=[1,2,0,3,0,3,1,2,3,0,2,1])
+synapse.connect(i=[0,0,0,0,1,1,1,1,2,2,2,2,3,3,3,3,4,4,4,4], j=[1,2,3,4,0,2,3,4,0,1,3,4,0,1,2,4,0,1,2,3])
 s_id = list(zip(synapse.get_states()["i"], synapse.get_states()["j"]))
-synapse.delay = 5*ms
+delays = [6,4,2,2,2,7,7,2,4,2,2,7,10,3,5,6,5,4,4,4]*ms
+synapse.delay = delays
 
 
 
