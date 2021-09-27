@@ -15,3 +15,4 @@ c = -65*units.mV
 d = 2*units.mV/units.ms
 v_max = 30 * units.mV
 I = 15*units.mV
+ref_t = 2 * units.ms

@@ -10,7 +10,7 @@ import seaborn as sns
 start_time = time.time()
 # Parameters
 DURATION = 1000
-defaultclock.dt = 0.01*ms
+defaultclock.dt = 0.1*ms
 N = 4
 I_N = 2
 D_MAX = 1
@@ -29,28 +29,45 @@ ref_t = 2 * ms
 reset = iz.reset
 
 # Izikevich population
-iz_pop = NeuronGroup(N, iz.eqs
-                     ,
+def create_population(N, eqs, threshold, reset, method, refractory):
+    iz_pop = NeuronGroup(N, iz.eqs,
                     threshold='v>v_th', reset=reset,
                     method='euler', refractory=ref_t)
-iz_pop.v = iz.c
-iz_pop.u = -100*mV/second
+    iz_pop.v = iz.c
+    return iz_pop
 
-# Create input
-in_0 = [(0,x*ms) for x in range(DURATION) if np.random.random() < F_P]
-in_1 = [(1,x*ms) for x in range(DURATION) if np.random.random() < F_P]
-input = sorted(in_0 + in_1, key=lambda x: x[1])
+def create_input(input_neurons, duration, fire_probability):
+    input = []
+    for i in range(input_neurons):
+        inp = [(i, x*ms) for x in range(duration) if np.random.random() < fire_probability]
+        input += inp
+    input = sorted(input, key=lambda x: x[1])
+    input_pop = SpikeGeneratorGroup(I_N, [x[0] for x in input], [x[1] for x in input])
+    return input_pop
 
-input_pop = SpikeGeneratorGroup(I_N, [x[0] for x in input], [x[1] for x in input])
-# Create connections
-input_syn = Synapses(input_pop, iz_pop, on_pre="v+=I")
-input_syn.connect(i=[0,1], j=[0,1])
-synapse = Synapses(iz_pop, iz_pop, on_pre="v+=I")
 
-synapse.connect(i=[0,0,1,1,2,2,3,3,0,3,1,2], j=[1,2,0,3,0,3,1,2,3,0,2,1])
-s_id = list(zip(synapse.get_states()["i"], synapse.get_states()["j"]))
-synapse.delay = 5*ms
+def create_grid_connections(synapse, dim):
+    x = dim[0]
+    y = dim[1]
+    pairs = []
+    mat = np.arange(x*y).reshape(x,y)
+    i = 0
+    for row in range(x):
+        for col in range(y):
+            for x in range(-1,2):
+                for y in range(-1,2):
+                    x = x + row
+                    y = y + col
+                    if (row != x or col != y) and x >= 0 and y >= 0:
+                        try:
+                            pairs.append((mat[row][col],mat[x][y]))
+                        except:
+                            pass
+    return pairs
 
+    synapse.connect(i=[0,0,1,1,2,2,3,3,0,3,1,2], j=[1,2,0,3,0,3,1,2,3,0,2,1])
+    s_id = list(zip(synapse.get_states()["i"], synapse.get_states()["j"]))
+    synapse.delay = 5*ms
 
 
 # Monitor
@@ -99,3 +116,4 @@ sub4.set_ylim([-0.5,I_N - 0.5])
 sub4.set_xlim([0,DURATION/1000])
 sub4.set_title("Input spikes")
 plt.show()
+'''

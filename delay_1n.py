@@ -12,7 +12,7 @@ import seaborn as sns
 start_time = time.time()
 # Parameters
 DURATION = 1000
-defaultclock.dt = 1*ms
+defaultclock.dt = 0.1*ms
 N = 1
 I_N = 3
 D_MAX = 20 * ms
@@ -29,12 +29,30 @@ v_th = iz.v_max
 I = 10 * mV
 ref_t = 2 * ms
 
+def update_d():
+    syn_data = input_syn.get_states()
+    neuron_data = iz_pop.get_states()
+    for i,j,syn_ind in zip(syn_data["i"], syn_data["j"], range(len(syn_data["i"]))):
+        post = neuron_data["lastspike"][j]
+        delays[i].append(input_syn.delay[i])
+        if post == t*ms:
+            spike_times = [x[1] for x in input if x[0] == i and x[1] <= t*ms]
+            pre = min(spike_times, key=lambda x: abs(x - post))
+            if -D_WND <= (post - (pre + input_syn.delay[syn_ind])) < 0 and input_syn.delay[syn_ind] < D_MAX:
+                input_syn.delay[syn_ind] += 1 * ms
+            elif 0 < (post - (pre + input_syn.delay[syn_ind])) <= D_WND and input_syn.delay[syn_ind] > D_MIN:
+                input_syn.delay[syn_ind] -= 1 * ms
+
 # Izikevich population
 iz_pop = NeuronGroup(N, iz.eqs
                      ,
                     threshold='v>v_th', reset=iz.reset,
-                    method='euler', refractory=ref_t)
+                    method='euler', refractory=ref_t, events="sp: v>v_th")
 iz_pop.v = c
+iz_pop.u = -12*mV/second
+iz_pop.run_on_event("sp", update_d())
+
+
 
 # Create input
 in_0 = [(0,x*ms) for x in range(DURATION) if np.random.random() < F_P]
@@ -59,6 +77,9 @@ nm = SpikeMonitor(iz_pop, record=True)
 s = StateMonitor(iz_pop, variables=("v","u"), record=True)
 delays = [[] for _ in range(len(s_id))]
 print("RUNNING SIMULATION:")
+
+
+
 for t in range(DURATION):
     run(1*ms)
     prog = (t/DURATION)*100
