@@ -11,7 +11,7 @@ start_time = time.time()
 # Parameters
 DURATION = 500
 TIMESTEP = 1
-defaultclock.dt = 0.001*ms
+defaultclock.dt = 0.0001*ms
 N = 4
 I_N = 2
 D_MAX = 1
@@ -25,7 +25,7 @@ b = iz.b
 c = iz.c
 d = iz.d
 v_th = iz.v_max
-I = 10 * mV
+I = 50 * mV
 ref_t = 2 * ms
 reset = iz.reset
 
@@ -43,9 +43,9 @@ input = sorted(in_0 + in_1, key=lambda x: x[1])
 
 input_pop = SpikeGeneratorGroup(I_N, [x[0] for x in input], [x[1] for x in input])
 # Create connections
-input_syn = Synapses(input_pop, iz_pop, on_pre="v+=I")
+input_syn = Synapses(input_pop, iz_pop, on_pre="v_post+=I")
 input_syn.connect(i=[0,1], j=[0,1])
-synapse = Synapses(iz_pop, iz_pop, on_pre="v+=I")
+synapse = Synapses(iz_pop, iz_pop, delay=10*ms, on_pre="v_post+=I")
 
 synapse.connect(i=[0,0,1,1,2,2,3,3,0,3,1,2], j=[1,2,0,3,0,3,1,2,3,0,2,1])
 s_id = list(zip(synapse.get_states()["i"], synapse.get_states()["j"]))
