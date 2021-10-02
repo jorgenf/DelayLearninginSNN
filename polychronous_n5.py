@@ -83,6 +83,8 @@ for i, t in zip(im.i, im.t):
 end_time = time.time()
 print("Simulation time: " + str(round(end_time-start_time, 2)))
 
+Morphology
+
 sns.set()
 fig, sub1 = subplots(1,1)
 #colors = [(np.random.random(), np.random.random(), np.random.random()) for x in range(N)]
@@ -93,6 +95,8 @@ sub1.set_ylim([0.5,N + 0.5])
 sub1.set_yticks(range(1,6))
 #sub1.set_xlim([0,DURATION/1000])
 sub1.set_title("Neuron spikes")
+sub1.set_xlabel("Time (s)")
+sub1.set_ylabel("Neuron ID")
 '''
 for i in range(N):
     sub1.plot(s.v[i], color=colors[i])
