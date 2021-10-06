@@ -13,13 +13,13 @@ start_time = time.time()
 DURATION = 50
 TIMESTEP = 1
 defaultclock.dt = 0.0001*ms
-N = 4
+N = 10
 I_N = 2
 D_MAX = 1
 D_MIN = 10
 D_WND = 0.1 * ms
 CONN_P = 0.5
-F_P = 0.9
+F_P = 0.2
 ## Iz parameters
 a = iz.a
 b = iz.b
@@ -50,7 +50,7 @@ input_syn = Synapses(input_pop, iz_pop, on_pre="v_post+=I")
 input_syn.connect(i=[0,1], j=[0,1])
 synapse = Synapses(iz_pop, iz_pop, on_pre="v_post+=I")
 
-synapse.connect(i=[0,0,1,1,2,2,3,3,0,3,1,2], j=[1,2,0,3,0,3,1,2,3,0,2,1])
+synapse.connect(p=CONN_P)
 s_id = list(zip(synapse.get_states()["i"], synapse.get_states()["j"]))
 synapse.delay = 5*ms
 
