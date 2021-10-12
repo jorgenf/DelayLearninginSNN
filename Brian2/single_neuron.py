@@ -1,6 +1,5 @@
 from brian2 import *
 import numpy as np
-import izhikevich as iz
 from matplotlib import pyplot as plt
 import time
 import seaborn as sns
@@ -9,8 +8,8 @@ import seaborn as sns
 
 start_time = time.time()
 # Parameters
-DURATION = 500
-defaultclock.dt = 1*ms
+DURATION = 100
+defaultclock.dt = 0.00001*ms
 N = 1
 D_MAX = 1
 D_MIN = 10
@@ -18,26 +17,33 @@ D_WND = 0.1 * ms
 CONN_P = 0.5
 F_P = 0.1
 ## Iz parameters
-a = iz.a
-b = iz.b
-c = iz.c
-d = iz.d
-v_max = iz.v_max
-I = 10 * mV
-ref_t = 10 * ms
+a = 0.02/ms
+b = 0.2/ms
+c = -65*mV
+d = 2*mV/ms
+v_max = 30*mV
+I = 20*mV
+ref_t = 2*ms
+v_th = 30*mV
+
+
 
 # Izikevich population
-iz_pop = NeuronGroup(N, iz.eqs
-                     ,
-                    threshold='v>v_max', reset=iz.reset,
+iz_pop = NeuronGroup(N, '''dv/dt = (0.04/ms/mV)*v**2+(5/ms)*v+140*mV/ms-u : volt
+du/dt = a*(b*v-u)                              : volt/second
+                     ''',
+                    threshold="v>v_th", reset='''
+v = c
+u = u + d
+''',
                     method='euler', refractory=ref_t)
-iz_pop.v = c
-iz_pop.u = -15.0*mV/second
 
+iz_pop.v = c
+iz_pop.u = -4 *volt/ms
 # Create input
-input = {"index": [], "time": []}
-input["time"] = [x*ms for x in range(DURATION) if np.random.random() < F_P]
-input["index"] = list(np.zeros(len(input["time"])))
+input = {"index": [0,0,0,0,0,0,0,0,0], "time": [2.0,10.0,11.0, 22.0,21.0, 34.0,35.0, 66.0, 78.0]*ms}
+#input["time"] = [x*ms for x in range(DURATION) if np.random.random() < F_P]
+#input["index"] = list(np.zeros(len(input["time"])))
 
 input_pop = SpikeGeneratorGroup(1, input["index"], input["time"])
 # Create connections

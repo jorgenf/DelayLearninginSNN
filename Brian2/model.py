@@ -1,18 +1,16 @@
 from brian2 import *
 import numpy as np
-import izhikevich as iz
+from Brian2 import izhikevich as iz
 from matplotlib import pyplot as plt
 import time
 import seaborn as sns
-import plots
 # https://brian.discourse.group/t/adapting-synaptic-delay-on-postsynaptic-spike/380
 
 
 start_time = time.time()
 # Parameters
-DURATION = 400
-TIMESTEP = 1
-defaultclock.dt = 0.0001*ms
+DURATION = 1000
+defaultclock.dt = 0.1*ms
 N = 4
 I_N = 2
 D_MAX = 1
@@ -26,37 +24,61 @@ b = iz.b
 c = iz.c
 d = iz.d
 v_th = iz.v_max
-I = 20 * mV
+I = 10 * mV
 ref_t = 2 * ms
 reset = iz.reset
 
 # Izikevich population
-iz_pop = NeuronGroup(N, iz.eqs
-                     ,
+def create_population(N, eqs, threshold, reset, method, refractory):
+    iz_pop = NeuronGroup(N, iz.eqs,
                     threshold='v>v_th', reset=reset,
                     method='euler', refractory=ref_t)
-iz_pop.v = iz.c
-iz_pop.u = -14*volt/second
+    iz_pop.v = iz.c
+    return iz_pop
 
-# Create input
+def create_input(input_neurons, duration, fire_probability):
+    input = []
+    for i in range(input_neurons):
+        inp = [(i, x*ms) for x in range(duration) if np.random.random() < fire_probability]
+        input += inp
+    input = sorted(input, key=lambda x: x[1])
+    input_pop = SpikeGeneratorGroup(I_N, [x[0] for x in input], [x[1] for x in input])
+    return input_pop
 
-# Create connections
-synapse = Synapses(iz_pop, iz_pop, on_pre="v_post+=I")
 
-synapse.connect(i=[0,0,1,1,2,2,3,3,0,3,1,2], j=[1,2,0,3,0,3,1,2,3,0,2,1])
-s_id = list(zip(synapse.get_states()["i"], synapse.get_states()["j"]))
-synapse.delay = 5*ms
+def create_grid_connections(synapse, dim):
+    x = dim[0]
+    y = dim[1]
+    pairs = []
+    mat = np.arange(x*y).reshape(x,y)
+    i = 0
+    for row in range(x):
+        for col in range(y):
+            for x in range(-1,2):
+                for y in range(-1,2):
+                    x = x + row
+                    y = y + col
+                    if (row != x or col != y) and x >= 0 and y >= 0:
+                        try:
+                            pairs.append((mat[row][col],mat[x][y]))
+                        except:
+                            pass
+    return pairs
 
+    synapse.connect(i=[0,0,1,1,2,2,3,3,0,3,1,2], j=[1,2,0,3,0,3,1,2,3,0,2,1])
+    s_id = list(zip(synapse.get_states()["i"], synapse.get_states()["j"]))
+    synapse.delay = 5*ms
 
 
 # Monitor
+im = SpikeMonitor(input_pop, record=True)
 nm = SpikeMonitor(iz_pop, record=True)
 s = StateMonitor(iz_pop, variables=("v","u"), record=True)
 
 print("RUNNING SIMULATION:")
-for t in range(int(DURATION/TIMESTEP)):
-    run(TIMESTEP*ms)
-    prog = (t/int(DURATION/TIMESTEP))*100
+for t in range(DURATION):
+    run(1*ms)
+    prog = (t/DURATION)*100
     print("\r |" + "#"*int(prog) + f"  {round(prog,1) if t < DURATION - 1 else 100}%| ", end="")
     syn_data = synapse.get_states()
 
@@ -65,18 +87,15 @@ nspike_data = [[] for _ in range(N)]
 for i, t in zip(nm.i, nm.t):
     nspike_data[i].append(t)
 
-
+ispike_data = [[] for _ in range(N)]
+for i, t in zip(im.i, im.t):
+    ispike_data[i].append(t)
 
 end_time = time.time()
 print("Simulation time: " + str(round(end_time-start_time, 2)))
 
-
-
-plot_args = {"v":{"data":s.v, "mthd":plt.plot, "title": "Membrane potential", "y_label": "Volt", "x_label": "Time"},"u":{"data":s.u, "mthd":plt.plot, "title":"U-variable","x_label":"Time", "y_label":"U"}, "spikes":{"data":nspike_data, "mthd":plt.eventplot, "title":"Spikes", "x_label":"Time","y_label":"NeuronID"}}
-plots.plot_data(plot_args, DURATION)
-'''
 sns.set()
-fig, (sub1,sub2,sub3,sub4) = subplots(4,1)
+fig, (sub1, sub2, sub3, sub4) = subplots(4,1)
 #colors = [(np.random.random(), np.random.random(), np.random.random()) for x in range(N)]
 colors = ["red", "blue","green","indigo", "royalblue", "yellow", "peru", "palegreen"]
 sub1.eventplot(nspike_data, colors=colors[:N])
@@ -86,10 +105,8 @@ sub1.set_title("Neuron spikes")
 for i in range(N):
     sub2.plot(s.v[i], color=colors[i])
     sub2.set_title("Membrane potential")
-sub2.set_ylim([-0.1, 0.04])
+sub2.set_ylim([-0.1, 0.1])
 sub2.set_xlim([0,len(s.v[0])])
-sub2.set_xlabel(f"Time (dt={defaultclock.dt}s)")
-sub2.set_ylabel("Membrane potential (V)")
 for i in range(N):
     sub3.plot(s.u[i], color=colors[i])
     sub3.set_title("Neuron u-variable")

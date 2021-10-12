@@ -1,9 +1,8 @@
 from brian2 import *
 import numpy as np
-import izhikevich as iz
 from matplotlib import pyplot as plt
 import time
-import plots
+from Brian2 import plots, izhikevich as iz
 import seaborn as sns
 # https://brian.discourse.group/t/adapting-synaptic-delay-on-postsynaptic-spike/380
 
@@ -21,23 +20,22 @@ D_WND = 0.1 * ms
 CONN_P = 0.5
 F_P = 0.2
 ## Iz parameters
-a = iz.a
-b = iz.b
-c = iz.c
-d = iz.d
-v_th = iz.v_max
-I = 28 * mV
+#a = iz.a
+#b = iz.b
+#c = iz.c
+#d = iz.d
+#v_th = iz.v_max
+#I = 28 * mV
 I_inp = 40 * mV
-ref_t = 2 * ms
-reset = iz.reset
+#ref_t = 2 * ms
+#reset = iz.reset
 
 # Izikevich population
-iz_pop = NeuronGroup(N, iz.eqs
+iz_pop = NeuronGroup(N, iz.standard["eqs"]
                      ,
-                    threshold='v>v_th', reset=reset,
+                    threshold=iz.standard["threshold"], reset=iz.standard["reset"],
                     method='euler')
-iz_pop.v = iz.c
-iz_pop.u = 0*mV/ms
+
 
 # Pattern 1
 patterns = {"pattern1": [(0,0*ms),(1,0*ms)], "pattern2":[(2,0*ms),(0,5*ms)], "pattern3": [(3,0*ms),(0,1*ms)]}
@@ -65,7 +63,7 @@ im = SpikeMonitor(input_pop, record=True)
 nm = SpikeMonitor(iz_pop, record=True)
 s = StateMonitor(iz_pop, variables=("v","u"), record=True)
 
-plots.plot_connectivity_nx((synapse.get_states()["i"],synapse.get_states()["j"], synapse.delay))
+plots.plot_connectivity_nx((synapse.get_states()["i"], synapse.get_states()["j"], synapse.delay))
 
 for t in range(int(DURATION/TIMESTEP)):
     run(TIMESTEP*ms)

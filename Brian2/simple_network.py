@@ -1,6 +1,6 @@
 from brian2 import *
 import numpy as np
-import izhikevich as iz
+from Brian2 import izhikevich as iz
 from matplotlib import pyplot as plt
 import time
 # https://brian.discourse.group/t/adapting-synaptic-delay-on-postsynaptic-spike/380
