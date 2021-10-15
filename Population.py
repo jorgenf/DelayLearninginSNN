@@ -12,8 +12,9 @@ ID = 0
 
 class Population():
     def __init__(self, *populations):
-        global t
+        global t, ID
         t = 0
+        ID = 0
         self.neurons = {}
         self.synapses = []
         for population in populations:
@@ -30,7 +31,7 @@ class Population():
         self.neurons[neuron.ID] = neuron
 
     def create_synapse(self, i, j, w=10, d=1):
-        syn = self.Synapse(i,j,w, d)
+        syn = self.Synapse(i, j, w, d)
         try:
             self.neurons[str(i)].down.append(syn)
         except:
@@ -97,7 +98,7 @@ class Population():
 
 
 class Neuron:
-    def __init__(self,a,b,c,d,u=-14):
+    def __init__(self,a,b,c,d,u=-14, ref_t=2):
         global ID
         self.ID = str(ID)
         ID += 1
@@ -108,7 +109,7 @@ class Neuron:
         self.v = c
         self.u = u
         self.th = 30
-        self.ref_t = 3
+        self.ref_t = ref_t
         self.refractory = 0
         self.v_hist = deque()
         self.u_hist = deque()
@@ -172,6 +173,10 @@ class CH(Neuron):
     def __init__(self):
         super().__init__(a=0.02, b=0.2, c=-50, d=2)
 
+class POLY(Neuron):
+    def __init__(self):
+        super().__init__(a=0.02, b=0.2, c=-65, d=2, u=-14)
+
 class Input:
     global t
 
@@ -189,7 +194,6 @@ class Input:
             random.seed(seed)
     def update(self):
         if random.random() < self.p or t in self.spike_times:
-
             [syn.push(True) for syn in self.down]
             self.spikes.append(t)
         elif self.input_array:

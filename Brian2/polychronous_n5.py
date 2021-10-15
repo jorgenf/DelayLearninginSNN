@@ -11,7 +11,7 @@ start_time = time.time()
 # Parameters
 DURATION = 30
 TIMESTEP = 1
-defaultclock.dt = 0.001*ms
+defaultclock.dt = 1*ms
 N = 5
 I_N = 5
 D_MAX = 1
@@ -20,27 +20,34 @@ D_WND = 0.1 * ms
 CONN_P = 0.5
 F_P = 0.2
 ## Iz parameters
-#a = iz.a
-#b = iz.b
-#c = iz.c
-#d = iz.d
-#v_th = iz.v_max
-#I = 28 * mV
+a = 0.02/ms
+b = 0.2/ms
+c = -65*mV
+d = 2*mV/ms
+v_th = 30*mV
+I = 30 * mV
 I_inp = 40 * mV
-#ref_t = 2 * ms
-#reset = iz.reset
+ref_t = 2 * ms
 
 # Izikevich population
-iz_pop = NeuronGroup(N, iz.standard["eqs"]
+iz_pop = NeuronGroup(N,
+                     '''
+dv/dt = (0.04/ms/mV)*v**2+(5/ms)*v+140*mV/ms-u : volt
+du/dt = a*(b*v-u)                              : volt/second
+                                                 '''
                      ,
-                    threshold=iz.standard["threshold"], reset=iz.standard["reset"],
+                    threshold='v>v_th', reset='''
+v = c
+u = u + d
+''',
                     method='euler')
-
+iz_pop.v = c
+iz_pop.u = -12 * mV/second
 
 # Pattern 1
-patterns = {"pattern1": [(0,0*ms),(1,0*ms)], "pattern2":[(2,0*ms),(0,5*ms)], "pattern3": [(3,0*ms),(0,1*ms)]}
+patterns = {"pattern1": [(0,5*ms),(1,0*ms)], "pattern2":[(2,0*ms),(0,5*ms)], "pattern3": [(3,0*ms),(0,1*ms)]}
 
-pattern = patterns["pattern3"]
+pattern = patterns["pattern1"]
 input = sorted(pattern, key=lambda x: x[1])
 
 input_pop = SpikeGeneratorGroup(I_N, [x[0] for x in input], [x[1] for x in input])
