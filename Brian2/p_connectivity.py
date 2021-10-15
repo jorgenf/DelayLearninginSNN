@@ -9,10 +9,10 @@ from Brian2 import plots, izhikevich as iz
 
 start_time = time.time()
 # Parameters
-DURATION = 50
+DURATION = 100
 TIMESTEP = 1
-defaultclock.dt = 0.0001*ms
-N = 10
+defaultclock.dt = 1*ms
+N = 16000
 I_N = 2
 D_MAX = 1
 D_MIN = 10
@@ -20,21 +20,25 @@ D_WND = 0.1 * ms
 CONN_P = 0.5
 F_P = 0.2
 ## Iz parameters
-a = iz.a
-b = iz.b
-c = iz.c
-d = iz.d
-v_th = iz.v_max
+a = 0.02/ms
+b = 0.2/ms
+c = -65*mV
+d = 2*mV/ms
+v_th = 30*mV
 I = 10 * mV
 ref_t = 2 * ms
-reset = iz.reset
 
 # Izikevich population
-iz_pop = NeuronGroup(N, iz.eqs
+iz_pop = NeuronGroup(N, '''
+dv/dt = (0.04/ms/mV)*v**2+(5/ms)*v+140*mV/ms-u : volt
+du/dt = a*(b*v-u)                              : volt/second
+'''
                      ,
-                    threshold='v>v_th', reset=reset,
+                    threshold='v>v_th', reset='''
+                    v = c
+                    u = u + d''',
                     method='euler', refractory=ref_t)
-iz_pop.v = iz.c
+iz_pop.v = c
 iz_pop.u = -14*volt/second
 
 # Create input

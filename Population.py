@@ -71,7 +71,7 @@ class Population():
         while t < duration:
             prog = (t / duration) * 100
             print("\r |" + "#" * int(prog) + f"  {round(prog, 1) if t < duration - 1 else 100}%| ", end="")
-            pop.update()
+            self.update()
             t += 1
 
     class Synapse:
@@ -200,52 +200,6 @@ class Input:
 
 
 
-DURATION = 100
 
-start = time.time()
-
-pop = Population((1, RS))
-
-
-
-
-
-input = Input(spike_times=[2, 3, 20, 21, 29, 81, 87, 88, 89])
-
-pop.add_neuron(input)
-
-pop.create_synapse(input.ID, 0, d=10)
-
-
-
-pop.run(100)
-
-
-
-stop = time.time()
-print(f"\n{stop-start}")
-print(pop.neurons["0"].v_hist)
-
-
-
-fig, (sub1, sub2,sub3) = plt.subplots(3,1)
-sub1.plot(pop.neurons["0"].v_hist)
-sub1.set_xlim([0,DURATION])
-sub1.set_xticks(range(DURATION + 1))
-sub1.set_ylabel("mV")
-sub1.set_title("Membrane potential")
-sub2.plot(pop.neurons["0"].u_hist)
-sub2.set_xticks(range(DURATION + 1))
-sub2.set_xlim([0,DURATION])
-sub2.set_title("U-variable")
-sub2.set_ylabel("u")
-events = sorted(pop.neurons[input.ID].spikes)
-sub3.eventplot(events)
-sub3.set_xlim([0,DURATION])
-sub3.set_xticks(range(DURATION + 1))
-sub3.set_title("Input spikes")
-sub3.set_xlabel("Time (ms)")
-print(pop.neurons[input.ID].spikes)
-plt.show()
 
 

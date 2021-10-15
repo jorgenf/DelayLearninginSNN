@@ -6,7 +6,7 @@ import time
 import seaborn as sns
 # https://brian.discourse.group/t/adapting-synaptic-delay-on-postsynaptic-spike/380
 
-
+'''
 start_time = time.time()
 # Parameters
 DURATION = 1000
