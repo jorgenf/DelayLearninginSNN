@@ -40,7 +40,7 @@ def Single_Neuron():
     sub4.set_title("Input spikes")
     sub4.set_xlabel("Time (ms)")
     fig.suptitle("Jørgen2")
-    plt.savefig("output/jørgen2", dpi=200)
+    plt.savefig("output/single_neuron/jørgen2", dpi=200)
     #plt.show()
 
 def poly():
@@ -50,8 +50,7 @@ def poly():
         DURATION = 30
         start = time.time()
         pop = Population((5, POLY))
-        print(pop.neurons)
-        wc = 22
+        wc = 20
         dc = 0
         pop.create_synapse(0,1,d=6+dc, w=wc)
         pop.create_synapse(0,2,d=4+dc, w=wc)
