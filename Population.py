@@ -98,7 +98,7 @@ class Population():
 
 
 class Neuron:
-    def __init__(self,a,b,c,d,u=-14, ref_t=2):
+    def __init__(self,a,b,c,d,u,ref_t=2):
         global ID
         self.ID = str(ID)
         ID += 1
@@ -114,6 +114,7 @@ class Neuron:
         self.v_hist = deque()
         self.u_hist = deque()
         self.spikes = deque()
+        self.trace = deque()
         self.up = []
         self.down = []
 
@@ -139,9 +140,10 @@ class Neuron:
             self.refractory = max(0, self.refractory - 1)
             [syn.push(False) for syn in self.down]
 
+
 class FS(Neuron):
     def __init__(self):
-        super().__init__(a=0.1, b=0.2, c=-65, d=2)
+        super().__init__(a=0.1, b=0.2, c=-65, d=2, u=-14)
 
 
 class RS(Neuron):
@@ -151,27 +153,27 @@ class RS(Neuron):
 
 class RZ(Neuron):
     def __init__(self):
-        super().__init__(a=0.1, b=0.26, c=-65, d=2)
+        super().__init__(a=0.1, b=0.26, c=-65, d=2, u=-16)
 
 
 class LTS(Neuron):
     def __init__(self):
-        super().__init__(a=0.02, b=0.25, c=-65, d=2)
+        super().__init__(a=0.02, b=0.25, c=-65, d=2, u=-16)
 
 
 class TC(Neuron):
     def __init__(self):
-        super().__init__(a=0.02, b=0.25, c=-65, d=0.05)
+        super().__init__(a=0.02, b=0.25, c=-65, d=0.05, u=-16)
 
 
 class IB(Neuron):
     def __init__(self):
-        super().__init__(a=0.02, b=0.2, c=-55, d=4)
+        super().__init__(a=0.02, b=0.2, c=-55, d=4, u=-14)
 
 
 class CH(Neuron):
     def __init__(self):
-        super().__init__(a=0.02, b=0.2, c=-50, d=2)
+        super().__init__(a=0.02, b=0.2, c=-50, d=2, u=-14)
 
 class POLY(Neuron):
     def __init__(self):
