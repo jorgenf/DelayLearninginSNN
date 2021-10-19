@@ -25,7 +25,7 @@ class Population():
 
     def update(self):
         for neuron in self.neurons:
-            self.neurons[neuron].update()
+            self.neurons[neuron].update(self.neurons)
 
     def add_neuron(self, neuron):
         self.neurons[neuron.ID] = neuron
@@ -76,12 +76,13 @@ class Population():
             t += 1
 
     class Synapse:
-        def __init__(self, i, j, w, d):
+        def __init__(self, i, j, w, d, trainable=False):
             self.i = i
             self.j = j
             self.w = w
             self.d = d
             self.que = deque(False for x in range(d))
+            self.trainable = trainable
 
         def pop(self):
             return self.que.pop()
@@ -114,11 +115,11 @@ class Neuron:
         self.v_hist = deque()
         self.u_hist = deque()
         self.spikes = deque()
-        self.trace = deque()
         self.up = []
         self.down = []
 
-    def update(self):
+    def update(self, neurons):
+        fix this. updates after
         I = 0
         if self.up and not self.refractory:
             I += sum([syn.pop() * syn.w for syn in self.up])
@@ -136,6 +137,12 @@ class Neuron:
             self.u += self.d
             self.refractory = self.ref_t
             [syn.push(True) for syn in self.down]
+            for syn in self.up:
+                if syn.trainable:
+                    spikes = neurons[syn.i].spikes
+                    if any([t - (x + len(syn.delay)) in spikes for x in range(5)]):
+                        syn.update(-1)
+                        fix this
         else:
             self.refractory = max(0, self.refractory - 1)
             [syn.push(False) for syn in self.down]
