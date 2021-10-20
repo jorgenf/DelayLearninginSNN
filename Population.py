@@ -30,8 +30,8 @@ class Population():
     def add_neuron(self, neuron):
         self.neurons[neuron.ID] = neuron
 
-    def create_synapse(self, i, j, w=10, d=1):
-        syn = self.Synapse(i, j, w, d)
+    def create_synapse(self, i, j, w=10, d=1, trainable=False):
+        syn = self.Synapse(i, j, w, d, trainable)
         try:
             self.neurons[str(i)].down.append(syn)
         except:
@@ -40,6 +40,7 @@ class Population():
             self.neurons[str(j)].up.append(syn)
         except:
             raise Exception(f"Neuron {j} not part of population")
+        self.synapses.append(syn)
         return syn
 
     def delete_synapse(self, i, j):
@@ -70,32 +71,41 @@ class Population():
     def run(self, duration):
         global t
         while t < duration:
-            prog = (t / duration) * 100
-            print("\r |" + "#" * int(prog) + f"  {round(prog, 1) if t < duration - 1 else 100}%| ", end="")
+            start = time.time()
             self.update()
+            stop = time.time() - start
+            prog = (t / duration) * 100
+            print("\r |" + "#" * int(prog) + f"  {round(prog, 1) if t < duration - 1 else 100}%| Time per step: {stop}", end="")
+
             t += 1
 
     class Synapse:
-        def __init__(self, i, j, w, d, trainable=False):
+        def __init__(self, i, j, w, d, trainable):
             self.i = i
             self.j = j
             self.w = w
             self.d = d
-            self.que = deque(False for x in range(d))
+            self.d_hist = [d]
+            self.pre_window = 1
+            self.post_window = 5
+            self.counters = []
             self.trainable = trainable
 
-        def pop(self):
-            return self.que.pop()
+        def add_spike(self):
+            self.counters.append(self.d)
 
-        def push(self, spike):
-            self.que.appendleft(spike)
+        def update(self):
+            self.d_hist.append(self.d)
+            if self.counters:
+                count = self.counters.count(1)
+                self.counters = [x - 1 for x in self.counters if x > 1]
+                return count * self.w
+            else:
+                return 0
 
-        def update(self, change):
-            for i in range(abs(change)):
-                if change > 0:
-                    self.que.appendleft(False)
-                elif change < 0:
-                    self.que.popleft()
+        def change(self, change):
+            self.d = max(self.d + change,1)
+
 
 
 class Neuron:
@@ -119,16 +129,15 @@ class Neuron:
         self.down = []
 
     def update(self, neurons):
-        fix this. updates after
         I = 0
-        if self.up and not self.refractory:
-            I += sum([syn.pop() * syn.w for syn in self.up])
-        else:
-            [syn.pop() * syn.w for syn in self.up]
+        for syn in self.up:
+            I += syn.update()
+        if self.refractory:
+            I = 0
         self.v += 0.5*(0.04*self.v**2+5*self.v+140-self.u+I)
         self.v += 0.5*(0.04*self.v**2+5*self.v+140-self.u+I)
-        self.v = min(self.th, self.v)
         self.u += self.a*(self.b*self.v-self.u)
+        self.v = min(self.th, self.v)
         self.v_hist.append(self.v)
         self.u_hist.append(self.u)
         if self.th <= self.v:
@@ -136,16 +145,29 @@ class Neuron:
             self.v = self.c
             self.u += self.d
             self.refractory = self.ref_t
-            [syn.push(True) for syn in self.down]
+            [syn.add_spike() for syn in self.down]
             for syn in self.up:
                 if syn.trainable:
-                    spikes = neurons[syn.i].spikes
-                    if any([t - (x + len(syn.delay)) in spikes for x in range(5)]):
-                        syn.update(-1)
-                        fix this
+                    spikes = neurons[str(syn.i)].spikes
+                    if spikes:
+                        pre_spikes = []
+                        post_spikes = []
+                        for spike in spikes:
+                            diff = t - (spike + syn.d)
+                            if diff >= 0:
+                                pre_spikes.append(diff)
+                            else:
+                                post_spikes.append(abs(diff))
+                        if pre_spikes:
+                            min_pre = min(pre_spikes)
+                            if min_pre <= syn.pre_window:
+                                syn.change(min_pre - syn.pre_window)
+                        elif post_spikes:
+                            min_post = min(post_spikes)
+                            if min_post <= syn.post_window:
+                                syn.change(-(min_post-syn.post_window))
         else:
             self.refractory = max(0, self.refractory - 1)
-            [syn.push(False) for syn in self.down]
 
 
 class FS(Neuron):
@@ -189,27 +211,22 @@ class POLY(Neuron):
 class Input:
     global t
 
-    def __init__(self, spike_times=[], input_array=[], p=0.0, seed=None):
+    def __init__(self, spike_times=[], p=0.0, seed=None):
         global ID
         self.ID = str(ID)
         ID += 1
         self.spikes = deque()
         self.spike_times = spike_times
         self.p = p
-        self.input_array = input_array
         self.down = []
         #fix seeding
         if seed is not None:
             random.seed(seed)
-    def update(self):
+    def update(self, neurons):
         if random.random() < self.p or t in self.spike_times:
-            [syn.push(True) for syn in self.down]
+            [syn.add_spike() for syn in self.down]
             self.spikes.append(t)
-        elif self.input_array:
-            val = self.input_array.pop(0)
-            [syn.push(val) for syn in self.down]
-        else:
-            [syn.push(False) for syn in self.down]
+
 
 
 
