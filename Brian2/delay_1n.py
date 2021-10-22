@@ -12,7 +12,7 @@ import seaborn as sns
 start_time = time.time()
 # Parameters
 DURATION = 1000
-defaultclock.dt = 0.1*ms
+defaultclock.DT = 0.1 * ms
 N = 1
 I_N = 3
 D_MAX = 20 * ms

@@ -9,7 +9,7 @@ import time
 start_time = time.time()
 # Parameters
 DURATION = 1000
-defaultclock.dt = 1*ms
+defaultclock.DT = 1 * ms
 N = 25
 DELAY_MIN = 1
 DELAY_MAX = 10

@@ -11,7 +11,7 @@ start_time = time.time()
 # Parameters
 DURATION = 30
 TIMESTEP = 1
-defaultclock.dt = 1*ms
+defaultclock.DT = 1 * ms
 N = 5
 I_N = 5
 D_MAX = 1
