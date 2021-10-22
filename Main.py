@@ -64,32 +64,33 @@ def high_input_test():
 
 
 def Single_Neuron():
-    DURATION = 1000
-    start = time.time()
-    pop = Population((1, RS))
-    input = Input(spike_times=[20.0,100.0,110.0,120.0, 220.0,210.0, 340.0,350.0, 660.0, 780.0])
-    #input = Input(spike_times=[2.0, 10.0, 11.0, 12.0, 22.0, 21.0, 34.0, 35.0, 66.0, 78.0])
-    pop.add_neuron(input)
-    pop.create_synapse(input.ID, 0, w=15, d=1)
-    pop.run(DURATION)
-    stop = time.time()
-    print(f"\n{stop-start}")
+    DURATION = 100
 
-    fig, (sub2,sub3) = plt.subplots(2,1,figsize=(25,15))
+    pop = Population((1, RS))
+    #input = Input(spike_times=[20.0,100.0,110.0,120.0, 220.0,210.0, 340.0,350.0, 660.0, 780.0])
+    input = Input(spike_times=[2.0, 10.0, 11.0, 12.0, 22.0, 21.0, 34.0, 35.0, 66.0, 78.0])
+    pop.add_neuron(input)
+    pop.create_synapse(input.ID, 0, w=15, d=10)
+    pop.run(DURATION, dt=0.1)
+
+
+
+    fig, (sub2,sub3) = plt.subplots(2,1,figsize=(25,15), sharex=True)
     #sub1.eventplot(pop.neurons["0"].spikes)
     #sub1.set_ylabel("Neuron ID")
     #sub1.set_xlim([0,DURATION])
     #sub1.set_yticks([1])
     #sub1.set_title("Neuron spikes")
-    sub2.plot(pop.neurons["0"].v_hist)
+    sub2.plot(pop.neurons["0"].v_hist["t"], pop.neurons["0"].v_hist["v"])
     sub2.set_xlim([0,DURATION])
     sub2.set_ylim([-100,50])
     sub2.set_ylabel("mV")
     sub2.set_title("Membrane potential")
-    sub2.set_xticks(range(0,DURATION,5))
-    sub3.plot(pop.neurons["0"].u_hist)
+    sub2.set_xticks(range(0,DURATION,int(DURATION/20)))
+    sub3.plot(pop.neurons["0"].u_hist["t"], pop.neurons["0"].u_hist["u"])
     sub3.set_xlim([0,DURATION])
     sub3.set_title("U-variable")
+    sub3.set_xlabel("Time")
     #sub3.set_yticks(range(int(min(pop.neurons["0"].u_hist)), int(max(pop.neurons["0"].u_hist))))
     sub3.set_ylabel("u")
     events = sorted(pop.neurons[input.ID].spikes)
@@ -98,8 +99,8 @@ def Single_Neuron():
     #sub4.set_yticks([1])
     #sub4.set_title("Input spikes")
     #sub4.set_xlabel("Time (ms)")
-    fig.suptitle("Jørgen2")
-    #plt.savefig("output/single_neuron/jørgen2", dpi=200)
+    fig.suptitle("dt=0.1ms")
+    #plt.savefig("output/dt/dt01", dpi=200)
     plt.show()
 
 def poly():
