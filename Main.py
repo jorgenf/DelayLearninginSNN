@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 import matplotlib
-from Population import *
+from Population2 import *
 import time
 import numpy as np
 
@@ -64,10 +64,11 @@ def high_input_test():
 
 
 def Single_Neuron():
-    DURATION = 100
+    DURATION = 1000
     start = time.time()
     pop = Population((1, RS))
-    input = Input(spike_times=[2.0,10.0,11.0,12.0, 22.0,21.0, 34.0,35.0, 66.0, 78.0])
+    input = Input(spike_times=[20.0,100.0,110.0,120.0, 220.0,210.0, 340.0,350.0, 660.0, 780.0])
+    #input = Input(spike_times=[2.0, 10.0, 11.0, 12.0, 22.0, 21.0, 34.0, 35.0, 66.0, 78.0])
     pop.add_neuron(input)
     pop.create_synapse(input.ID, 0, w=15, d=1)
     pop.run(DURATION)
@@ -85,7 +86,7 @@ def Single_Neuron():
     sub2.set_ylim([-100,50])
     sub2.set_ylabel("mV")
     sub2.set_title("Membrane potential")
-    sub2.set_xticks(range(0,DURATION,2))
+    sub2.set_xticks(range(0,DURATION,5))
     sub3.plot(pop.neurons["0"].u_hist)
     sub3.set_xlim([0,DURATION])
     sub3.set_title("U-variable")
@@ -324,4 +325,4 @@ def delay_learning():
     plt.show()
 
 
-delay_learning()
+Single_Neuron()
