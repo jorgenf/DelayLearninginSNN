@@ -1,6 +1,4 @@
-import matplotlib.pyplot as plt
-import matplotlib
-from Population2 import *
+from Population import *
 import time
 import numpy as np
 
@@ -8,9 +6,9 @@ COLORS = ["red", "blue", "green", "indigo", "royalblue", "peru", "palegreen", "y
 COLORS += [(np.random.random(), np.random.random(), np.random.random()) for x in range(20)]
 
 plt.rc('axes', titlesize=25)
-plt.rc('axes', labelsize=18)
-plt.rc('xtick', labelsize=15)
-plt.rc('ytick', labelsize=15)
+plt.rc('axes', labelsize=25)
+plt.rc('xtick', labelsize=25)
+plt.rc('ytick', labelsize=25)
 
 
 
@@ -65,17 +63,16 @@ def high_input_test():
 
 def Single_Neuron():
     DURATION = 100
-
+    dt = 1
     pop = Population((1, RS))
-    #input = Input(spike_times=[20.0,100.0,110.0,120.0, 220.0,210.0, 340.0,350.0, 660.0, 780.0])
     input = Input(spike_times=[2.0, 10.0, 11.0, 12.0, 22.0, 21.0, 34.0, 35.0, 66.0, 78.0])
     pop.add_neuron(input)
-    pop.create_synapse(input.ID, 0, w=15, d=10)
-    pop.run(DURATION, dt=0.1)
+    pop.create_synapse(input.ID, 0, w=15, d=1)
+    pop.run(DURATION, dt=dt)
 
 
 
-    fig, (sub2,sub3) = plt.subplots(2,1,figsize=(25,15), sharex=True)
+    fig, (sub2,sub3, sub4) = plt.subplots(3,1,figsize=(25,15), sharex=True)
     #sub1.eventplot(pop.neurons["0"].spikes)
     #sub1.set_ylabel("Neuron ID")
     #sub1.set_xlim([0,DURATION])
@@ -83,24 +80,24 @@ def Single_Neuron():
     #sub1.set_title("Neuron spikes")
     sub2.plot(pop.neurons["0"].v_hist["t"], pop.neurons["0"].v_hist["v"])
     sub2.set_xlim([0,DURATION])
-    sub2.set_ylim([-100,50])
+    #sub2.set_ylim([-120,50])
     sub2.set_ylabel("mV")
     sub2.set_title("Membrane potential")
-    sub2.set_xticks(range(0,DURATION,int(DURATION/20)))
+    #sub2.set_xticks(range(0,DURATION,int(DURATION/50)))
     sub3.plot(pop.neurons["0"].u_hist["t"], pop.neurons["0"].u_hist["u"])
     sub3.set_xlim([0,DURATION])
     sub3.set_title("U-variable")
-    sub3.set_xlabel("Time")
+    #sub3.set_xlabel("Time")
     #sub3.set_yticks(range(int(min(pop.neurons["0"].u_hist)), int(max(pop.neurons["0"].u_hist))))
     sub3.set_ylabel("u")
     events = sorted(pop.neurons[input.ID].spikes)
-    #sub4.eventplot(events)
-    #sub4.set_xlim([0,DURATION])
-    #sub4.set_yticks([1])
-    #sub4.set_title("Input spikes")
-    #sub4.set_xlabel("Time (ms)")
-    fig.suptitle("dt=0.1ms")
-    #plt.savefig("output/dt/dt01", dpi=200)
+    sub4.eventplot(events)
+    sub4.set_xlim([0,DURATION])
+    sub4.set_yticks([1])
+    sub4.set_title("Input spikes")
+    sub4.set_xlabel("Time (ms)")
+    fig.suptitle(f"dt={dt}ms", size=35)
+    #plt.savefig(f"output/dt/" + ("01" if dt == 0.1 else "1"), dpi=200)
     plt.show()
 
 def poly():
@@ -124,8 +121,8 @@ def poly():
         val = input_patterns[input_pattern]
         DURATION = 30
         start = time.time()
-        pop = Population((5, RS))
-        wc = 22
+        pop = Population((5, POLY))
+        wc = 25
         dc = 0
         pop.create_synapse(0,1,d=6+dc, w=wc)
         pop.create_synapse(0,2,d=4+dc, w=wc)
@@ -156,15 +153,15 @@ def poly():
         input2 = Input(spike_times=[val[1][1]])
         pop.add_neuron(input)
         pop.add_neuron(input2)
-        pop.create_synapse(input.ID, str(val[0][0]), w=100)
-        pop.create_synapse(input2.ID, str(val[1][0]), w=100)
+        pop.create_synapse(input.ID, str(val[0][0]), w=200, d=1)
+        pop.create_synapse(input2.ID, str(val[1][0]), w=200, d=1)
 
-        pop.run(DURATION)
+        pop.run(DURATION, dt=1)
 
         stop = time.time()
         print(stop-start)
 
-        fig, (sub1,sub2) = plt.subplots(2, 1,figsize=(15,15))
+        fig, (sub1,sub2) = plt.subplots(2, 1,figsize=(15,15), sharex=True)
         spikes = []
         [spikes.append(pop.neurons[n].spikes) for n in pop.neurons]
         spikes.insert(0,[])
@@ -172,7 +169,7 @@ def poly():
         sub1.set_xlim([-1, DURATION])
         sub1.set_ylim([0.5,len(pop.neurons)-1.5])
         sub1.set_yticks(range(1, 6))
-        sub1.set_xticks(range(DURATION + 1))
+
         sub1.set_ylabel("Neuron ID")
         sub1.set_title("Model spikes")
 
@@ -180,7 +177,7 @@ def poly():
         sub2.set_xlim([-1, DURATION])
         sub2.set_ylim([0.5,len(pop.neurons)-1.5])
         sub2.set_yticks(range(1, 6))
-        sub2.set_xticks(range(DURATION + 1))
+        sub2.set_xticks(range(0, DURATION + 1, 2))
         sub2.set_ylabel("Neuron ID")
         sub2.set_title("Reference spikes")
 
@@ -326,4 +323,4 @@ def delay_learning():
     plt.show()
 
 
-Single_Neuron()
+poly()

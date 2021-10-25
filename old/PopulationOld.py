@@ -6,13 +6,14 @@ import math as m
 from matplotlib import pyplot as plt
 import seaborn as sns
 sns.set()
-global t, DT, ID
+global t
+ID = 0
 
 
-class Population:
+class Population():
     def __init__(self, *populations):
         global t, ID
-        t = 0.0
+        t = 0
         ID = 0
         self.neurons = {}
         self.synapses = []
@@ -67,21 +68,16 @@ class Population:
                             syn = self.create_synapse(matrix[row][col],matrix[x][y])
                             self.synapses.append(syn)
 
-    def run(self, duration, dt=1):
-        global t, DT
-        DT = dt
-        start = time.time()
+    def run(self, duration):
+        global t
         while t < duration:
             start = time.time()
             self.update()
             stop = time.time() - start
             prog = (t / duration) * 100
             print("\r |" + "#" * int(prog) + f"  {round(prog, 1) if t < duration - 1 else 100}%| Time per step: {stop}", end="")
-            print(f"\nBefore: dt={DT}, t={t}")
-            t += DT
-            print(f"After: dt={DT}, t={t}")
-        stop = time.time()
-        print(f"Elapsed time: {stop-start}")
+
+            t += 1
 
     class Synapse:
         def __init__(self, i, j, w, d, trainable):
@@ -102,18 +98,19 @@ class Population:
             self.d_hist.append(self.d)
             if self.counters:
                 count = self.counters.count(1)
-                self.counters = [x - DT for x in self.counters if x > DT]
+                self.counters = [x - 1 for x in self.counters if x > 1]
                 return count * self.w
             else:
                 return 0
 
         def change(self, change):
-            self.d = max(self.d + change, DT)
+            self.d = max(self.d + change,1)
+
 
 
 class Neuron:
     def __init__(self,a,b,c,d,u,ref_t=2):
-        global ID, DT
+        global ID
         self.ID = str(ID)
         ID += 1
         self.a = a
@@ -125,36 +122,24 @@ class Neuron:
         self.th = 30
         self.ref_t = ref_t
         self.refractory = 0
-        self.v_hist = {"t":[], "v":[]}
-        self.u_hist = {"t":[], "u":[]}
+        self.v_hist = deque()
+        self.u_hist = deque()
         self.spikes = deque()
         self.up = []
         self.down = []
-        self.inputs = []
 
     def update(self, neurons):
+        I = 0
         for syn in self.up:
-            i = syn.update()
-            self.inputs.append({"I":i,"counter": 1 / DT})
+            I += syn.update()
         if self.refractory:
             I = 0
-        elif self.inputs:
-            I = 0
-            for inp in range(len(self.inputs)):
-                I += self.inputs[inp]["I"]
-                self.inputs[inp]["counter"] -= DT
-            self.inputs = [x for x in self.inputs if x["counter"] > 0]
-        else:
-            I = 0
-
-        self.v += 0.5 * (0.04*self.v**2+5*self.v+140-self.u + I) * DT
-        self.v += 0.5 * (0.04*self.v**2+5*self.v+140-self.u + I) * DT
-        self.u += self.a*(self.b*self.v-self.u)*0.1
+        self.v += 0.5*(0.04*self.v**2+5*self.v+140-self.u+I)
+        self.v += 0.5*(0.04*self.v**2+5*self.v+140-self.u+I)
+        self.u += self.a*(self.b*self.v-self.u)
         self.v = min(self.th, self.v)
-        self.v_hist["t"].append(t)
-        self.v_hist["v"].append(self.v)
-        self.u_hist["t"].append(t)
-        self.u_hist["u"].append(self.u)
+        self.v_hist.append(self.v)
+        self.u_hist.append(self.u)
         if self.th <= self.v:
             self.spikes.append(t)
             self.v = self.c
@@ -182,7 +167,7 @@ class Neuron:
                             if min_post <= syn.post_window:
                                 syn.change(-(min_post-syn.post_window))
         else:
-            self.refractory = max(0, self.refractory - DT)
+            self.refractory = max(0, self.refractory - 1)
 
 
 class FS(Neuron):
@@ -237,9 +222,8 @@ class Input:
         #fix seeding
         if seed is not None:
             random.seed(seed)
-    def update(self, neurons=None):
+    def update(self, neurons):
         if random.random() < self.p or t in self.spike_times:
-            print("spike!!")
             [syn.add_spike() for syn in self.down]
             self.spikes.append(t)
 
