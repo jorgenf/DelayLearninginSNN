@@ -18,12 +18,16 @@ class Population:
         self.synapses = []
         for population in populations:
             for n in range(population[0]):
-                neuron = population[1]()
+                if len(population) == 3:
+                    ref_t = population[2]
+                else:
+                    ref_t = 2
+                neuron = population[1](ref_t=ref_t)
                 self.neurons[neuron.ID] = neuron
         self.n = len(self.neurons)
 
     def update(self):
-        for neuron in self.neurons:
+        for neuron in reversed(self.neurons):
             self.neurons[neuron].update(self.neurons)
 
     def add_neuron(self, neuron):
@@ -90,20 +94,20 @@ class Population:
             self.d_hist = [d]
             self.pre_window = 1
             self.post_window = 5
-            self.counters = []
+            self.spikes = []
             self.trainable = trainable
 
         def add_spike(self):
-            self.counters.append(self.d)
+            self.spikes.append({"t": t, "d": self.d, "w": self.w})
 
-        def update(self):
+        def get_spikes(self):
             self.d_hist.append(self.d)
-            if self.counters:
-                count = self.counters.count(DT)
-                self.counters = [round(x - DT,3) for x in self.counters if x > DT]
-                return count * self.w
-            else:
-                return 0
+            count = 0
+            for spike in self.spikes:
+                if spike["t"] + spike["d"] == t:
+                    count += spike["w"]
+                    self.spikes.remove(spike)
+            return count
 
         def change(self, change):
             self.d = max(self.d + change, DT)
@@ -132,12 +136,10 @@ class Neuron:
 
     def update(self, neurons):
         for syn in self.up:
-            i = syn.update()
+            i = syn.get_spikes()
             if not self.refractory:
                 self.inputs.append({"I": i, "counter": 1})
-        if self.refractory:
-            I = 0
-        elif self.inputs:
+        if self.inputs and not self.refractory:
             I = 0
             for inp in range(len(self.inputs)):
                 I += self.inputs[inp]["I"]
@@ -185,42 +187,42 @@ class Neuron:
 
 
 class FS(Neuron):
-    def __init__(self):
-        super().__init__(a=0.1, b=0.2, c=-65, d=2, u=-14)
+    def __init__(self, ref_t):
+        super().__init__(a=0.1, b=0.2, c=-65, d=2, u=-14, ref_t=ref_t)
 
 
 class RS(Neuron):
-    def __init__(self):
-        super().__init__(a=0.02, b=0.2, c=-65, d=8, u=-14)
+    def __init__(self, ref_t):
+        super().__init__(a=0.02, b=0.2, c=-65, d=8, u=-14, ref_t=ref_t)
 
 
 class RZ(Neuron):
-    def __init__(self):
-        super().__init__(a=0.1, b=0.26, c=-65, d=2, u=-16)
+    def __init__(self, ref_t):
+        super().__init__(a=0.1, b=0.26, c=-65, d=2, u=-16, ref_t=ref_t)
 
 
 class LTS(Neuron):
-    def __init__(self):
-        super().__init__(a=0.02, b=0.25, c=-65, d=2, u=-16)
+    def __init__(self, ref_t):
+        super().__init__(a=0.02, b=0.25, c=-65, d=2, u=-16, ref_t=ref_t)
 
 
 class TC(Neuron):
-    def __init__(self):
-        super().__init__(a=0.02, b=0.25, c=-65, d=0.05, u=-16)
+    def __init__(self, ref_t):
+        super().__init__(a=0.02, b=0.25, c=-65, d=0.05, u=-16, ref_t=ref_t)
 
 
 class IB(Neuron):
-    def __init__(self):
-        super().__init__(a=0.02, b=0.2, c=-55, d=4, u=-14)
+    def __init__(self, ref_t):
+        super().__init__(a=0.02, b=0.2, c=-55, d=4, u=-14, ref_t=ref_t)
 
 
 class CH(Neuron):
-    def __init__(self):
-        super().__init__(a=0.02, b=0.2, c=-50, d=2, u=-14)
+    def __init__(self, ref_t):
+        super().__init__(a=0.02, b=0.2, c=-50, d=2, u=-14, ref_t=ref_t)
 
 class POLY(Neuron):
-    def __init__(self):
-        super().__init__(a=0.02, b=0.2, c=-65, d=2, u=-14)
+    def __init__(self, ref_t):
+        super().__init__(a=0.02, b=0.2, c=-65, d=2, u=-14, ref_t=ref_t)
 
 class Input:
     global t
