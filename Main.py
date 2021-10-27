@@ -64,14 +64,11 @@ def high_input_test():
     fig.suptitle("Jørgen2")
     plt.show()
 
-def spike_sensitivity():
+def spike_sensitivity(start, end, step, duration, dt):
     delays = []
-    start = 17
-    end = 30
-    step = 0.1
     for W in np.arange(start,end,step):
-        DURATION = 50
-        dt = 0.1
+        DURATION = duration
+        dt = dt
         pop = Population((1, RS))
         input = Input(spike_times=[21.0])
         pop.add_neuron(input)
@@ -80,20 +77,19 @@ def spike_sensitivity():
         delays.append(round(pop.neurons["0"].spikes[0]-(pop.neurons["1"].spikes[0] + 1),3))
 
     plt.plot(np.arange(start,end, step), delays)
-    plt.yticks(np.arange(0,10,0.5))
-    plt.xticks(np.arange(start, end,1))
+    plt.yticks(np.arange(0,11,0.5 if dt < 1 else 1))
+    plt.xticks(np.arange(round(start), round(end) + 1,1))
     plt.xlabel("Weight")
-    plt.ylabel("Spike delay (ms)")
-    #plt.title("Singel neuron", size=35)
+    plt.ylabel("Neuron response (ms)")
     plt.show()
 
-def Single_Neuron():
-    DURATION = 100
+def single_neuron():
+    DURATION = 50
     dt = 1
     pop = Population((1, RS))
-    input = Input(spike_times=[2.0, 10.0, 11.0, 12.0, 22.0, 21.0, 34.0, 35.0, 66.0, 78.0])
+    input = Input(spike_times=[20])
     pop.add_neuron(input)
-    pop.create_synapse(input.ID, 0, w=15, d=1)
+    pop.create_synapse(input.ID, 0, w=16.5, d=1)
     pop.run(DURATION, dt=dt)
 
 
@@ -109,7 +105,7 @@ def Single_Neuron():
     #sub2.set_ylim([-120,50])
     sub2.set_ylabel("mV")
     sub2.set_title("Membrane potential")
-    #sub2.set_xticks(range(0,DURATION,int(DURATION/50)))
+
     sub3.plot(pop.neurons["0"].u_hist["t"], pop.neurons["0"].u_hist["u"])
     sub3.set_xlim([0,DURATION])
     sub3.set_title("U-variable")
@@ -122,12 +118,13 @@ def Single_Neuron():
     sub4.set_yticks([1])
     sub4.set_title("Input spikes")
     sub4.set_xlabel("Time (ms)")
+    sub4.set_xticks(range(0,DURATION,int(DURATION/50)))
     fig.suptitle(f"dt={dt}ms", size=35)
     #plt.savefig(f"output/dt/" + ("01" if dt == 0.1 else "1"), dpi=200)
     plt.show()
 
 def poly():
-    pattern1 = [[],[5,19],[0,11],[19],[6,19],[12,25]]
+    pattern1 = [[],[5,19],[0,11],[19],[7,19],[12,25]]
     pattern2 = [[],[5,13],[11],[0,18],[],[6]]
     pattern3 = [[],[1,9],[8],[5],[0],[11]]
     pattern4 = [[],[10],[16],[5],[0],[1,11]]
@@ -145,9 +142,9 @@ def poly():
     input_patterns = {"1":[(0,5),(1,0)], "2":[(0,5),(2,0)], "3":[(0,1),(3,0)], "4":[(3,0),(4,1)], "5":[(0,0),(3,3)], "6":[(1,2),(2,0)],"7":[(2,1),(3,0)],"8":[(2,2),(4,0)],"9":[(0,0),(2,4)],"10":[(0,3),(1,0)],"11":[(1,0),(4,3)],"12":[(3,0),(4,3)],"13":[(1,3),(4,0)],"14":[(3,1),(4,0)]}
     for input_pattern, pattern in zip(input_patterns, patterns):
         val = input_patterns[input_pattern]
-        DURATION = 30
+        DURATION = 40
         pop = Population((5, RS, 3))
-        wc = 25
+        wc = 16.8
         dc = 0
         pop.create_synapse(0,1,d=6+dc, w=wc)
         pop.create_synapse(0,2,d=4+dc, w=wc)
@@ -181,7 +178,7 @@ def poly():
         pop.create_synapse(input.ID, str(val[0][0]), w=200, d=0)
         pop.create_synapse(input2.ID, str(val[1][0]), w=200, d=0)
 
-        pop.run(DURATION, dt=1)
+        pop.run(DURATION, dt=0.1)
 
 
 
@@ -206,7 +203,7 @@ def poly():
         sub2.set_title("Reference spikes")
 
         fig.suptitle(f"Polychronous group: {input_pattern}")
-        plt.savefig(f"output/polychronous_groups/{input_pattern}", dpi=200)
+        plt.savefig(f"output/polychronous_groups/{input_pattern}.png", dpi=200)
         #plt.show()
         plt.clf()
 
@@ -346,7 +343,7 @@ def delay_learning():
 
 def spike_shift_sensitivity(L, D, W):
     DURATION = 50
-    dt = 0.1
+    dt = 1
     pop = Population((1, RS))
     spike_times1 = [21.0]
     spike_times2 = [21.0 + D]
@@ -369,10 +366,16 @@ def spike_shift_sensitivity(L, D, W):
     plt.ylim([-80,40])
     # plt.title("Singel neuron", size=35)
     plt.show()
+    '''
 
 
-spike_shift_sensitivity(None, 8.2, 16.2)
-'''
+
+
+
+#spike_sensitivity(start=16.5, end=40, duration=50, dt=1, step=0.1)
+#single_neuron()
+
+
 if __name__ == '__main__':
     m = mp.Manager()
     L = m.list()
@@ -380,29 +383,27 @@ if __name__ == '__main__':
     d_end = 15
     w_start = 8
     w_end = 18
-    step = 0.1
-    list = list(itertools.product(np.arange(d_start,d_end,step), np.arange(w_start, w_end, step)))
-    list = [(L,x[0], x[1]) for x in list]
+    d_step = 1
+    w_step = 0.1
+    list = list(itertools.product(np.arange(d_start,d_end,d_step), np.arange(w_start, w_end, w_step)))
+    list = [(L,round(x[0],2), round(x[1],2)) for x in list]
     with mp.Pool(os.cpu_count() - 1) as p:
         p.starmap(spike_shift_sensitivity, list)
 
     fig = plt.figure(figsize=(12, 12))
     ax = fig.add_subplot(111)
-    X = [x[2] for x in L]
-    Y = [x[1] for x in L]
-    print(X)
-    print(Y)
-    print(Y.index(8.2))
+    X = [round(x[2],3) for x in L]
+    Y = [round(x[1],3) for x in L]
     Z = []
     for z in [x[0] for x in L]:
-        if z == 30:
-            Z.append("blue")
-        else:
+        if z < 30:
             Z.append("red")
+        else:
+            Z.append("blue")
 
-    ax.scatter(X, Y, c=Z)
-    ax.set_xlabel("W")
-    ax.set_ylabel("D")
+    ax.scatter(X, Y, c=Z, s=8)
+    ax.set_xlabel("Weight")
+    ax.set_ylabel("Shift (ms)")
     ax.set_yticks(np.arange(d_start,d_end + 1, 1))
     ax.set_xticks(np.arange(w_start, w_end + 1, 1))
     plt.show()
