@@ -114,7 +114,7 @@ class Population:
 
 
 class Neuron:
-    def __init__(self,a,b,c,d,u,ref_t=2):
+    def __init__(self,a,b,c,d,u,ref_t=2, v_init=False):
         global ID, DT
         self.ID = str(ID)
         ID += 1
@@ -122,7 +122,7 @@ class Neuron:
         self.b = b
         self.c = c
         self.d = d
-        self.v = c
+        self.v = c if not v_init else v_init
         self.u = u
         self.th = 30
         self.ref_t = ref_t
@@ -193,7 +193,7 @@ class FS(Neuron):
 
 class RS(Neuron):
     def __init__(self, ref_t):
-        super().__init__(a=0.02, b=0.2, c=-65, d=8, u=-14, ref_t=ref_t)
+        super().__init__(a=0.02, b=0.2, c=-65, d=8, u=-14, ref_t=ref_t, v_init=-70)
 
 
 class RZ(Neuron):
