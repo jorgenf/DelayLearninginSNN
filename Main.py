@@ -4,6 +4,7 @@ import numpy as np
 import multiprocessing as mp
 import itertools
 import os
+import random
 from mpl_toolkits import mplot3d
 from matplotlib.ticker import MaxNLocator
 
@@ -17,6 +18,7 @@ plt.rc('xtick', labelsize=8)
 plt.rc('ytick', labelsize=8)
 plt.rc('figure', titlesize=14)
 plt.rcParams['figure.figsize'] = (15*cm, 8*cm)
+#plt.rcParams['figure.figsize'] = (18/2*cm, 15/2*cm)
 
 
 
@@ -140,12 +142,12 @@ def dt_comparison():
 
 
 def single_neuron():
-    DURATION = 500
-    dt = 1
+    DURATION = 50
+    dt = 0.1
     pop = Population((1, RS))
-    input = Input(spike_times=[])
+    input = Input(spike_times=[20])
     pop.add_neuron(input)
-    pop.create_synapse(input.ID, 0, w=16.4, d=1)
+    pop.create_synapse(input.ID, 0, w=1, d=1)
     pop.run(DURATION, dt=dt)
     print(pop.neurons["0"].v_hist["v"][-1])
     print(pop.neurons["0"].u_hist["u"][-1])
@@ -201,7 +203,7 @@ def poly():
         val = input_patterns[input_pattern]
         DURATION = 30
         pop = Population((5, RS, 0))
-        wc = 13
+        wc = 16
         dc = 0
         pop.create_synapse(0,1,d=6+dc, w=wc)
         pop.create_synapse(0,2,d=4+dc, w=wc)
@@ -239,7 +241,7 @@ def poly():
 
 
 
-        fig, (sub1,sub2) = plt.subplots(2, 1,figsize=(15,15), sharex=True)
+        fig, (sub1) = plt.subplots(1, 1,sharex=True)
         spikes = []
         [spikes.append(pop.neurons[n].spikes) for n in pop.neurons]
         spikes.insert(0,[])
@@ -249,29 +251,29 @@ def poly():
         sub1.set_yticks(range(1, 6))
 
         sub1.set_ylabel("Neuron ID")
-        sub1.set_title("Simulated spikes")
+        sub1.set_title(f"Polychronous group: {input_pattern}")
 
-        sub2.eventplot(pattern, colors="black", linewidths=1)
-        sub2.set_xlim([-1, DURATION])
-        sub2.set_ylim([0.5,len(pop.neurons)-1.5])
-        sub2.set_yticks(range(1, 6))
-        sub2.set_xticks(range(0, DURATION + 1, 2))
-        sub2.set_ylabel("Neuron ID")
-        sub2.set_xlabel("Time (ms)")
-        sub2.set_title("Reference spikes")
+        #sub2.eventplot(pattern, colors="black", linewidths=1)
+        #sub2.set_xlim([-1, DURATION])
+        #sub2.set_ylim([0.5,len(pop.neurons)-1.5])
+        #sub2.set_yticks(range(1, 6))
+        #sub2.set_xticks(range(0, DURATION + 1, 2))
+        #sub2.set_ylabel("Neuron ID")
+        #sub2.set_xlabel("Time (ms)")
+        #sub2.set_title("Reference spikes")
 
-        fig.suptitle(f"Polychronous group: {input_pattern}")
+        #fig.suptitle(f"Polychronous group: {input_pattern}")
         plt.savefig(f"output/polychronous_groups/{input_pattern}.png")
         #plt.show()
         plt.clf()
 
         if input_pattern == "3":
             fig, (sub1) = plt.subplots(1,1)
-            sub1.plot(pop.neurons["0"].v_hist["t"],pop.neurons["0"].v_hist["v"])
+            sub1.plot(pop.neurons["4"].v_hist["t"],pop.neurons["4"].v_hist["v"])
             sub1.set_xticks(range(30))
             sub1.set_ylabel("Membrane potential (mV)")
             sub1.set_xlabel("Time (ms)")
-            sub1.set_title("Membrane potential for neuron 1")
+            sub1.set_title("Membrane potential for neuron 5")
             plt.tight_layout()
             plt.show()
             plt.clf()
@@ -295,28 +297,19 @@ def poly():
 
 
 def random():
-    pattern1 = [[],[5,19],[0,11],[19],[6,19],[12,25]]
-    pattern2 = [[],[5,13],[11],[0,18],[],[6]]
-    pattern3 = [[],[1,9],[8],[5],[0],[11]]
-    pattern4 = [[],[10],[16],[5],[0],[1,11]]
-    pattern5 = [[],[0],[6],[13],[3,13],[9,20]]
-    pattern6 = [[],[4],[2,11],[0,9],[11],[7]]
-    pattern7 = [[],[5],[3],[1,10],[0,10],[6,18]]
-    pattern8 = [[],[6],[4],[2,10],[4],[0,9]]
-    pattern9 = [[],[0,8],[6],[4,13],[15],[11]]
-    pattern10 = [[],[3,11],[0,9],[7],[],[13]]
-    pattern11 = [[],[12,23],[0,10,21],[7,17,29],[7,17,29],[3,13,24]]
-    pattern12 = [[],[16,27],[4,14,25],[11,22],[0,11,22],[3,17,28]]
-    pattern13 = [[],[5],[3,12],[10],[],[0]]
-    pattern14 = [[],[],[4],[11],[1,11],[0,6,18]]
-    patterns = [pattern1,pattern2,pattern3,pattern4,pattern5,pattern6,pattern7,pattern8,pattern9,pattern10,pattern11,pattern12,pattern13,pattern14]
-    input_patterns = {"1":[(0,5),(1,0)], "2":[(0,5),(2,0)], "3":[(0,1),(3,0)], "4":[(3,0),(4,1)], "5":[(0,0),(3,3)], "6":[(1,2),(2,0)],"7":[(2,1),(3,0)],"8":[(2,2),(4,0)],"9":[(0,0),(2,4)],"10":[(0,3),(1,0)],"11":[(1,0),(4,3)],"12":[(1,4),(3,0)],"13":[(1,3),(4,0)],"14":[(3,2),(4,0)]}
-    for input_pattern, pattern in zip(input_patterns, patterns):
+    input_patterns = {}
+    for i in range(1,15):
+        ran_pattern = [(np.random.randint(0,5),np.random.randint(0,6)),(np.random.randint(0,5),np.random.randint(0,6))]
+        while ran_pattern[0][0] == ran_pattern[1][0]:
+            ran_pattern = [(np.random.randint(0, 5), np.random.randint(0, 6)),
+                       (np.random.randint(0, 5), np.random.randint(0, 6))]
+        input_patterns[str(i)] = ran_pattern
+    for input_pattern in input_patterns:
         val = input_patterns[input_pattern]
         DURATION = 30
         start = time.time()
         pop = Population((5, RS))
-        wc = 22
+        wc = 16
 
         pop.create_synapse(0,1,d=np.random.randint(1,11), w=wc)
         pop.create_synapse(0,2,d=np.random.randint(1,11), w=wc)
@@ -338,18 +331,23 @@ def random():
         pop.create_synapse(3,2,d=np.random.randint(1,11), w=wc)
         pop.create_synapse(3,4,d=np.random.randint(1,11), w=wc)
 
+        pop.create_synapse(4,0,d=np.random.randint(1,11), w=wc)
+        pop.create_synapse(4,1,d=np.random.randint(1,11), w=wc)
+        pop.create_synapse(4,2,d=np.random.randint(1,11), w=wc)
+        pop.create_synapse(4,3,d=np.random.randint(1,11), w=wc)
+
         input = Input(spike_times=[val[0][1]])
         input2 = Input(spike_times=[val[1][1]])
         pop.add_neuron(input)
         pop.add_neuron(input2)
-        pop.create_synapse(input.ID, str(val[0][0]), w=100)
-        pop.create_synapse(input2.ID, str(val[1][0]), w=100)
+        pop.create_synapse(input.ID, str(val[0][0]), d=0,w=100)
+        pop.create_synapse(input2.ID, str(val[1][0]), d=0,w=100)
 
         pop.run(DURATION)
 
         stop = time.time()
         print(stop-start)
-        fig, (sub1, sub2) = plt.subplots(2, 1, figsize=(15, 15))
+        fig, sub1 = plt.subplots(1, 1)
         spikes = []
         [spikes.append(pop.neurons[n].spikes) for n in pop.neurons]
         spikes.insert(0, [])
@@ -357,76 +355,64 @@ def random():
         sub1.set_xlim([-1, DURATION])
         sub1.set_ylim([0.5, len(pop.neurons) - 1.5])
         sub1.set_yticks(range(1, 6))
-        sub1.set_xticks(range(DURATION + 1))
+        #sub1.set_xticks(range(DURATION + 1))
         sub1.set_ylabel("Neuron ID")
-        sub1.set_title("Model spikes")
-
-        sub2.eventplot(pattern, colors="black", linewidths=1)
-        sub2.set_xlim([-1, DURATION])
-        sub2.set_ylim([0.5, len(pop.neurons) - 1.5])
-        sub2.set_yticks(range(1, 6))
-        sub2.set_xticks(range(DURATION + 1))
-        sub2.set_ylabel("Neuron ID")
-        sub2.set_title("Reference spikes")
-
-        fig.suptitle(f"Random delays: {input_pattern}")
-        plt.savefig(f"output/random/{input_pattern}", dpi=200)
+        #sub1.set_title(f"Random delays: {input_pattern}")
+        plt.tight_layout()
+        plt.savefig(f"output/random/{input_pattern}")
         # plt.show()
         plt.clf()
+        pop.show_network(input_pattern)
 
 
 def delay_learning():
-    DURATION = 1000000
-    pop = Population((5, RS))
-    input1 = Input(p=0.01)
-    input2 = Input(p=0.01)
+    COLORS = ["g", "r", "b","y", "m"]
+    DURATION = 20
+    pop = Population((1, RS))
+    input1 = Input(spike_times=[5])
+    input2 = Input(spike_times=[6])
+    input3 = Input(spike_times=[10])
+    #input4 = Input(spike_times=[9])
     pop.add_neuron(input1)
     pop.add_neuron(input2)
-    pop.create_synapse(input1.ID, "0", w=40)
-    pop.create_synapse(input2.ID, "1", w=40)
-
-    wc = 20
-    pop.create_synapse(0, 1, d=np.random.randint(1, 20), w=wc, trainable=True)
-    pop.create_synapse(0, 2, d=np.random.randint(1, 20), w=wc, trainable=True)
-    pop.create_synapse(0, 3, d=np.random.randint(1, 20), w=wc, trainable=True)
-    pop.create_synapse(0, 4, d=np.random.randint(1, 20), w=wc, trainable=True)
-
-    pop.create_synapse(1, 0, d=np.random.randint(1, 20), w=wc, trainable=True)
-    pop.create_synapse(1, 2, d=np.random.randint(1, 20), w=wc, trainable=True)
-    pop.create_synapse(1, 3, d=np.random.randint(1, 20), w=wc, trainable=True)
-    pop.create_synapse(1, 4, d=np.random.randint(1, 20), w=wc, trainable=True)
-
-    pop.create_synapse(2, 0, d=np.random.randint(1, 20), w=wc, trainable=True)
-    pop.create_synapse(2, 1, d=np.random.randint(1, 20), w=wc, trainable=True)
-    pop.create_synapse(2, 3, d=np.random.randint(1, 20), w=wc, trainable=True)
-    pop.create_synapse(2, 4, d=np.random.randint(1, 20), w=wc, trainable=True)
-
-    pop.create_synapse(3, 0, d=np.random.randint(1, 20), w=wc, trainable=True)
-    pop.create_synapse(3, 1, d=np.random.randint(1, 20), w=wc, trainable=True)
-    pop.create_synapse(3, 2, d=np.random.randint(1, 20), w=wc, trainable=True)
-    pop.create_synapse(3, 4, d=np.random.randint(1, 20), w=wc, trainable=True)
-
-    pop.run(DURATION)
-    fig, (sub1, sub2, sub3, sub4) = plt.subplots(4, 1, figsize=(15, 15))
+    pop.add_neuron(input3)
+    #pop.add_neuron(input4)
+    pop.create_synapse(input1.ID, "0", w=9, d=5.1,trainable=True)
+    pop.create_synapse(input2.ID, "0", w=9, d=4.1, trainable=True)
+    pop.create_synapse(input3.ID, "0", w=9, d=0.1, trainable=True)
+    #pop.create_synapse(input4.ID, "0", w=9, d=7, trainable=True)
+    pop.run(DURATION, dt=0.1)
+    for syn in pop.synapses:
+        print(syn.d_hist)
+    fig, (sub1, sub2) = plt.subplots(2, 1, sharex=True)
     spikes = []
     [spikes.append(pop.neurons[n].spikes) for n in pop.neurons]
-    sub1.eventplot(spikes, colors="black", linewidths=1)
+    sub1.eventplot(spikes, linewidths=1, colors="black")
     #sub1.set_xlim([-1, DURATION])
     #sub1.set_ylim([0.5, len(pop.neurons) - 1.5])
-    #sub1.set_yticks(range(len(pop.neurons)))
+    sub1.set_yticks(range(len(pop.neurons)))
+    sub1.set_yticklabels(["RS neuron","Input 1", "Input 2", "Input 3"])
     #sub1.set_xticks(range(DURATION + 1))
-    sub1.set_ylabel("Neuron ID")
-    sub1.set_title("Model spikes")
-    input = [input1.spikes, input2.spikes]
-    sub2.eventplot(input, colors="black", linewidths=1)
-    #sub2.set_xlim([-1, DURATION])
-    #sub2.set_ylim([0.5, len(pop.neurons) - 1.5])
-    #sub2.set_yticks(range(1, 6))
-    #sub2.set_xticks(range(DURATION + 1))
-    sub2.set_ylabel("Neuron ID")
-    sub2.set_title("Input spikes")
+
+    sub1.set_title("Spikes")
+    arrival_t = []
+    arrival_t.append([])
     for syn in pop.synapses:
-        sub3.plot(syn.d_hist)
+        spikes = [t+syn.d_hist["d"][0] for t in pop.neurons[str(syn.i)].spike_times]
+        arrival_t.append(spikes)
+    sub1.eventplot(arrival_t, colors=COLORS[:len(pop.neurons)])
+    i = 1
+    for syn in pop.synapses:
+        sub2.plot(syn.d_hist["t"], syn.d_hist["d"], color=COLORS[i])
+        i += 1
+    sub2.set_title("Delay")
+    sub2.set_yticks(range(0, 10))
+    sub2.set_ylabel("ms")
+    #sub3.set_ylabel("mV")
+    sub2.set_xticks(range(0,21,1))
+    #sub3.set_title("Membrane potential")
+    #sub3.plot(pop.neurons["0"].v_hist["t"], pop.neurons["0"].v_hist["v"], color=COLORS[0])
+    plt.tight_layout()
     plt.show()
 
 def spike_shift_sensitivity(d_start = 0, d_end = 15, w_start = 8, w_end = 18, d_step = 0.1, w_step = 0.1):
@@ -496,8 +482,9 @@ def weight_shift_response(weight, shift_start, shift_end):
         pop.create_synapse(input2.ID, 0, w=weight, d=1)
         pop.run(DURATION, dt=dt)
         st = pop.neurons["0"].spikes[0]
-        print(pop.neurons["0"].spikes)
         response_delay.append(round(st-(spike_times2[0] + 1), 2))
+    return response_delay
+    '''
     plt.plot(range(shift_start, shift_end), response_delay)
     plt.xlabel("Shift (ms)")
     plt.ylabel("Neuron response (ms)")
@@ -506,6 +493,7 @@ def weight_shift_response(weight, shift_start, shift_end):
     plt.title(f"Shift respone for weight {weight}")
     plt.tight_layout()
     plt.show()
+    '''
 
 
 def spike_effect_duration(weight):
@@ -557,10 +545,117 @@ def double_update_comparison():
     plt.savefig(f"output/double_update.png")
     plt.show()
 
+def neuron_refractory():
+    pop = Population((1,RS))
+    st = [5,33]
+    input1 = Input(spike_times=st)
+    input2 = Input(spike_times=st)
+    pop.add_neuron(input1)
+    pop.add_neuron(input2)
+    pop.create_synapse(input1.ID, "0", w=16, d=1)
+    pop.create_synapse(input2.ID, "0", w=16, d=1)
+    pop.run(50, dt=1)
+    print(pop.neurons["0"].spikes)
 
-poly()
+
+def random_large_network():
+
+    inp = [[[5, 4, 8],[7, 1, 8]],[[9, 4, 8],[3, 4, 3]],[[3, 8, 5],[6, 7, 9]]]
+    iid = [[34,12],[30,24], [34,23]]
+    #for ip, id in zip(inp, iid):
+    fig, (sub1,sub2,sub3) = plt.subplots(3,1, sharex=True)
+    subs = [sub1,sub2,sub3]
+    i = 603
+    while True:
+
+        pop = Population((100, RS))
+        np.random.seed(1)
+        pop.create_random_connections(p=0.1, d=list(range(1,11)), w=16)
+        np.random.seed(i)
+        input1 = Input(spike_times=sorted([np.random.randint(1,10)]))
+        input2 = Input(spike_times=sorted([np.random.randint(1,10)]))
+
+        #input1 = Input(spike_times=ip[0])
+        #input2 = Input(spike_times=ip[1])
 
 
+
+        choice1 = np.random.choice(list(pop.neurons),10, replace=False)
+        choice2 = np.random.choice(list(pop.neurons),10, replace=False)
+
+
+        #choice1 = id[0]
+        #choice2 = id[1]
+
+
+        pop.add_neuron(input1)
+        pop.add_neuron(input2)
+
+        for con1, con2 in zip(choice1, choice2):
+            pop.create_synapse(input1.ID, con1)
+            pop.create_synapse(input2.ID, con2)
+
+
+
+        pop.run(500)
+        spikes = []
+        [spikes.append(pop.neurons[n].spikes) for n in pop.neurons]
+        n_spikes = 0
+        for x in spikes:
+            n_spikes += len(x)
+        if n_spikes > 20:
+
+            try:
+                s = subs.pop()
+            except:
+                break
+            s.eventplot(spikes, colors="black")
+            s.set_title(f"ID {choice1}: {input1.spike_times[0]}ms\nID {choice2}: {input2.spike_times[0]}ms")
+            print(i)
+            print(input1.spike_times)
+            print(input2.spike_times)
+            print(choice1)
+            print(choice2)
+            if not subs:
+                break
+
+        i += 1
+
+    sub3.set_xlabel("Time (ms)")
+    sub1.set_ylabel("Neuron ID")
+    sub2.set_ylabel("Neuron ID")
+    sub3.set_ylabel("Neuron ID")
+    plt.tight_layout()
+    plt.show()
+    #plt.clf()
+    #pop.show_network(show=True)
+
+
+#neuron_response(16.9,40,0.1,50,1)
+#single_neuron()
+#delay_learning()
+#random_large_network()
+
+inp = [[13,0,5], [14,0,6], [15,0,8], [16,0,11]]
+fig, sub = plt.subplots()
+for i in inp:
+    res = weight_shift_response(i[0], i[1],i[2])
+    sub.plot(range(i[1],i[2]), res, label=f"w = {i[0]}")
+
+sub.set_xlabel("Shift (ms)")
+sub.set_ylabel("Neuron response (ms)")
+sub.set_xticks(range(0,11))
+#sub.yticks(range(int(min(response_delay)), int(max(response_delay) + 1), 1))
+#sub.title(f"Shift respone for weight {weight}")
+plt.tight_layout()
+plt.legend()
+plt.show()
+
+
+
+#neuron_refractory()
+#poly()
+#random()
 
 #spike_effect_duration(13)
 

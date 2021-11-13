@@ -4,9 +4,12 @@ import time
 import random
 import math as m
 from matplotlib import pyplot as plt
+import matplotlib.patches as mpatches
 import seaborn as sns
+import networkx as nx
 sns.set()
 global t, DT, ID
+
 
 
 class Population:
@@ -21,7 +24,7 @@ class Population:
                 if len(population) == 3:
                     ref_t = population[2]
                 else:
-                    ref_t = 2
+                    ref_t = 3
                 neuron = population[1](ref_t=ref_t)
                 self.neurons[neuron.ID] = neuron
         self.n = len(self.neurons)
@@ -71,6 +74,58 @@ class Population:
                             syn = self.create_synapse(matrix[row][col],matrix[x][y])
                             self.synapses.append(syn)
 
+    def create_random_connections(self, p, d, w, trainable):
+        if not isinstance(d, list):
+            d = [d]
+        if not isinstance(w, list):
+            w = [w]
+        for id in self.neurons:
+            for id_2 in self.neurons:
+                if np.random.random() < p:
+                    self.create_synapse(id, id_2, d=np.random.choice(d), w=np.random.choice(w), trainable=trainable)
+
+    def show_network(self, show=True):
+        G = nx.DiGraph()
+        colors = []
+        for n in self.neurons:
+            G.add_node(self.neurons[n].ID)
+            if isinstance(self.neurons[n], Input):
+                colors.append("g")
+            else:
+                colors.append("b")
+        for syn in self.synapses:
+            G.add_edge(str(syn.j), str(syn.i), d=syn.d)
+        pos = nx.circular_layout(G)
+        nx.draw_networkx_nodes(G, pos, node_color=colors, node_size=150, alpha=1, label=False)
+        labels = {}
+        for node in G.nodes:
+            labels[node] = int(node)
+        nx.draw_networkx_labels(G, pos, labels, font_size=8)
+        ax = plt.gca()
+        delays = sorted(set([syn.d for syn in self.synapses]))
+        colors = plt.cm.tab20c(np.linspace(0, 1, len(delays)))
+        color_id = {}
+        for d, c in zip(delays, colors):
+            color_id[d] = c
+        for e in G.edges(data=True):
+            ax.annotate("",
+                        xy=pos[e[0]], xycoords='data',
+                        xytext=pos[e[1]], textcoords='data',
+                        arrowprops=dict(arrowstyle="->", color=color_id[e[2]["d"]],
+                                        shrinkA=5, shrinkB=5,
+                                        patchA=None, patchB=None,
+                                        connectionstyle=f"arc3,rad=0.2"),)
+        plt.axis('off')
+        patches = []
+        for d in delays:
+            patches.append(mpatches.Patch(color=color_id[d], label=f'd={d}'))
+        plt.legend(loc="lower left", fancybox=True, bbox_to_anchor=(1.06, 0), handles=patches)
+        plt.tight_layout()
+        #plt.savefig(f"output/random/net{id}")
+        if show:
+            plt.show()
+        plt.clf()
+
     def run(self, duration, dt=1):
         global t, DT
         DT = dt
@@ -91,9 +146,9 @@ class Population:
             self.j = j
             self.w = w
             self.d = d
-            self.d_hist = [d]
-            self.pre_window = 1
-            self.post_window = 5
+            self.d_hist = {"t":[], "d":[]}
+            self.pre_window = -7
+            self.post_window = 7
             self.spikes = []
             self.trainable = trainable
 
@@ -101,7 +156,8 @@ class Population:
             self.spikes.append({"t": t, "d": self.d, "w": self.w})
 
         def get_spikes(self):
-            self.d_hist.append(self.d)
+            self.d_hist["t"].append(t)
+            self.d_hist["d"].append(self.d)
             count = 0
             for spike in self.spikes:
                 if spike["t"] + spike["d"] == t:
@@ -109,12 +165,19 @@ class Population:
                     self.spikes.remove(spike)
             return count
 
-        def change(self, change):
-            self.d = max(self.d + change, DT)
+        def F(self, delta_tdist):
+            dd = -3*m.tanh(delta_tdist/3)
+            self.d += dd
+            self.d = round(max(self.d, DT), 1 if DT==0.1 else 0)
+
+        def G(self, delta_t):
+            dd = (3/2)*m.tanh(2.5625-0.625*delta_t)+1.5
+            self.d += dd
+            self.d = round(self.d, 1 if DT==0.1 else 0)
 
 
 class Neuron:
-    def __init__(self,a,b,c,d,u,ref_t=2, v_init=False):
+    def __init__(self,a,b,c,d,u,ref_t=0, v_init=False):
         global ID, DT
         self.ID = str(ID)
         ID += 1
@@ -160,8 +223,9 @@ class Neuron:
             self.v = self.c
             self.u += self.d
             self.refractory = self.ref_t
-            self.inputs = []
+
             [syn.add_spike() for syn in self.down]
+            syn_list  = []
             for syn in self.up:
                 if syn.trainable:
                     spikes = neurons[str(syn.i)].spikes
@@ -169,19 +233,20 @@ class Neuron:
                         pre_spikes = []
                         post_spikes = []
                         for spike in spikes:
-                            diff = t - (spike + syn.d)
-                            if diff >= 0:
-                                pre_spikes.append(diff)
-                            else:
-                                post_spikes.append(abs(diff))
+                            delta_t = (spike + syn.d) - t
+                            if syn.pre_window <= delta_t <= 0:
+                                pre_spikes.append(delta_t)
+                            elif syn.post_window >= delta_t > 0:
+                                post_spikes.append(delta_t)
                         if pre_spikes:
-                            min_pre = min(pre_spikes)
-                            if min_pre <= syn.pre_window:
-                                syn.change(min_pre - syn.pre_window)
+                            min_pre = max(pre_spikes)
+                            syn_list.append((syn,min_pre))
                         elif post_spikes:
                             min_post = min(post_spikes)
-                            if min_post <= syn.post_window:
-                                syn.change(-(min_post-syn.post_window))
+                            syn.G(min_post)
+            if syn_list:
+                avg_delta_t = round(sum(x[1] for x in syn_list)/len(syn_list), 1 if DT==0.1 else 0)
+                [syn[0].F(syn[1]-avg_delta_t) for syn in syn_list]
         else:
             self.refractory = max(0, self.refractory - DT)
 
@@ -242,10 +307,4 @@ class Input:
         if random.random() < self.p or t in self.spike_times:
             [syn.add_spike() for syn in self.down]
             self.spikes.append(t)
-
-
-
-
-
-
 
