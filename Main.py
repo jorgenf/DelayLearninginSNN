@@ -17,7 +17,7 @@ plt.rc('axes', labelsize=10)
 plt.rc('xtick', labelsize=8)
 plt.rc('ytick', labelsize=8)
 plt.rc('figure', titlesize=14)
-plt.rcParams['figure.figsize'] = (15*cm, 8*cm)
+plt.rcParams['figure.figsize'] = (15*cm, 10*cm)
 #plt.rcParams['figure.figsize'] = (18/2*cm, 15/2*cm)
 
 
@@ -82,9 +82,9 @@ def neuron_response(start, end, step, duration, dt):
         pop.create_synapse(input.ID, 0, w=W, d=1)
         pop.run(DURATION, dt=dt)
         delays.append(round(pop.neurons["0"].spikes[0]-(pop.neurons["1"].spikes[0] + 1),3))
-
     plt.plot(np.arange(start,end, step), delays)
-    plt.yticks(np.arange(0,11,0.5 if dt < 1 else 1))
+    plt.yticks(np.arange(0,14,0.5 if dt < 1 else 1))
+    plt.ylim([0,14])
     plt.xticks(np.arange(round(start), round(end) + 1,1))
     plt.xlabel("Weight")
     plt.ylabel("Neuron response (ms)")
@@ -415,23 +415,23 @@ def delay_learning():
     plt.tight_layout()
     plt.show()
 
+
+def spike_shift(L, D, W):
+    DURATION = 50
+    dt = 0.1
+    pop = Population((1, RS))
+    spike_times1 = [21.0]
+    spike_times2 = [21.0 + D]
+    input = Input(spike_times1)
+    input2 = Input(spike_times2)
+    pop.add_neuron(input)
+    pop.add_neuron(input2)
+    pop.create_synapse(input.ID, 0, w=W, d=1)
+    pop.create_synapse(input2.ID, 0, w=W, d=1)
+    pop.run(DURATION, dt=dt)
+    L.append((max(pop.neurons["0"].v_hist["v"]), D, W))
+
 def spike_shift_sensitivity(d_start = 0, d_end = 15, w_start = 8, w_end = 18, d_step = 0.1, w_step = 0.1):
-
-    def spike_shift(L, D, W):
-        DURATION = 50
-        dt = 0.1
-        pop = Population((1, RS))
-        spike_times1 = [21.0]
-        spike_times2 = [21.0 + D]
-        input = Input(spike_times1)
-        input2 = Input(spike_times2)
-        pop.add_neuron(input)
-        pop.add_neuron(input2)
-        pop.create_synapse(input.ID, 0, w=W, d=1)
-        pop.create_synapse(input2.ID, 0, w=W, d=1)
-        pop.run(DURATION, dt=dt)
-        L.append((max(pop.neurons["0"].v_hist["v"]), D, W))
-
     if __name__ == '__main__':
         m = mp.Manager()
         L = m.list()
@@ -441,10 +441,10 @@ def spike_shift_sensitivity(d_start = 0, d_end = 15, w_start = 8, w_end = 18, d_
         w_end = w_end
         d_step = d_step
         w_step = w_step
-        list = list(itertools.product(np.arange(d_start, d_end, d_step), np.arange(w_start, w_end, w_step)))
-        list = [(L, round(x[0], 2), round(x[1], 2)) for x in list]
+        li = list(itertools.product(np.arange(d_start, d_end, d_step), np.arange(w_start, w_end, w_step)))
+        li = [(L, round(x[0], 2), round(x[1], 2)) for x in li]
         with mp.Pool(os.cpu_count() - 1) as p:
-            p.starmap(spike_shift, list)
+            p.starmap(spike_shift, li)
 
         fig = plt.figure()
         ax = fig.add_subplot(111)
@@ -456,7 +456,6 @@ def spike_shift_sensitivity(d_start = 0, d_end = 15, w_start = 8, w_end = 18, d_
                 Z.append("red")
             else:
                 Z.append("blue")
-
         ax.scatter(X, Y, c=Z, s=0.5)
         ax.set_xlabel("Weight")
         ax.set_ylabel("Shift (ms)")
@@ -559,7 +558,6 @@ def neuron_refractory():
 
 
 def random_large_network():
-
     inp = [[[5, 4, 8],[7, 1, 8]],[[9, 4, 8],[3, 4, 3]],[[3, 8, 5],[6, 7, 9]]]
     iid = [[34,12],[30,24], [34,23]]
     #for ip, id in zip(inp, iid):
@@ -567,36 +565,24 @@ def random_large_network():
     subs = [sub1,sub2,sub3]
     i = 603
     while True:
-
         pop = Population((100, RS))
         np.random.seed(1)
         pop.create_random_connections(p=0.1, d=list(range(1,11)), w=16)
         np.random.seed(i)
         input1 = Input(spike_times=sorted([np.random.randint(1,10)]))
         input2 = Input(spike_times=sorted([np.random.randint(1,10)]))
-
         #input1 = Input(spike_times=ip[0])
         #input2 = Input(spike_times=ip[1])
-
-
-
         choice1 = np.random.choice(list(pop.neurons),10, replace=False)
         choice2 = np.random.choice(list(pop.neurons),10, replace=False)
-
-
         #choice1 = id[0]
         #choice2 = id[1]
-
-
         pop.add_neuron(input1)
         pop.add_neuron(input2)
 
         for con1, con2 in zip(choice1, choice2):
             pop.create_synapse(input1.ID, con1)
             pop.create_synapse(input2.ID, con2)
-
-
-
         pop.run(500)
         spikes = []
         [spikes.append(pop.neurons[n].spikes) for n in pop.neurons]
@@ -604,7 +590,6 @@ def random_large_network():
         for x in spikes:
             n_spikes += len(x)
         if n_spikes > 20:
-
             try:
                 s = subs.pop()
             except:
@@ -618,9 +603,7 @@ def random_large_network():
             print(choice2)
             if not subs:
                 break
-
         i += 1
-
     sub3.set_xlabel("Time (ms)")
     sub1.set_ylabel("Neuron ID")
     sub2.set_ylabel("Neuron ID")
@@ -630,8 +613,10 @@ def random_large_network():
     #plt.clf()
     #pop.show_network(show=True)
 
+#spike_shift_sensitivity(0,15,8,18,0.1,0.1)
+#spike_effect_duration(13)
 
-#neuron_response(16.9,40,0.1,50,1)
+
 #single_neuron()
 #delay_learning()
 #random_large_network()
@@ -651,22 +636,21 @@ plt.tight_layout()
 plt.legend()
 plt.show()
 
-
+'''
 
 #neuron_refractory()
 #poly()
 #random()
 
-#spike_effect_duration(13)
 
-#weight_shift_response(13, 0, 5)
+
+
 
 #neuron_response(start=16.8, end=40, duration=50, dt=0.1, step=0.1)
 #double_update_comparison()
 
 #dt_comparison()
 
-'''
 if __name__ == '__main__':
     m = mp.Manager()
     L = m.list()
