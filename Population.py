@@ -1,16 +1,31 @@
+import os
+
 import numpy as np
 from collections import deque
 import time
-import random
 import math as m
 from matplotlib import pyplot as plt
+import matplotlib as mpl
 import matplotlib.patches as mpatches
 import seaborn as sns
 import networkx as nx
+import itertools
+import multiprocessing as mp
 sns.set()
 global t, DT, ID
 
+COLORS = ["red", "blue", "green", "indigo", "royalblue", "peru", "palegreen", "yellow"]
+COLORS += [(np.random.random(), np.random.random(), np.random.random()) for x in range(20)]
+cm = 1/2.54
+plt.rc('axes', titlesize=10)
+plt.rc('axes', labelsize=10)
+plt.rc('xtick', labelsize=8)
+plt.rc('ytick', labelsize=8)
+plt.rc('figure', titlesize=14)
+plt.rcParams['figure.figsize'] = (15*cm, 15*cm)
 
+MAX_DELAY = 20
+mpl.use("Agg")
 
 class Population:
     def __init__(self, *populations):
@@ -33,6 +48,11 @@ class Population:
         for neuron in reversed(self.neurons):
             self.neurons[neuron].update(self.neurons)
 
+    def create_input(self, spike_times=[], p=0.0, seed=False):
+        inp = Input(spike_times, p, seed)
+        self.add_neuron(inp)
+        return inp
+
     def add_neuron(self, neuron):
         self.neurons[neuron.ID] = neuron
 
@@ -54,7 +74,7 @@ class Population:
         [self.neurons[str(i)].down.remove(syn) for syn in self.neurons[str(i)].down if syn.i == str(i) and syn.j == str(j)]
         [self.neurons[str(j)].up.remove(syn) for syn in self.neurons[str(j)].up if syn.i == str(i) and syn.j == str(j)]
 
-    def create_grid(self, corners=False):
+    def create_grid(self, diagonals=False):
         dim = m.sqrt(self.n)
         if dim != int(dim):
             raise Exception("Error: population size must be a perfect square.")
@@ -69,64 +89,189 @@ class Population:
                         if i == 0 and j == 0:
                             continue
                         y = j + col
-                        exp = (lambda x,y,row,col: (row == x or col == y) if not corners else True)
+                        exp = (lambda x,y,row,col: (row == x or col == y) if not diagonals else True)
                         if exp(x, y, row, col) and 0 <= x < dim and 0 <= y < dim:
                             syn = self.create_synapse(matrix[row][col],matrix[x][y])
                             self.synapses.append(syn)
 
-    def create_random_connections(self, p, d, w, trainable):
+    def create_random_connections(self, p, d, w, trainable, seed=False):
+        if seed:
+            np.random.seed(seed)
         if not isinstance(d, list):
             d = [d]
         if not isinstance(w, list):
             w = [w]
         for id in self.neurons:
             for id_2 in self.neurons:
-                if np.random.random() < p:
+                if np.random.random() < p and id != id_2:
                     self.create_synapse(id, id_2, d=np.random.choice(d), w=np.random.choice(w), trainable=trainable)
 
-    def show_network(self, show=True):
+    def create_random_distance_delayed_connections(self, p, w, trainable, seed=False):
+            if seed:
+                np.random.seed(seed)
+            if not isinstance(w, list):
+                w = [w]
+            n = len(self.neurons)
+            side = m.ceil(m.sqrt(n))
+            steps = range(int(side))
+            prod=list(itertools.product(steps, steps))
+            pos = prod[:n]
+            for neuron, p1 in zip(self.neurons, pos):
+                for neuron2, p2 in zip(self.neurons, pos):
+                   if np.random.random() < p and type(self.neurons[neuron2]) != Input and neuron != neuron2:
+                       d = round(np.sqrt(((p1[0]-p2[0])**2)+((p1[1]-p2[1])**2)),1)
+                       self.create_synapse(neuron, neuron2, w=np.random.choice(w), d=d, trainable=trainable)
+
+    def create_watts_strogatz_connections(self, k, p, d, w, trainable, seed=False):
+        if seed:
+            np.random.seed(seed)
+        if not isinstance(d, list):
+            d = [d]
+        if not isinstance(w, list):
+            w = [w]
+        if k >= len(self.neurons):
+            raise Exception("Degree k cannot equal or exceed number of neurons.")
+        n = len(self.neurons)
+        side = m.ceil(m.sqrt(n))
+        steps = range(int(side))
+        prod = list(itertools.product(steps, steps))
+        pos = prod[:n]
+        pos_node = {}
+        for neuron, ps in zip(self.neurons, pos):
+            pos_node[str(ps)] = neuron
+        for neuron, ps in zip(self.neurons, pos):
+            neighbors = []
+            diff = 1
+            while len(neighbors) < k:
+                temp = []
+                for x in range(ps[0] - diff, ps[0] + diff + 1):
+                    for y in range(ps[1] - diff, ps[1] + diff + 1):
+                        if ps != (x,y) and (x,y) not in neighbors and (x,y) in pos:
+                            temp.append((x,y))
+                choice = np.random.choice(range(len(temp)), min(k-len(neighbors), len(temp)), replace=False)
+                [neighbors.append(temp[x]) for x in choice]
+                diff += 1
+            for ngb in neighbors:
+                self.create_synapse(neuron, pos_node[str(ngb)], w=np.random.choice(w), d=np.random.choice(d), trainable=trainable)
+        if k < len(self.neurons) - 1:
+            for syn in self.synapses:
+                if np.random.random() < p:
+                    neurons = self.neurons.copy()
+                    neurons.pop(syn.i)
+                    pairs = [(syn.i,syn.j) for syn in self.synapses]
+                    while True:
+                        new_j = np.random.choice(list(neurons.keys()))
+                        if (syn.i, new_j) not in pairs:
+                            break
+                    syn.j = new_j
+
+    def create_barabasi_albert_connections(self, d, w, trainable, seed=False):
+        if seed:
+            rng = np.random.default_rng(seed)
+        if not isinstance(d, list):
+            d = [d]
+        if not isinstance(w, list):
+            w = [w]
+        ids = list(self.neurons.copy().keys())
+
+        added_ids = []
+        id1 = ids.pop(0)
+        added_ids.append(id1)
+        id2 = ids.pop(0)
+        added_ids.append(id2)
+        self.create_synapse(id2, id1, w=rng.choice(w), d=rng.choice(d), trainable=trainable)
+        for i in range(len(ids)):
+            id = ids.pop(0)
+            n_syn = len(self.synapses)
+            for added_id in added_ids:
+                c = len(self.neurons[added_id].down)
+                if rng.random() < c/n_syn:
+                    self.create_synapse(id, added_id, w=rng.choice(w), d=rng.choice(d), trainable=trainable)
+            added_ids.append(id)
+
+    def show_network(self, grid=True, show=True):
+        global t
+        plt.figure()
         G = nx.DiGraph()
         colors = []
         for n in self.neurons:
             G.add_node(self.neurons[n].ID)
-            if isinstance(self.neurons[n], Input):
+            if round(t-DT,1) in self.neurons[n].spikes:
+                colors.append("r")
+            elif isinstance(self.neurons[n], Input):
                 colors.append("g")
             else:
                 colors.append("b")
         for syn in self.synapses:
             G.add_edge(str(syn.j), str(syn.i), d=syn.d)
-        pos = nx.circular_layout(G)
+        if grid:
+            n = len(G.nodes)
+            side = m.floor(m.sqrt(n))
+            steps = np.linspace(0,1,side)
+            prod=list(itertools.product(steps, steps))
+            for node, p in zip(G.nodes, prod):
+                G.nodes[node]["pos"] = p
+            pos = nx.get_node_attributes(G, 'pos')
+        else:
+            pos = nx.circular_layout(G)
         nx.draw_networkx_nodes(G, pos, node_color=colors, node_size=150, alpha=1, label=False)
         labels = {}
         for node in G.nodes:
             labels[node] = int(node)
         nx.draw_networkx_labels(G, pos, labels, font_size=8)
         ax = plt.gca()
-        delays = sorted(set([syn.d for syn in self.synapses]))
-        colors = plt.cm.tab20c(np.linspace(0, 1, len(delays)))
+        colors = plt.cm.rainbow(np.linspace(0, 1, int(MAX_DELAY / DT)))
         color_id = {}
-        for d, c in zip(delays, colors):
-            color_id[d] = c
+        for d, c in enumerate(colors):
+            color_id[round(d*DT + DT,1)] = c
         for e in G.edges(data=True):
             ax.annotate("",
                         xy=pos[e[0]], xycoords='data',
                         xytext=pos[e[1]], textcoords='data',
-                        arrowprops=dict(arrowstyle="->", color=color_id[e[2]["d"]],
+                        arrowprops=dict(arrowstyle="->", color=color_id[round(e[2]["d"],1)],
                                         shrinkA=5, shrinkB=5,
                                         patchA=None, patchB=None,
-                                        connectionstyle=f"arc3,rad=0.2"),)
+                                        connectionstyle=f"arc3,rad=0.2"), zorder=0)
         plt.axis('off')
         patches = []
-        for d in delays:
-            patches.append(mpatches.Patch(color=color_id[d], label=f'd={d}'))
-        plt.legend(loc="lower left", fancybox=True, bbox_to_anchor=(1.06, 0), handles=patches)
+        for i in range(1, MAX_DELAY + 1):
+            patches.append(mpatches.Patch(color=color_id[i], label=f'd={i}'))
+        plt.legend(loc="lower left", fancybox=True, bbox_to_anchor=(1.06, 0), handles=patches, prop={'size': 8})
+
+        #cmap = mpl.cm.tab20c
+        #norm = mpl.colors.Normalize(vmin=0, vmax=200)
+        #cb1 = mpl.colorbar.ColorbarBase(ax, cmap=cmap,  norm=norm, orientation='vertical')
         plt.tight_layout()
-        #plt.savefig(f"output/random/net{id}")
         if show:
             plt.show()
-        plt.clf()
+        else:
+            return plt
 
-    def run(self, duration, dt=1):
+    def plot_delays(self):
+        fig, sub = plt.subplots()
+        handles = []
+        for syn in self.synapses:
+            sub.plot(syn.d_hist["t"], syn.d_hist["d"])
+            handles.append((syn.i, syn.j))
+        sub.set_xlabel("Time (ms)")
+        sub.set_ylabel("Delay (ms)")
+        sub.legend(handles, bbox_to_anchor=(1.05, 1))
+        plt.tight_layout()
+        fig.savefig("network_plots/delays.png")
+
+    def plot_raster(self):
+        fig, sub = plt.subplots()
+        spikes = [self.neurons[x].spikes for x in self.neurons]
+        sub.eventplot(spikes, colors='black')
+        sub.set_xlabel("Time (ms)")
+        sub.set_ylabel("Neuron ID")
+        sub.set_ylim([-1, len(self.neurons)])
+        sub.set_yticks(range(len(self.neurons)))
+        sub.set_yticklabels([x if type(self.neurons[x]) != Input else f"{x} (Input)" for x in self.neurons])
+        plt.tight_layout()
+        fig.savefig("network_plots/spikes.png")
+
+    def run(self, duration, dt=0.1, plot_network=False):
         global t, DT
         DT = dt
         start = time.time()
@@ -135,10 +280,25 @@ class Population:
             self.update()
             stop = time.time() - start
             prog = (t / duration) * 100
-            print("\r |" + "#" * int(prog) + f"  {round(prog, 1) if t < duration - 1 else 100}%| Time per step: {stop}", end="")
+            print("\r |" + "#" * int(prog) + f"  {round(prog, 1) if t < duration - DT else 100}%| t={t}ms | Time per step: {stop}", end="")
             t = round(t + DT,3)
+            if plot_network:
+                fig = self.show_network(show=False)
+                fig.title(f"Time={t}ms")
+                file_name = "t" + str(t).replace(".","").rjust(10,"0")
+                fig.savefig(f"network_plots/{file_name}.png")
+                fig.close()
         stop = time.time()
         print(f"\nElapsed time: {stop-start}")
+        '''
+        if plot_network:
+            print("Saving figures...")
+            with mp.Pool() as p:
+                p.map(save_fig, plt.get_fignums())
+        '''
+
+
+
 
     class Synapse:
         def __init__(self, i, j, w, d, trainable):
@@ -169,11 +329,13 @@ class Population:
             dd = -3*m.tanh(delta_tdist/3)
             self.d += dd
             self.d = round(max(self.d, DT), 1 if DT==0.1 else 0)
+            self.d = min(self.d, MAX_DELAY)
 
         def G(self, delta_t):
             dd = (3/2)*m.tanh(2.5625-0.625*delta_t)+1.5
             self.d += dd
             self.d = round(self.d, 1 if DT==0.1 else 0)
+            self.d = min(self.d, MAX_DELAY)
 
 
 class Neuron:
@@ -223,7 +385,6 @@ class Neuron:
             self.v = self.c
             self.u += self.d
             self.refractory = self.ref_t
-
             [syn.add_spike() for syn in self.down]
             syn_list  = []
             for syn in self.up:
@@ -291,8 +452,7 @@ class POLY(Neuron):
 
 class Input:
     global t
-
-    def __init__(self, spike_times=[], p=0.0, seed=None):
+    def __init__(self, spike_times=[], p=0.0, seed=False):
         global ID
         self.ID = str(ID)
         ID += 1
@@ -300,11 +460,19 @@ class Input:
         self.spike_times = spike_times
         self.p = p
         self.down = []
-        #fix seeding
-        if seed is not None:
-            random.seed(seed)
+
+        if seed:
+            self.rng = np.random.default_rng(seed)
     def update(self, neurons=None):
-        if random.random() < self.p or t in self.spike_times:
+        if self.rng.random() < self.p or t in self.spike_times:
             [syn.add_spike() for syn in self.down]
             self.spikes.append(t)
+
+def save_fig(i):
+    fig = plt.figure(i)
+    file_name = "t" + str(i).replace(".", "").rjust(10, "0")
+    fig.savefig(f"network_plots/{file_name}.png")
+    fig.clf()
+    plt.close(fig)
+
 
