@@ -647,6 +647,3 @@ def spike_shift_sensitivity_mt():
         plt.tight_layout()
         plt.show()
 
-def create_video(fps):
-        os.system(f"ffmpeg -y -r {fps} -i network_plots/t%10d.png -vcodec libx264 network_plots/output.mp4")
-        os.system(f"ffmpeg -y -r {fps} -i network_plots/t%10d.png -vcodec msmpeg4 network_plots/output.wmv")
