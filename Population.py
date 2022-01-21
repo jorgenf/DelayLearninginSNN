@@ -226,7 +226,7 @@ class Population:
                 if neuron != j:
                     self.create_synapse(neuron, j, w=rng.choice(w), d=rng.choice(d), trainable=trainable)
 
-    def show_network(self, show=True):
+    def show_network(self, save=False):
         global t
         plt.figure()
         G = nx.DiGraph()
@@ -292,34 +292,58 @@ class Population:
         #norm = mpl.colors.Normalize(vmin=0, vmax=200)
         #cb1 = mpl.colorbar.ColorbarBase(ax, cmap=cmap,  norm=norm, orientation='vertical')
         plt.tight_layout()
-        if show:
-            plt.show()
+        if save:
+            plt.savefig(f"{self.dir}/network.png")
         else:
             return plt
 
     def plot_delays(self):
         fig, sub = plt.subplots()
         handles = []
-        for syn in self.synapses:
-            sub.plot(syn.d_hist["t"], syn.d_hist["d"])
+        ls = ["solid", "dashed", "dotted", "dashdot"]
+        for i, syn in enumerate(self.synapses):
+            sub.plot(syn.d_hist["t"], syn.d_hist["d"], linestyle=ls[int((i/10) % 4)], linewidth=0.8)
             handles.append((syn.i, syn.j))
         sub.set_xlabel("Time (ms)")
         sub.set_ylabel("Delay (ms)")
-        sub.legend(handles, bbox_to_anchor=(1.05, 1))
-        plt.tight_layout()
+        sub.set_ylim(0, MAX_DELAY)
+        sub.set_yticks(range(MAX_DELAY + 1))
+        sub.legend(handles, bbox_to_anchor=(1.05, 1), prop={"size":8})
+        fig.tight_layout()
         fig.savefig(f"{self.dir}/delays.png")
 
     def plot_raster(self):
         fig, sub = plt.subplots()
         spikes = [self.neurons[x].spikes for x in self.neurons]
-        sub.eventplot(spikes, colors='black')
+        sub.eventplot(spikes, colors='black', lineoffsets=1, linelengths=1, linewidths=0.5)
         sub.set_xlabel("Time (ms)")
         sub.set_ylabel("Neuron ID")
         sub.set_ylim([-1, len(self.neurons)])
         sub.set_yticks(range(len(self.neurons)))
         sub.set_yticklabels([x if type(self.neurons[x]) != Input else f"{x} (Input)" for x in self.neurons])
-        plt.tight_layout()
+        fig.tight_layout()
         fig.savefig(f"{self.dir}/spikes.png")
+
+    def plot_membrane_potential(self, IDs=False):
+        if IDs:
+            IDs = list(IDs)
+        else:
+            IDs = self.neurons.copy()
+        fig, sub = plt.subplots()
+        handles = []
+        ls = ["solid", "dashed", "dotted", "dashdot"]
+        for i, id in enumerate(IDs):
+            if type(self.neurons[str(id)]) != Input:
+                sub.plot(self.neurons[str(id)].v_hist["t"], self.neurons[str(id)].v_hist["v"], linestyle=ls[int((i/10) % 4)], linewidth=0.8)
+                handles.append(id)
+        sub.set_xlabel("Time (ms)")
+        sub.set_ylabel("Potential (mV)")
+        sub.set_ylim(-90, 40)
+        sub.legend(handles, bbox_to_anchor=(1.05, 1), prop={"size": 8})
+        fig.tight_layout()
+        fig.savefig(f"{self.dir}/potentials.png")
+
+
 
     def create_video(self, fps):
         os.system(f"ffmpeg -y -r {fps} -i {self.dir}/t%10d.png -vcodec libx264 {self.dir}/output.mp4")
@@ -331,16 +355,26 @@ class Population:
         start = time.time()
         date = datetime.now().strftime("%d-%B-%Y_%H-%M-%S")
         self.dir = f"network_plots/{date}"
+        cnt = 1
+        while os.path.exists(self.dir):
+            self.dir = f"network_plots/{date}_{cnt}"
+            cnt += 1
         os.makedirs(self.dir, exist_ok=True)
+        last_100_stop = []
         while t < duration:
             start = time.time()
             self.update()
             stop = time.time() - start
+            if len(last_100_stop) >= 100:
+                last_100_stop.pop()
+            last_100_stop.insert(0,stop)
+            avg_stop = np.mean(last_100_stop)
             prog = (t / duration) * 100
-            print("\r |" + "#" * int(prog) + f"  {round(prog, 1) if t < duration - DT else 100}%| t={t}ms | Time per step: {round(stop,4)}", end="")
+            expected_t = round(((duration - t)/DT * avg_stop)/60)
+            print("\r |" + "#" * int(prog) + f"  {round(prog, 1) if t < duration - DT else 100}%| t={t}ms | Time per step: {round(stop,4)} sec | Time to finish: {expected_t} min", end="")
             t = round(t + DT,3)
             if plot_network:
-                fig = self.show_network(show=False)
+                fig = self.show_network(save=False)
                 fig.title(f"Time={t}ms")
                 file_name = "t" + str(t).replace(".","").rjust(10,"0")
                 fig.savefig(f"{self.dir}/{file_name}.png")
@@ -354,9 +388,6 @@ class Population:
                 p.map(save_fig, plt.get_fignums())
         '''
 
-
-
-
     class Synapse:
         def __init__(self, i, j, w, d, trainable):
             self.i = i
@@ -364,7 +395,7 @@ class Population:
             self.w = w
             self.d = d
             self.d_hist = {"t":[], "d":[]}
-            self.pre_window = -7
+            self.pre_window = -10
             self.post_window = 7
             self.spikes = []
             self.trainable = trainable
