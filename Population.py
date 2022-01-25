@@ -12,7 +12,7 @@ import networkx as nx
 import itertools
 import multiprocessing as mp
 sns.set()
-global t, DT, ID
+global T, DT, ID
 
 COLORS = ["red", "blue", "green", "indigo", "royalblue", "peru", "palegreen", "yellow"]
 COLORS += [(np.random.random(), np.random.random(), np.random.random()) for x in range(20)]
@@ -29,8 +29,8 @@ mpl.use("Agg")
 
 class Population:
     def __init__(self, *populations):
-        global t, ID
-        t = 0.0
+        global T, ID
+        T = 0.0
         ID = 0
         self.neurons = {}
         self.synapses = []
@@ -78,7 +78,7 @@ class Population:
         [self.neurons[str(j)].up.remove(syn) for syn in self.neurons[str(j)].up if syn.i == str(i) and syn.j == str(j)]
 
     def create_grid(self, diagonals, d, w, trainable, seed=False):
-        dim = m.sqrt(self.n)
+        dim = m.sqrt(len(self.neurons))
         if dim != int(dim):
             raise Exception("Error: population size must be a perfect square.")
         else:
@@ -226,14 +226,37 @@ class Population:
                 if neuron != j:
                     self.create_synapse(neuron, j, w=rng.choice(w), d=rng.choice(d), trainable=trainable)
 
+    def create_feed_forward_connections(self, d, w, trainable, seed=False):
+        if seed:
+            rng = np.random.default_rng(seed)
+        else:
+            rng = np.random.default_rng()
+        if not isinstance(d, list):
+            d = [d]
+        if not isinstance(w, list):
+            w = [w]
+        n_layers = int(np.ceil(np.sqrt(len(self.neurons))))
+        layers = [[] for x in range(n_layers)]
+        pop_copy = self.neurons.copy()
+        for layer in range(n_layers):
+            for row in range(n_layers):
+                if pop_copy:
+                    neuron = pop_copy.pop()
+                    layers[layer].append(neuron)
+        for layer in layers:
+            if layers.index(layer) < len(layers):
+                for neuron_i in layer:
+                    for neuron_j in layers[layers.index(layer) + 1]:
+                        self.create_synapse(neuron_i.ID, neuron_j.ID, w=rng.choice(w), d=rng.choice(d), trainable=trainable)
+
     def show_network(self, save=False):
-        global t
+        global T
         plt.figure()
         G = nx.DiGraph()
         colors = []
         for n in self.neurons:
             G.add_node(self.neurons[n].ID, type="input" if isinstance(self.neurons[n], Input) else "neuron")
-            if round(t-DT,1) in self.neurons[n].spikes:
+            if round(T-DT,1) in self.neurons[n].spikes:
                 colors.append("r")
             elif isinstance(self.neurons[n], Input):
                 colors.append("g")
@@ -288,9 +311,6 @@ class Population:
         for i in range(1, MAX_DELAY + 1):
             patches.append(mpatches.Patch(color=color_id[i], label=f'd={i}'))
         plt.legend(loc="lower left", fancybox=True, bbox_to_anchor=(1.06, 0), handles=patches, prop={'size': 8})
-        #cmap = mpl.cm.tab20c
-        #norm = mpl.colors.Normalize(vmin=0, vmax=200)
-        #cb1 = mpl.colorbar.ColorbarBase(ax, cmap=cmap,  norm=norm, orientation='vertical')
         plt.tight_layout()
         if save:
             plt.savefig(f"{self.dir}/network.png")
@@ -350,7 +370,7 @@ class Population:
         os.system(f"ffmpeg -y -r {fps} -i {self.dir}/t%10d.png -vcodec msmpeg4 {self.dir}/output.wmv")
 
     def run(self, duration, dt=0.1, plot_network=False):
-        global t, DT
+        global T, DT
         DT = dt
         start = time.time()
         date = datetime.now().strftime("%d-%B-%Y_%H-%M-%S")
@@ -361,7 +381,7 @@ class Population:
             cnt += 1
         os.makedirs(self.dir, exist_ok=True)
         last_100_stop = []
-        while t < duration:
+        while T < duration:
             start = time.time()
             self.update()
             stop = time.time() - start
@@ -369,24 +389,19 @@ class Population:
                 last_100_stop.pop()
             last_100_stop.insert(0,stop)
             avg_stop = np.mean(last_100_stop)
-            prog = (t / duration) * 100
-            expected_t = round(((duration - t)/DT * avg_stop)/60)
-            print("\r |" + "#" * int(prog) + f"  {round(prog, 1) if t < duration - DT else 100}%| t={t}ms | Time per step: {round(stop,4)} sec | Time to finish: {expected_t} min", end="")
-            t = round(t + DT,3)
+            prog = (T / duration) * 100
+            expected_t = round(((duration - T)/DT * avg_stop)/60)
+            print("\r |" + "#" * int(prog) + f"  {round(prog, 1) if T < duration - DT else 100}%| t={T}ms | Time per step: {round(stop,4)} sec | Time to finish: {expected_t} min", end="")
+            T = round(T + DT,3)
             if plot_network:
                 fig = self.show_network(save=False)
-                fig.title(f"Time={t}ms")
-                file_name = "t" + str(t).replace(".","").rjust(10,"0")
+                fig.title(f"Time={T}ms")
+                file_name = "t" + str(T).replace(".","").rjust(10,"0")
                 fig.savefig(f"{self.dir}/{file_name}.png")
                 fig.close()
         stop = time.time()
         print(f"\nElapsed time: {stop-start}")
-        '''
-        if plot_network:
-            print("Saving figures...")
-            with mp.Pool() as p:
-                p.map(save_fig, plt.get_fignums())
-        '''
+
 
     class Synapse:
         def __init__(self, i, j, w, d, trainable):
@@ -401,14 +416,14 @@ class Population:
             self.trainable = trainable
 
         def add_spike(self):
-            self.spikes.append({"t": t, "d": self.d, "w": self.w})
+            self.spikes.append({"t": T, "d": self.d, "w": self.w})
 
         def get_spikes(self):
-            self.d_hist["t"].append(t)
+            self.d_hist["t"].append(T)
             self.d_hist["d"].append(self.d)
             count = 0
             for spike in self.spikes:
-                if spike["t"] + spike["d"] == t:
+                if spike["t"] + spike["d"] == T:
                     count += spike["w"]
                     self.spikes.remove(spike)
             return count
@@ -464,12 +479,12 @@ class Neuron:
         self.v += 0.5 * (0.04*self.v**2+5*self.v+140-self.u + I) * DT
         self.u += self.a*(self.b*self.v-self.u) * DT
         self.v = min(self.th, self.v)
-        self.v_hist["t"].append(t)
+        self.v_hist["t"].append(T)
         self.v_hist["v"].append(self.v)
-        self.u_hist["t"].append(t)
+        self.u_hist["t"].append(T)
         self.u_hist["u"].append(self.u)
         if self.th <= self.v:
-            self.spikes.append(t)
+            self.spikes.append(T)
             self.v = self.c
             self.u += self.d
             self.refractory = self.ref_t
@@ -482,7 +497,7 @@ class Neuron:
                         pre_spikes = []
                         post_spikes = []
                         for spike in spikes:
-                            delta_t = (spike + syn.d) - t
+                            delta_t = (spike + syn.d) - T
                             if syn.pre_window <= delta_t <= 0:
                                 pre_spikes.append(delta_t)
                             elif syn.post_window >= delta_t > 0:
@@ -539,7 +554,7 @@ class POLY(Neuron):
         super().__init__(a=0.02, b=0.2, c=-65, d=2, u=-14, ref_t=ref_t)
 
 class Input:
-    global t
+    global T
     def __init__(self, spike_times=False, p=0.0, seed=False):
         global ID
         self.ID = str(ID)
@@ -554,12 +569,12 @@ class Input:
         else:
             self.rng = np.random.default_rng()
     def update(self, neurons=None):
-        if self.spike_times and t in self.spike_times:
+        if self.spike_times and T in self.spike_times:
             [syn.add_spike() for syn in self.down]
-            self.spikes.append(t)
+            self.spikes.append(T)
         elif self.rng.random() < self.p and not self.spike_times:
             [syn.add_spike() for syn in self.down]
-            self.spikes.append(t)
+            self.spikes.append(T)
 
 def save_fig(i):
     fig = plt.figure(i)

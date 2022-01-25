@@ -647,44 +647,33 @@ def spike_shift_sensitivity_mt():
         plt.tight_layout()
         plt.show()
 
-def run_2n2i_altinp(t, l_pattern, l_interm, delay_seed, input_seed):
-    rng = np.random.default_rng(delay_seed)
-    rng2 = np.random.default_rng(input_seed)
 
-    pop = Population((2, RS))
-    i0 = []
-    i1 = []
-    s0 = []
-    s1 = []
-    t0 = rng2.integers(0, 6)
-    t1 = rng2.integers(0, 6)
-    period = rng2.integers(10,20)
-    [s0.append(t0 + (period * n)) if (t0 + (period * n) < l_pattern) else None for n in range(l_pattern)]
-    [s1.append(t1 + (period * n)) if (t1 + (period * n) < l_pattern) else None for n in range(l_pattern)]
+def run_2n2i_alt(t, n, i, l_pattern, l_interm, delay_seed, input_seed):
+    delay_rng = np.random.default_rng(delay_seed)
+    input_rng = np.random.default_rng(input_seed)
 
-    ss0 = []
-    ss1 = []
-    tt0 = rng2.integers(0, 6)
-    tt1 = rng2.integers(0, 6)
-    period2 = rng2.integers(10,20)
-    [ss0.append(tt0 + (period2 * n)) if (tt0 + (period2 * n) < l_pattern) else None for n in range(l_pattern)]
-    [ss1.append(tt1 + (period2 * n)) if (tt1 + (period2 * n) < l_pattern) else None for n in range(l_pattern)]
+    pop = Population((n, RS))
 
-    flip = 1
-    n = int(t / (l_pattern + l_interm))
-    for r in range(2*n):
-        if r % 2 == 0:
-            if flip == 1:
-                [i0.append(x + l_interm * r) for x in s0]
-                [i1.append(x + l_interm * r) for x in s1]
+
+
+    for x in range(i):
+        offset1 = input_rng.integers(0, 6)
+        period1 = input_rng.integers(10,20)
+        pattern1 = [(offset1 + (period1 * rep)) if (offset1 + (period1 * rep) < l_pattern) else None for rep in
+                   range(l_pattern)]
+        offset2 = input_rng.integers(0, 6)
+        period2 = input_rng.integers(10,20)
+        pattern2 = [(offset2 + (period1 * rep)) if (offset2 + (period2 * rep) < l_pattern) else None for rep in
+                   range(l_pattern)]
+        pattern = []
+        flip = 1
+        for rnd in range(int(t/(l_pattern + l_interm))):
+            if rnd % 2 == 0:
+                [pattern.append(inp +(l_pattern + l_interm) * rnd) for inp in (pattern1 if flip == 1 else pattern2)]
                 flip *= -1
-            else:
-                [i0.append(x + l_interm * r) for x in ss0]
-                [i1.append(x + l_interm * r) for x in ss1]
-                flip *= -1
+        pop.create_input(pattern)
 
-    inp1 = pop.create_input(i0)
-    inp2 = pop.create_input(i1)
+
 
     pop.create_synapse(inp1.ID, 0, w=16, d=rng.integers(1, 60)/10)
     pop.create_synapse(inp1.ID, 1, w=16, d=rng.integers(1, 60)/10)
@@ -698,24 +687,18 @@ def run_2n2i_altinp(t, l_pattern, l_interm, delay_seed, input_seed):
     pop.plot_membrane_potential()
     pop.show_network(save=True)
 
-def run_2n2i_asynchronous(t, delay_seed, input_seed):
+
+def run_xnxi_async(t, n, i, delay_seed, input_seed):
     delay_rng = np.random.default_rng(delay_seed)
     input_rng = np.random.default_rng(input_seed)
 
-    pop = Population((2, RS))
+    pop = Population((n, RS))
 
-    p0 = input_rng.integers(10, 30)
-    p1 = input_rng.integers(10, 30)
-    i0 = [i for i in range(t) if i % p0 == 0]
-    i1 = [i for i in range(t) if i % p1 == 0]
-    inp1 = pop.create_input(i0)
-    inp2 = pop.create_input(i1)
-
-    pop.create_synapse(inp1.ID, 0, w=16, d=delay_rng.integers(1, 60)/10)
-    pop.create_synapse(inp1.ID, 1, w=16, d=delay_rng.integers(1, 60)/10)
-    pop.create_synapse(inp2.ID, 0, w=16, d=delay_rng.integers(1, 60)/10)
-    pop.create_synapse(inp2.ID, 1, w=16, d=delay_rng.integers(1, 60)/10)
-
+    for x in range(i):
+        xi = [x for x in range(t) if i % input_rng.integers(10,30) == 0]
+        inp = pop.create_input(xi)
+        for y in range(int(np.ceil(np.sqrt(n)))):
+            pop.create_synapse(inp.ID, y, w=16, d=delay_rng.integers(1, 60) / 10)
 
     pop.structure = "grid"
     pop.run(t, dt=0.1, plot_network=False)
@@ -723,3 +706,4 @@ def run_2n2i_asynchronous(t, delay_seed, input_seed):
     pop.plot_raster()
     pop.plot_membrane_potential()
     pop.show_network(save=True)
+

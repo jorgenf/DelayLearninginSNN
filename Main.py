@@ -1,5 +1,5 @@
 import functions as fn
-import Population
+#import Population
 import numpy as np
 import multiprocessing as mp
 
@@ -21,7 +21,7 @@ pop.plot_raster()
 '''
 
 
-
+'''
 def run_9_neuron_sim(delay_seed, input_seed):
     rng = np.random.default_rng(delay_seed)
     rng2 = np.random.default_rng(input_seed)
@@ -42,7 +42,7 @@ def run_9_neuron_sim(delay_seed, input_seed):
     s0 = []
     s1 = []
     s2 = []
-    '''
+    
     for t in range(time):
         if t % 5 == 0 or t % 5 == 1 or t % 5 == 2:
             s0.append(t)
@@ -50,7 +50,7 @@ def run_9_neuron_sim(delay_seed, input_seed):
             s1.append(t)
         if t % 12 == 0 or t % 12 == 1 or t % 12 == 2:
             s2.append(t)
-    '''
+    
     t0 = rng2.integers(0, 6)
     t1 = rng2.integers(0, 6)
     t2 = rng2.integers(0, 6)
@@ -78,19 +78,20 @@ def run_9_neuron_sim(delay_seed, input_seed):
     pop.plot_raster()
     pop.show_network(save=True)
 
-
-
 '''
-if __name__ == "__main__":
-    rng = np.random.default_rng(1)
-    seeds = [(rng.integers(0,100), rng.integers(0,100)) for x in range(9)]
-    with mp.Pool(mp.cpu_count()-1) as pool:
-        pool.starmap(run_sim, seeds)
+
+
+
+fn.run_xnxi_async(100, 9,3, 1, 1)
+
 '''
 
 if __name__ == "__main__":
     rng = np.random.default_rng(1)
-    seeds = [(2000, 100,100, rng.integers(0,100), rng.integers(0,100)) for x in range(9)]
+    seeds = [(2000, 100,10, rng.integers(0,100), rng.integers(0,100)) for x in range(9)]
     with mp.Pool(mp.cpu_count()-1) as pool:
-        pool.starmap(fn.run_2n2i_altinp, seeds)
+        pool.starmap(fn.run_xnxi_async, seeds)
+    
+
+'''
 
