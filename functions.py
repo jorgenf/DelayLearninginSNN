@@ -648,14 +648,11 @@ def spike_shift_sensitivity_mt():
         plt.show()
 
 
-def run_2n2i_alt(t, n, i, l_pattern, l_interm, delay_seed, input_seed):
+def run_xnxi_alt(t, n, i, l_pattern, l_interm, delay_seed, input_seed):
     delay_rng = np.random.default_rng(delay_seed)
     input_rng = np.random.default_rng(input_seed)
-
     pop = Population((n, RS))
-
-
-
+    pop.create_feed_forward_connections(d=[])
     for x in range(i):
         offset1 = input_rng.integers(0, 6)
         period1 = input_rng.integers(10,20)
@@ -671,14 +668,9 @@ def run_2n2i_alt(t, n, i, l_pattern, l_interm, delay_seed, input_seed):
             if rnd % 2 == 0:
                 [pattern.append(inp +(l_pattern + l_interm) * rnd) for inp in (pattern1 if flip == 1 else pattern2)]
                 flip *= -1
-        pop.create_input(pattern)
-
-
-
-    pop.create_synapse(inp1.ID, 0, w=16, d=rng.integers(1, 60)/10)
-    pop.create_synapse(inp1.ID, 1, w=16, d=rng.integers(1, 60)/10)
-    pop.create_synapse(inp2.ID, 0, w=16, d=rng.integers(1, 60)/10)
-    pop.create_synapse(inp2.ID, 1, w=16, d=rng.integers(1, 60)/10)
+        inp = pop.create_input(pattern)
+        for j in pop.neurons[:int(np.ceil(np.sqrt(len(pop.neurons))))]:
+            pop.create_synapse(inp.ID, j, w=16, d=delay_rng.integers(1, 60) / 10)
 
     pop.structure = "grid"
     pop.run(t, dt=0.1, plot_network=False)
