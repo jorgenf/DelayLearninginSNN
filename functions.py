@@ -648,30 +648,26 @@ def spike_shift_sensitivity_mt():
         plt.show()
 
 
-def run_xnxi_alt(t, n, i, l_pattern, l_interm, delay_seed, input_seed):
+def run_xnxi_alt(t, n, i, l_pattern, l_interm, delay_seed, input_seed, name=False):
     delay_rng = np.random.default_rng(delay_seed)
     input_rng = np.random.default_rng(input_seed)
-    pop = Population((n, RS))
-    pop.create_feed_forward_connections(d=[])
+    pop = Population((n, RS), name=name)
+    pop.create_feed_forward_connections(d=list(range(1,20)), w=16, trainable=True, seed=delay_seed)
     for x in range(i):
         offset1 = input_rng.integers(0, 6)
         period1 = input_rng.integers(10,20)
-        pattern1 = [(offset1 + (period1 * rep)) if (offset1 + (period1 * rep) < l_pattern) else None for rep in
-                   range(l_pattern)]
+        pattern1 = [(offset1 + (period1 * rep)) for rep in range(l_pattern) if (offset1 + (period1 * rep) < l_pattern)]
         offset2 = input_rng.integers(0, 6)
         period2 = input_rng.integers(10,20)
-        pattern2 = [(offset2 + (period1 * rep)) if (offset2 + (period2 * rep) < l_pattern) else None for rep in
-                   range(l_pattern)]
+        pattern2 = [(offset2 + (period2 * rep)) for rep in range(l_pattern) if (offset2 + (period2 * rep) < l_pattern)]
         pattern = []
         flip = 1
-        for rnd in range(int(t/(l_pattern + l_interm))):
-            if rnd % 2 == 0:
-                [pattern.append(inp +(l_pattern + l_interm) * rnd) for inp in (pattern1 if flip == 1 else pattern2)]
-                flip *= -1
+        for rnd in range(int(t/(l_pattern + l_interm)) + 1):
+            [pattern.append(inp + (l_pattern + l_interm) * rnd) for inp in (pattern1 if flip == 1 else pattern2)]
+            flip *= -1
         inp = pop.create_input(pattern)
-        for j in pop.neurons[:int(np.ceil(np.sqrt(len(pop.neurons))))]:
+        for j in list(pop.neurons.copy())[:int(np.ceil(np.sqrt(n)))]:
             pop.create_synapse(inp.ID, j, w=16, d=delay_rng.integers(1, 60) / 10)
-
     pop.structure = "grid"
     pop.run(t, dt=0.1, plot_network=False)
     pop.plot_delays()
@@ -680,18 +676,36 @@ def run_xnxi_alt(t, n, i, l_pattern, l_interm, delay_seed, input_seed):
     pop.show_network(save=True)
 
 
-def run_xnxi_async(t, n, i, delay_seed, input_seed):
+def run_xnxi_rep(t, n, i, delay_seed, input_seed, name=False):
     delay_rng = np.random.default_rng(delay_seed)
     input_rng = np.random.default_rng(input_seed)
-
-    pop = Population((n, RS))
-
+    pop = Population((n, RS), name=name)
+    pop.create_feed_forward_connections(d=list(range(1,20)), w=16, trainable=True, seed=delay_seed)
+    period = input_rng.integers(10, 20)
     for x in range(i):
-        xi = [x for x in range(t) if i % input_rng.integers(10,30) == 0]
+        offset = input_rng.integers(0, 6)
+        pattern = [offset + (period * x) for x in range(int(np.ceil((t-offset)/period))) if offset + (period * x) < t]
+        inp = pop.create_input(pattern)
+        for y in range(int(np.ceil(np.sqrt(n)))):
+            pop.create_synapse(inp.ID, y, w=16, d=delay_rng.integers(1, 60) / 10)
+    pop.structure = "grid"
+    pop.run(t, dt=0.1, plot_network=False)
+    pop.plot_delays()
+    pop.plot_raster()
+    pop.plot_membrane_potential()
+    pop.show_network(save=True)
+
+def run_xnxi_async(t, n, i, delay_seed, input_seed, name=False):
+    delay_rng = np.random.default_rng(delay_seed)
+    input_rng = np.random.default_rng(input_seed)
+    pop = Population((n, RS), name=name)
+    pop.create_feed_forward_connections(d=list(range(1,20)), w=16, trainable=True, seed=delay_seed)
+    for x in range(i):
+        freq = input_rng.integers(10,30)
+        xi = [x for x in range(t) if x % freq == 0]
         inp = pop.create_input(xi)
         for y in range(int(np.ceil(np.sqrt(n)))):
             pop.create_synapse(inp.ID, y, w=16, d=delay_rng.integers(1, 60) / 10)
-
     pop.structure = "grid"
     pop.run(t, dt=0.1, plot_network=False)
     pop.plot_delays()

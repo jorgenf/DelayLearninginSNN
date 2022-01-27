@@ -10,7 +10,6 @@ import matplotlib.patches as mpatches
 import seaborn as sns
 import networkx as nx
 import itertools
-import multiprocessing as mp
 sns.set()
 global T, DT, ID
 
@@ -28,7 +27,7 @@ MAX_DELAY = 20
 mpl.use("Agg")
 
 class Population:
-    def __init__(self, *populations):
+    def __init__(self, *populations, name=False):
         global T, ID
         T = 0.0
         ID = 0
@@ -42,7 +41,7 @@ class Population:
                     ref_t = 0
                 neuron = population[1](ref_t=ref_t)
                 self.neurons[neuron.ID] = neuron
-        #self.n = len(self.neurons)
+        self.name = name
         self.structure = False
         self.dir = False
 
@@ -237,17 +236,17 @@ class Population:
             w = [w]
         n_layers = int(np.ceil(np.sqrt(len(self.neurons))))
         layers = [[] for x in range(n_layers)]
-        pop_copy = self.neurons.copy()
+        pop_copy = list(self.neurons.copy())
         for layer in range(n_layers):
             for row in range(n_layers):
                 if pop_copy:
-                    neuron = pop_copy.pop()
+                    neuron = pop_copy.pop(0)
                     layers[layer].append(neuron)
         for layer in layers:
-            if layers.index(layer) < len(layers):
+            if layers.index(layer) < len(layers) - 1:
                 for neuron_i in layer:
                     for neuron_j in layers[layers.index(layer) + 1]:
-                        self.create_synapse(neuron_i.ID, neuron_j.ID, w=rng.choice(w), d=rng.choice(d), trainable=trainable)
+                        self.create_synapse(neuron_i, neuron_j, w=rng.choice(w), d=rng.choice(d), trainable=trainable)
 
     def show_network(self, save=False):
         global T
@@ -374,10 +373,16 @@ class Population:
         DT = dt
         start = time.time()
         date = datetime.now().strftime("%d-%B-%Y_%H-%M-%S")
-        self.dir = f"network_plots/{date}"
+        if self.name:
+            self.dir = f"network_plots/{self.name}"
+        else:
+            self.dir = f"network_plots/{date}"
         cnt = 1
         while os.path.exists(self.dir):
-            self.dir = f"network_plots/{date}_{cnt}"
+            if self.name:
+                self.dir = f"network_plots/{self.name}_{cnt}"
+            else:
+                self.dir = f"network_plots/{date}_{cnt}"
             cnt += 1
         os.makedirs(self.dir, exist_ok=True)
         last_100_stop = []
@@ -442,7 +447,7 @@ class Population:
 
 
 class Neuron:
-    def __init__(self,a,b,c,d,u,ref_t=0, v_init=False):
+    def __init__(self, a, b, c, d, u, ref_t=0, v_init=False):
         global ID, DT
         self.ID = str(ID)
         ID += 1
