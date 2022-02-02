@@ -1,21 +1,31 @@
 import Population
-import functions as fn
+import Simulations as sim
 #import Population
 import numpy as np
 import multiprocessing as mp
 
 
-'''
+
 if __name__ == "__main__":
-    rng = np.random.default_rng(1)
-    #alt_seeds = [(10000, 1, 3, 200, 200, rng.integers(0,100), rng.integers(0,100), "alt") for x in range(30)]
-    #async_seeds = [(2000, 1, 3, rng.integers(0, 100), rng.integers(0, 100), "async") for x in range(9)]
-    #rep_seeds = [(2000, 1, 3, rng.integers(0, 100), rng.integers(0, 100), "rep") for x in range(9)]
-    n4i2_alt_seeds = [(2000, 4, 2, 200, 200, rng.integers(0,100), rng.integers(0,100), "alt") for x in range(30)]
-    n4i2_async_seeds = [(2000, 4, 2, rng.integers(0, 100), rng.integers(0, 100), "async") for x in range(30)]
-    n4i2_rep_seeds = [(2000, 4, 2, rng.integers(0, 100), rng.integers(0, 100), "rep") for x in range(30)]
+    rng = np.random.default_rng(111)
+    alt_seeds = [(2000, 1, 3, 200, 200, rng.integers(0,100), rng.integers(0,100), f"altn1i3_{x}") for x in range(100)]
+    async_seeds = [(2000, 1, 3, rng.integers(0, 100), rng.integers(0, 100), f"asyncn1i3_{x}") for x in range(100)]
+    rep_seeds = [(2000, 1, 3, rng.integers(0, 100), rng.integers(0, 100), f"repn1i3_{x}") for x in range(100)]
+    n4i2_alt_seeds = [(2000, 4, 2, 200, 200, rng.integers(0,100), rng.integers(0,100), f"altn4i2_{x}") for x in range(100)]
+    n4i2_async_seeds = [(2000, 4, 2, rng.integers(0, 100), rng.integers(0, 100), f"asyncn4i2_{x}") for x in range(100)]
+    n4i2_rep_seeds = [(2000, 4, 2, rng.integers(0, 100), rng.integers(0, 100), f"repn4i2_{x}") for x in range(100)]
     with mp.Pool(mp.cpu_count()-1) as pool:
-        pool.starmap(fn.run_xnxi_rep, n4i2_rep_seeds)
+        pool.starmap(sim.run_xnxi_rep, n4i2_rep_seeds)
+    with mp.Pool(mp.cpu_count()-1) as pool:
+        pool.starmap(sim.run_xnxi_alt, n4i2_alt_seeds)
+    with mp.Pool(mp.cpu_count()-1) as pool:
+        pool.starmap(sim.run_xnxi_async, n4i2_async_seeds)
+    with mp.Pool(mp.cpu_count()-1) as pool:
+        pool.starmap(sim.run_xnxi_async, async_seeds)
+    with mp.Pool(mp.cpu_count()-1) as pool:
+        pool.starmap(sim.run_xnxi_rep, rep_seeds)
+    with mp.Pool(mp.cpu_count()-1) as pool:
+        pool.starmap(sim.run_xnxi_alt, alt_seeds)
 '''
 input_rng = np.random.default_rng(4)
 delay_rng = np.random.default_rng(3)
@@ -35,3 +45,4 @@ pop.plot_delays()
 pop.plot_raster()
 pop.plot_membrane_potential()
 pop.show_network(save=True)
+'''

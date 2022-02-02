@@ -10,6 +10,7 @@ import matplotlib.patches as mpatches
 import seaborn as sns
 import networkx as nx
 import itertools
+import json
 sns.set()
 global T, DT, ID
 
@@ -25,6 +26,31 @@ plt.rcParams['figure.figsize'] = (15*cm, 15*cm)
 
 MAX_DELAY = 20
 mpl.use("Agg")
+
+
+class Input:
+    global T
+    def __init__(self, spike_times=False, p=0.0, seed=False):
+        global ID
+        self.ID = str(ID)
+        ID += 1
+        self.spikes = deque()
+        self.spike_times = spike_times
+        self.p = p
+        self.down = []
+
+        if seed:
+            self.rng = np.random.default_rng(seed)
+        else:
+            self.rng = np.random.default_rng()
+    def update(self, neurons=None):
+        if self.spike_times and T in self.spike_times:
+            [syn.add_spike() for syn in self.down]
+            self.spikes.append(T)
+        elif self.rng.random() < self.p and not self.spike_times:
+            [syn.add_spike() for syn in self.down]
+            self.spikes.append(T)
+
 
 class Population:
     def __init__(self, *populations, name=False):
@@ -404,16 +430,46 @@ class Population:
                 file_name = "t" + str(T).replace(".","").rjust(10,"0")
                 fig.savefig(f"{self.dir}/{file_name}.png")
                 fig.close()
+        self.save_neuron_data()
+        self.save_synapse_data()
         stop = time.time()
         print(f"\nElapsed time: {stop-start}")
 
+    def save_neuron_data(self):
+        global T
+        data = {}
+        for id in self.neurons:
+            neuron = self.neurons[id]
+            type_ = str(type(neuron))
+            n_up = None if isinstance(neuron, Input) else len(neuron.up)
+            n_down = len(neuron.down)
+            up = None if isinstance(neuron, Input) else [syn.i for syn in neuron.up]
+            down = [syn.j for syn in neuron.down]
+            ref_t = None if isinstance(neuron, Input) else neuron.ref_t
+            spikes = list(neuron.spikes)
+            data[id] = {"duration" : T, "type" : type_, "n_up" : n_up, "n_down" : n_down, "up" : up, "down" : down, "ref_t" : ref_t, "spikes": spikes}
+        with open(f"{self.dir}/neuron_data.json", "w") as file:
+            json.dump(data, file)
+
+    def save_synapse_data(self):
+        global T
+        data = {}
+        for synapse in self.synapses:
+            w = float(synapse.w)
+            pre = synapse.pre_window
+            post = synapse.post_window
+            trainable = synapse.trainable
+            d_hist = synapse.d_hist
+            data[f"{synapse.i}-{synapse.j}"] = {"duration" : T, "w" : w, "pre_window" : pre, "post_window" : post, "trainable" : trainable, "d_hist" : d_hist}
+        with open(f"{self.dir}/synapse_data.json", "w") as file:
+            json.dump(data, file)
 
     class Synapse:
         def __init__(self, i, j, w, d, trainable):
             self.i = i
             self.j = j
             self.w = w
-            self.d = d
+            self.d = float(d)
             self.d_hist = {"t":[], "d":[]}
             self.pre_window = -10
             self.post_window = 7
@@ -558,28 +614,7 @@ class POLY(Neuron):
     def __init__(self, ref_t):
         super().__init__(a=0.02, b=0.2, c=-65, d=2, u=-14, ref_t=ref_t)
 
-class Input:
-    global T
-    def __init__(self, spike_times=False, p=0.0, seed=False):
-        global ID
-        self.ID = str(ID)
-        ID += 1
-        self.spikes = deque()
-        self.spike_times = spike_times
-        self.p = p
-        self.down = []
 
-        if seed:
-            self.rng = np.random.default_rng(seed)
-        else:
-            self.rng = np.random.default_rng()
-    def update(self, neurons=None):
-        if self.spike_times and T in self.spike_times:
-            [syn.add_spike() for syn in self.down]
-            self.spikes.append(T)
-        elif self.rng.random() < self.p and not self.spike_times:
-            [syn.add_spike() for syn in self.down]
-            self.spikes.append(T)
 
 def save_fig(i):
     fig = plt.figure(i)
