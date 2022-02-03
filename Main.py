@@ -7,13 +7,13 @@ import multiprocessing as mp
 
 
 if __name__ == "__main__":
-    rng = np.random.default_rng(111)
-    alt_seeds = [(2000, 1, 3, 200, 200, rng.integers(0,100), rng.integers(0,100), f"altn1i3_{x}") for x in range(100)]
-    async_seeds = [(2000, 1, 3, rng.integers(0, 100), rng.integers(0, 100), f"asyncn1i3_{x}") for x in range(100)]
-    rep_seeds = [(2000, 1, 3, rng.integers(0, 100), rng.integers(0, 100), f"repn1i3_{x}") for x in range(100)]
-    n4i2_alt_seeds = [(2000, 4, 2, 200, 200, rng.integers(0,100), rng.integers(0,100), f"altn4i2_{x}") for x in range(100)]
-    n4i2_async_seeds = [(2000, 4, 2, rng.integers(0, 100), rng.integers(0, 100), f"asyncn4i2_{x}") for x in range(100)]
-    n4i2_rep_seeds = [(2000, 4, 2, rng.integers(0, 100), rng.integers(0, 100), f"repn4i2_{x}") for x in range(100)]
+    rng = np.random.default_rng(112 )
+    alt_seeds = [(5000, 1, 3, 200, 200, rng.integers(0,100), rng.integers(0,100), f"altn1i3_{x}") for x in range(100)]
+    async_seeds = [(5000, 1, 3, rng.integers(0, 100), rng.integers(0, 100), f"asyncn1i3_{x}") for x in range(100)]
+    rep_seeds = [(5000, 1, 3, rng.integers(0, 100), rng.integers(0, 100), f"repn1i3_{x}") for x in range(100)]
+    n4i2_alt_seeds = [(5000, 4, 2, 200, 200, rng.integers(0,100), rng.integers(0,100), f"altn4i2_{x}") for x in range(100)]
+    n4i2_async_seeds = [(5000, 4, 2, rng.integers(0, 100), rng.integers(0, 100), f"asyncn4i2_{x}") for x in range(100)]
+    n4i2_rep_seeds = [(5000, 4, 2, rng.integers(0, 100), rng.integers(0, 100), f"repn4i2_{x}") for x in range(100)]
     with mp.Pool(mp.cpu_count()-1) as pool:
         pool.starmap(sim.run_xnxi_rep, n4i2_rep_seeds)
     with mp.Pool(mp.cpu_count()-1) as pool:
