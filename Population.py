@@ -251,6 +251,23 @@ class Population:
                 if neuron != j:
                     self.create_synapse(neuron, j, w=rng.choice(w), d=rng.choice(d), trainable=trainable)
 
+    def create_directional_ring_lattice_connections(self, k, d, w, trainable, seed=False):
+        self.structure = "ring"
+        if seed:
+            rng = np.random.default_rng(seed)
+        else:
+            rng = np.random.default_rng()
+        if not isinstance(d, list):
+            d = [d]
+        if not isinstance(w, list):
+            w = [w]
+        for neuron in self.neurons:
+            neuron = int(neuron)
+            for i in range(1, k + 1):
+                j = (neuron + i) % len(self.neurons)
+                if neuron != j:
+                    self.create_synapse(neuron, j, w=rng.choice(w), d=rng.choice(d), trainable=trainable)
+
     def create_feed_forward_connections(self, d, w, trainable, seed=False):
         if seed:
             rng = np.random.default_rng(seed)

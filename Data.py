@@ -4,9 +4,9 @@ import Population as Pop
 import numpy as np
 from scipy import stats as st
 import itertools
-import time
+import pandas as pd
 
-def get_connection_data(dir):
+def get_DP_data(dir):
     diverging = 0
     converging = 0
     repeating = 0
@@ -38,10 +38,16 @@ def get_connection_data(dir):
                                 repeating += 1
                             else:
                                 uncategorized += 1
-    print("Diverging: ", diverging)
-    print("Converging: ", converging)
-    print("Repeating: ", repeating)
-    print("Uncategorized: ", uncategorized)
+
+    dp_data = {
+        "diverging" : diverging,
+        "converging" : converging,
+        "repeating" : repeating,
+        "uncategorized" : uncategorized
+    }
+    with open(f"{dir}/delay_pattern_data.json", "w") as f:
+        json.dump(dp_data, f)
+
 
 def check_repetitiveness(l, pattern_length):
     pattern = str(l[-pattern_length:]).strip("[]")
@@ -51,6 +57,7 @@ def check_repetitiveness(l, pattern_length):
     else:
         return False
 
+
 def check_convergence(l, stable_state):
     lvl = np.round(l[-1],1)
     trend = np.round(np.mean(l[-stable_state:]),1)
@@ -59,13 +66,12 @@ def check_convergence(l, stable_state):
     else:
         return False
 
+
 def check_divergence(l, stable_state):
     if abs(np.round(np.mean(l[-stable_state:]),1)) == 19.9:
         return True
     else:
         return False
-
-
 
 
 def get_SR_data(dir):
@@ -93,22 +99,22 @@ def get_SR_data(dir):
                             reservoir_spike_rates.append(spike_rate)
                             reservoir += 1
 
-    avg_sr = np.round(np.mean(spike_rates), 1)
-    median_sr = np.round(np.median(spike_rates), 1)
+    avg_sr = float(np.round(np.mean(spike_rates), 1))
+    median_sr = float(np.round(np.median(spike_rates), 1))
     mode_sr = np.round(list(st.mode(spike_rates)[0]), 1).tolist()
-    std_sr = np.round(np.std(spike_rates), 1)
+    std_sr = float(np.round(np.std(spike_rates), 1))
 
-    avg_rsr = np.round(np.mean(reservoir_spike_rates), 1)
-    median_rsr = np.round(np.median(reservoir_spike_rates), 1)
+    avg_rsr = float(np.round(np.mean(reservoir_spike_rates), 1))
+    median_rsr = float(np.round(np.median(reservoir_spike_rates), 1))
     mode_rsr = np.round(list(st.mode(reservoir_spike_rates)[0]), 1).tolist()
-    std_rsr = np.round(np.std(reservoir_spike_rates), 1)
+    std_rsr = float(np.round(np.std(reservoir_spike_rates), 1))
 
-    avg_isr = np.round(np.mean(input_spike_rates), 1)
-    median_isr = np.round(np.median(input_spike_rates), 1)
+    avg_isr = float(np.round(np.mean(input_spike_rates), 1))
+    median_isr = float(np.round(np.median(input_spike_rates), 1))
     mode_isr = np.round(st.mode(input_spike_rates)[0], 1).tolist()
-    std_isr = np.round(np.std(input_spike_rates), 1)
+    std_isr = float(np.round(np.std(input_spike_rates), 1))
 
-    dormant_rate = np.round(dormant / reservoir if reservoir != 0 else 0, 2)
+    dormant_rate = float(np.round(dormant / reservoir if reservoir != 0 else 0, 2))
     SR_data = {
         "inputs": inputs,
         "reservoir": reservoir,
@@ -130,25 +136,13 @@ def get_SR_data(dir):
     with open(f"{dir}/SR_data.json", "w") as f:
         json.dump(SR_data, f)
 
-'''
-get_SR_data(
-    "C:/Users/jorge/OneDrive - OsloMet/Master thesis - Jørgen Farner/Simulation results/4n2i di asynchronous pattern/t2000")
-get_SR_data(
-    "C:/Users/jorge/OneDrive - OsloMet/Master thesis - Jørgen Farner/Simulation results/4n2i di repeating pattern/t2000")
-get_SR_data(
-    "C:/Users/jorge/OneDrive - OsloMet/Master thesis - Jørgen Farner/Simulation results/4n2i di alternating pattern/t2000")
 
-get_SR_data(
-    "C:/Users/jorge/OneDrive - OsloMet/Master thesis - Jørgen Farner/Simulation results/1n3i di repeating pattern/t2000")
-get_SR_data(
-    "C:/Users/jorge/OneDrive - OsloMet/Master thesis - Jørgen Farner/Simulation results/1n3i di asynchronous pattern/t2000")
-get_SR_data(
-    "C:/Users/jorge/OneDrive - OsloMet/Master thesis - Jørgen Farner/Simulation results/1n3i di alternating pattern/t2000")
-'''
-start = time.time()
-#et_connection_data("C:/Users/jorge/OneDrive - OsloMet/Master thesis - Jørgen Farner/Simulation results/1n3i di alternating pattern/t2000")
-#get_connection_data("C:/Users/jorge/OneDrive - OsloMet/Master thesis - Jørgen Farner/Simulation results/1n3i di asynchronous pattern/t2000")
-get_connection_data("C:/Users/jorge/OneDrive - OsloMet/Master thesis - Jørgen Farner/Simulation results/4n2i di alternating pattern/t2000")
-
-
-print(time.time()-start)
+directories = ["C:/Users/jorge/OneDrive - OsloMet/Master thesis - Jørgen Farner/Simulation results/4n2i di asynchronous pattern/t5000",
+               "C:/Users/jorge/OneDrive - OsloMet/Master thesis - Jørgen Farner/Simulation results/4n2i di repeating pattern/t5000",
+               "C:/Users/jorge/OneDrive - OsloMet/Master thesis - Jørgen Farner/Simulation results/4n2i di alternating pattern/t5000",
+               "C:/Users/jorge/OneDrive - OsloMet/Master thesis - Jørgen Farner/Simulation results/1n3i di repeating pattern/t5000",
+               "C:/Users/jorge/OneDrive - OsloMet/Master thesis - Jørgen Farner/Simulation results/1n3i di asynchronous pattern/t5000",
+               "C:/Users/jorge/OneDrive - OsloMet/Master thesis - Jørgen Farner/Simulation results/1n3i di alternating pattern/t5000"]
+for dir in directories:
+    get_SR_data(dir)
+    get_DP_data(dir)
