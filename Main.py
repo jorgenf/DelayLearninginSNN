@@ -7,9 +7,12 @@ import multiprocessing as mp
 
 
 if __name__ == "__main__":
-    rng = np.random.default_rng(112)
+    rng = np.random.default_rng(114)
 
     delay_seeds = rng.integers(0,1000, size=6)
+    in1i2_alt_seeds = [(5000, 1, 2, 200, 200, delay_seeds[0], rng.integers(0, 100), f"in1i2_alt_{x}") for x in range(100)]
+    in1i2_async_seeds = [(5000, 1, 2, delay_seeds[1], rng.integers(0, 100), f"in1i2_async_{x}") for x in range(100)]
+    in1i2_rep_seeds = [(5000, 1, 2, delay_seeds[2], rng.integers(0, 100), f"in1i2_rep_{x}") for x in range(100)]
     in1i3_alt_seeds = [(5000, 1, 3, 200, 200, delay_seeds[0], rng.integers(0,100), f"in1i3_alt_{x}") for x in range(100)]
     in1i3_async_seeds = [(5000, 1, 3, delay_seeds[1], rng.integers(0, 100), f"in1i3_async_{x}") for x in range(100)]
     in1i3_rep_seeds = [(5000, 1, 3, delay_seeds[2], rng.integers(0, 100), f"in1i3_rep_{x}") for x in range(100)]
@@ -18,6 +21,9 @@ if __name__ == "__main__":
     in4i2_rep_seeds = [(5000, 4, 2, delay_seeds[5], rng.integers(0, 100), f"in4i2_rep_{x}") for x in range(100)]
 
     input_seeds = rng.integers(0, 1000, size=6)
+    dn1i2_alt_seeds = [(5000, 1, 2, 200, 200, rng.integers(0, 100), input_seeds[3], f"dn1i2_alt_{x}") for x in range(100)]
+    dn1i2_async_seeds = [(5000, 1, 2, rng.integers(0, 100), input_seeds[4], f"dn1i2_async_{x}") for x in range(100)]
+    dn1i2_rep_seeds = [(5000, 1, 2, rng.integers(0, 100), input_seeds[5], f"dn1i2_rep_{x}") for x in range(100)]
     dn1i3_alt_seeds = [(5000, 1, 3, 200, 200, rng.integers(0,100), input_seeds[0], f"dn1i3_alt_{x}") for x in range(100)]
     dn1i3_async_seeds = [(5000, 1, 3, rng.integers(0, 100), input_seeds[1], f"dn1i3_async_{x}") for x in range(100)]
     dn1i3_rep_seeds = [(5000, 1, 3, rng.integers(0, 100), input_seeds[2], f"dn1i3_rep_{x}") for x in range(100)]
@@ -26,6 +32,13 @@ if __name__ == "__main__":
     dn4i2_rep_seeds = [(5000, 4, 2, rng.integers(0, 100), input_seeds[5], f"dn4i2_rep_{x}") for x in range(100)]
 
 
+    with mp.Pool(mp.cpu_count()-1) as pool:
+        pool.starmap(sim.run_xnxi_rep, in1i2_rep_seeds)
+    with mp.Pool(mp.cpu_count()-1) as pool:
+        pool.starmap(sim.run_xnxi_alt, in1i2_alt_seeds)
+    with mp.Pool(mp.cpu_count()-1) as pool:
+        pool.starmap(sim.run_xnxi_async, in1i2_async_seeds)
+    '''
     with mp.Pool(mp.cpu_count()-1) as pool:
         pool.starmap(sim.run_xnxi_rep, in4i2_rep_seeds)
     with mp.Pool(mp.cpu_count()-1) as pool:
@@ -38,7 +51,14 @@ if __name__ == "__main__":
         pool.starmap(sim.run_xnxi_rep, in1i3_rep_seeds)
     with mp.Pool(mp.cpu_count()-1) as pool:
         pool.starmap(sim.run_xnxi_alt, in1i3_alt_seeds)
-
+    '''
+    with mp.Pool(mp.cpu_count()-1) as pool:
+        pool.starmap(sim.run_xnxi_rep, dn1i2_rep_seeds)
+    with mp.Pool(mp.cpu_count()-1) as pool:
+        pool.starmap(sim.run_xnxi_alt, dn1i2_alt_seeds)
+    with mp.Pool(mp.cpu_count()-1) as pool:
+        pool.starmap(sim.run_xnxi_async, dn1i2_async_seeds)
+    '''
     with mp.Pool(mp.cpu_count()-1) as pool:
         pool.starmap(sim.run_xnxi_rep, dn4i2_rep_seeds)
     with mp.Pool(mp.cpu_count()-1) as pool:
@@ -51,7 +71,7 @@ if __name__ == "__main__":
         pool.starmap(sim.run_xnxi_rep, dn1i3_rep_seeds)
     with mp.Pool(mp.cpu_count()-1) as pool:
         pool.starmap(sim.run_xnxi_alt, dn1i3_alt_seeds)
-
+'''
 '''
 input_rng = np.random.default_rng(4)
 delay_rng = np.random.default_rng(3)
