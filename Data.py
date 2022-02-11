@@ -19,6 +19,7 @@ def compile_simulation_data(dir, t_folder):
             data_dict["name"] = os.path.basename(os.path.normpath(dirs))
             for file in files:
                 if file == "neuron_data.json":
+                    print(f"\rCompiling neuron data for: {os.path.split(dirs)[1]}", end="")
                     with open(os.path.join(dirs, file), "r") as file:
                         data = json.loads(file.read())
                         for id in data:
@@ -26,6 +27,7 @@ def compile_simulation_data(dir, t_folder):
                             spike_rate = spikes / (data[id]["duration"] / 1000)
                             data_dict[f"n{id}_SR"] = spike_rate
                 if file == "synapse_data.json":
+                    print(f"\rCompiling synapse data for: {os.path.split(dirs)[1]}", end="")
                     with open(os.path.join(dirs, file), "r") as file:
                         data = json.loads(file.read())
                         keys = data.keys()
@@ -187,9 +189,7 @@ def sum_simulation_data(dir, t_folder):
                 writer = csv.DictWriter(csvfile, fieldnames=cols)
                 for d in data_list:
                     writer.writerow(d)
-            break
 
 
-# compile_simulation_data("C:/Users/jorge/OneDrive - OsloMet/Master thesis - Jørgen Farner/Simulation results/feed forward", t_folder="t5000")
-sum_simulation_data("C:/Users/jorge/OneDrive - OsloMet/Master thesis - Jørgen Farner/Simulation results/feed forward",
-                    t_folder="t5000")
+compile_simulation_data("C:/Users/J-Laptop/OneDrive - OsloMet/Master thesis - Jørgen Farner/Simulation results/feed forward", t_folder="t5000")
+#sum_simulation_data("C:/Users/jorge/OneDrive - OsloMet/Master thesis - Jørgen Farner/Simulation results/feed forward", t_folder="t5000")
