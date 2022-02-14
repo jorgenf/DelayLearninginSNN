@@ -25,6 +25,7 @@ plt.rc('figure', titlesize=14)
 plt.rcParams['figure.figsize'] = (15*cm, 15*cm)
 
 MAX_DELAY = 20
+MIN_DELAY = 0.1
 mpl.use("Agg")
 
 

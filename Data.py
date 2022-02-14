@@ -7,7 +7,19 @@ import itertools
 import pandas as pd
 import csv
 from collections import Counter
+from scipy.stats import linregress
+import time
+import Population
 
+REPETITIVE_LENGTH = 5000
+CONVERGENT_LENGTH = 5000
+DIVERGENT_LENGTH = 2000
+SATURATION_LENGTH = 5000
+STD_THRESHOLD = 0.1
+CORRELATION_THRESHOLD = 0.95
+SLOPE_THRESHOLD = 0.001
+MAX_DELAY = Population.MAX_DELAY
+MIN_DELAY = Population.MIN_DELAY
 
 def compile_simulation_data(dir, t_folder):
     for dirs, subdirs, files in os.walk(dir):
@@ -31,9 +43,29 @@ def compile_simulation_data(dir, t_folder):
                     with open(os.path.join(dirs, file), "r") as file:
                         data = json.loads(file.read())
                         keys = data.keys()
-                        pairs = {}
                         for k in keys:
+                            l = data[k]["d_hist"]["d"]
+                            saturation = check_saturation(l, SATURATION_LENGTH)
+                            if saturation:
+                                data_dict[k] = saturation
+                            else:
+                                if check_convergence(l, CONVERGENT_LENGTH):
+                                    if k in data_dict.keys():
+                                        data_dict[k] += "-converging"
+                                    else:
+                                        data_dict[k] = "converging"
+                                elif check_repetitiveness(l, REPETITIVE_LENGTH):
+                                    if k in data_dict.keys():
+                                        data_dict[k] += "-repeating"
+                                    else:
+                                        data_dict[k] = "repeating"
+                                divergence = check_divergence(data[k]["d_hist"])
+                                if divergence:
+                                    data_dict[k] = divergence
+                            if k not in data_dict.keys():
+                                data_dict[k] = "uncategorized"
 
+                        '''
                             j = int(k.split("-")[1])
                             if j not in pairs.keys():
                                 pairs[j] = [k]
@@ -45,14 +77,15 @@ def compile_simulation_data(dir, t_folder):
                                 l1 = data[comb[0]]["d_hist"]["d"]
                                 l2 = data[comb[1]]["d_hist"]["d"]
                                 diff = [x - y for x, y in zip(l1, l2)]
-                                if check_divergence_pair(diff, 2000):
+                                if check_divergence_pair(diff, DIVERGENT_LENGTH):
                                     data_dict[f"{comb[0]}_{comb[1]}"] = "diverging"
-                                elif check_convergence_pair(diff, 5000):
+                                elif check_convergence_pair(diff, CONVERGENT_LENGTH):
                                     data_dict[f"{comb[0]}_{comb[1]}"] = "converging"
-                                elif check_repetitiveness_pair(diff, 5000):
+                                elif check_repetitiveness_pair(diff, REPETITIVE_LENGTH):
                                     data_dict[f"{comb[0]}_{comb[1]}"] = "repeating"
                                 else:
                                     data_dict[f"{comb[0]}_{comb[1]}"] = "uncategorized"
+                        '''
             path = os.path.join(os.path.split(dirs)[0], "simulation_data.csv")
             exists = os.path.isfile(path)
             with open(path, 'a' if exists else 'w', newline="") as csvfile:
@@ -62,39 +95,53 @@ def compile_simulation_data(dir, t_folder):
                 writer.writerow(data_dict)
     sum_simulation_data(dir, t_folder)
 
-def check_repetitiveness(l, pattern_lenght):
-    pass
 
-def check_convergence(l, pattern_lenght):
-    pass
-
-def check_divergence(l, pattern_lenght):
-    pass
-
-def check_repetitiveness_pair(l, pattern_length):
+def check_repetitiveness(l, pattern_length):
     pattern = str(l[-pattern_length:]).strip("[]")
-    string = str(l[:-pattern_length]).strip("[]")
+    string = str(l[: -pattern_length]).strip("[]")
     if pattern in string:
         return True
     else:
         return False
+    '''
+    pattern = l[-pattern_length:]
+    string = l[-pattern_length*4: -pattern_length]
+    max_corr = 0
+    for i in range(len(string) - len(pattern)):
+        corr = np.corrcoef(string[i:i + len(pattern)], pattern)[0][1]
+        max_corr = max(max_corr, corr)
+    if max_corr > CORRELATION_THRESHOLD:
+        return True
+    else:
+        return False
+    '''
 
 
-def check_convergence_pair(l, stable_state):
-    lvl = np.round(l[-1], 1)
-    trend = np.round(np.mean(l[-stable_state:]), 1)
-    if trend == lvl:
+def check_convergence(l, pattern_length):
+    if np.std(l[-pattern_length:]) < STD_THRESHOLD:
         return True
     else:
         return False
 
 
-def check_divergence_pair(l, stable_state):
-    if abs(np.round(np.mean(l[-stable_state:]), 1)) == 19.9:
-        return True
+def check_divergence(l):
+    slope = linregress(l["t"], l["d"])[0]
+    if slope > SLOPE_THRESHOLD:
+        return "increasing"
+    elif slope < -SLOPE_THRESHOLD:
+        return "decreasing"
     else:
         return False
 
+
+def check_saturation(l, pattern_length):
+    mean_val = np.mean(l[-pattern_length:])
+    if MIN_DELAY - STD_THRESHOLD < mean_val < MIN_DELAY + STD_THRESHOLD:
+        return "min"
+    elif MAX_DELAY - STD_THRESHOLD < mean_val < MAX_DELAY + STD_THRESHOLD:
+        return "max"
+    else:
+        return False
 
 def get_SR_data(dir):
     spike_rates = []
@@ -201,6 +248,7 @@ def sum_simulation_data(dir, t_folder):
                 for d in data_list:
                     writer.writerow(d)
 
+
 def delete_simulation_data(dir, t_folder):
     for dirs, subdirs, files in os.walk(dir):
         if t_folder == os.path.split(dirs)[1]:
@@ -210,6 +258,30 @@ def delete_simulation_data(dir, t_folder):
             else:
                 print("No simulation data found for: ", os.path.split(os.path.split(dirs)[0])[1])
 
-delete_simulation_data("C:/Users/jorge/OneDrive - OsloMet/Master thesis - Jørgen Farner/Simulation results/feed forward", t_folder="t5000")
-compile_simulation_data("C:/Users/jorge/OneDrive - OsloMet/Master thesis - Jørgen Farner/Simulation results/feed forward", t_folder="t5000")
-#sum_simulation_data("C:/Users/jorge/OneDrive - OsloMet/Master thesis - Jørgen Farner/Simulation results/feed forward", t_folder="t5000")
+delete_simulation_data(f"C:/Users/{os.environ['USERNAME']}/OneDrive - OsloMet/Master thesis - Jørgen Farner/Simulation results/feed forward", t_folder="t5000")
+compile_simulation_data(f"C:/Users/{os.environ['USERNAME']}/OneDrive - OsloMet/Master thesis - Jørgen Farner/Simulation results/feed forward", t_folder="t5000")
+#sum_simulation_data(f"C:/Users/{os.environ['USERNAME']}/OneDrive - OsloMet/Master thesis - Jørgen Farner/Simulation results/feed forward", t_folder="t5000")
+'''
+with open("C:/Users/J-Laptop/OneDrive - OsloMet/Master thesis - Jørgen Farner/Simulation results/feed forward/1n2i alt d/t5000/dn1i2_alt_0/synapse_data.json", "r") as file:
+    data = json.loads(file.read())
+
+    pattern = data["1-0"]["d_hist"]["d"][-5000:]
+    string = data["1-0"]["d_hist"]["d"][-20000: -5000]
+
+    start = time.time()
+    if str(pattern).strip("[]") in str(string).strip("[]"):
+        print("yes")
+    print("time:",time.time()-start)
+
+
+with open("C:/Users/J-Laptop/OneDrive - OsloMet/Master thesis - Jørgen Farner/Simulation results/feed forward/1n2i async i/t5000/in1i2_async_0/synapse_data.json", "r") as file:
+    data = json.loads(file.read())
+
+    print("diverging:")
+    print(linregress(data["2-0"]["d_hist"]["t"], data["2-0"]["d_hist"]["d"])[0])
+    print(linregress(range(len(data["2-0"]["d_hist"]["d"])), data["2-0"]["d_hist"]["d"])[0])
+
+with open("C:/Users/J-Laptop/OneDrive - OsloMet/Master thesis - Jørgen Farner/Simulation results/feed forward/1n2i rep i/t5000/in1i2_rep_1/synapse_data.json", "r") as file:
+    data = json.loads(file.read())
+    print(np.std(data["2-0"]["d_hist"]["d"][-500:]))
+'''
