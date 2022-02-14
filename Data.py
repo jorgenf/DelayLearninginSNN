@@ -33,6 +33,7 @@ def compile_simulation_data(dir, t_folder):
                         keys = data.keys()
                         pairs = {}
                         for k in keys:
+
                             j = int(k.split("-")[1])
                             if j not in pairs.keys():
                                 pairs[j] = [k]
@@ -44,11 +45,11 @@ def compile_simulation_data(dir, t_folder):
                                 l1 = data[comb[0]]["d_hist"]["d"]
                                 l2 = data[comb[1]]["d_hist"]["d"]
                                 diff = [x - y for x, y in zip(l1, l2)]
-                                if check_divergence(diff, 2000):
+                                if check_divergence_pair(diff, 2000):
                                     data_dict[f"{comb[0]}_{comb[1]}"] = "diverging"
-                                elif check_convergence(diff, 5000):
+                                elif check_convergence_pair(diff, 5000):
                                     data_dict[f"{comb[0]}_{comb[1]}"] = "converging"
-                                elif check_repetitiveness(diff, 5000):
+                                elif check_repetitiveness_pair(diff, 5000):
                                     data_dict[f"{comb[0]}_{comb[1]}"] = "repeating"
                                 else:
                                     data_dict[f"{comb[0]}_{comb[1]}"] = "uncategorized"
@@ -61,8 +62,16 @@ def compile_simulation_data(dir, t_folder):
                 writer.writerow(data_dict)
     sum_simulation_data(dir, t_folder)
 
+def check_repetitiveness(l, pattern_lenght):
+    pass
 
-def check_repetitiveness(l, pattern_length):
+def check_convergence(l, pattern_lenght):
+    pass
+
+def check_divergence(l, pattern_lenght):
+    pass
+
+def check_repetitiveness_pair(l, pattern_length):
     pattern = str(l[-pattern_length:]).strip("[]")
     string = str(l[:-pattern_length]).strip("[]")
     if pattern in string:
@@ -71,7 +80,7 @@ def check_repetitiveness(l, pattern_length):
         return False
 
 
-def check_convergence(l, stable_state):
+def check_convergence_pair(l, stable_state):
     lvl = np.round(l[-1], 1)
     trend = np.round(np.mean(l[-stable_state:]), 1)
     if trend == lvl:
@@ -80,7 +89,7 @@ def check_convergence(l, stable_state):
         return False
 
 
-def check_divergence(l, stable_state):
+def check_divergence_pair(l, stable_state):
     if abs(np.round(np.mean(l[-stable_state:]), 1)) == 19.9:
         return True
     else:
@@ -153,8 +162,10 @@ def get_SR_data(dir):
 def sum_simulation_data(dir, t_folder):
     for dirs, subdirs, files in os.walk(dir):
         if t_folder == os.path.split(dirs)[1]:
+            print(f"\rSumming simulation data for: {os.path.split(os.path.split(dirs)[0])[1]}", end="")
             df = pd.read_csv(os.path.join(dirs, "simulation_data.csv"))
             if df[df["name"] == "count"].first_valid_index():
+                print("Previous summation data found in: ", os.path.split(os.path.split(dirs)[0])[1])
                 first_id = df[df["name"] == "count"].first_valid_index()
                 df.drop(df.tail(df.shape[0] - first_id).index, inplace=True)
             count = {"name": "count"}
@@ -190,6 +201,15 @@ def sum_simulation_data(dir, t_folder):
                 for d in data_list:
                     writer.writerow(d)
 
+def delete_simulation_data(dir, t_folder):
+    for dirs, subdirs, files in os.walk(dir):
+        if t_folder == os.path.split(dirs)[1]:
+            if os.path.exists(os.path.join(dirs,"simulation_data.csv")):
+                os.remove(os.path.join(dirs,"simulation_data.csv"))
+                print("DELETED simulation data for: ", os.path.split(os.path.split(dirs)[0])[1])
+            else:
+                print("No simulation data found for: ", os.path.split(os.path.split(dirs)[0])[1])
 
-compile_simulation_data("C:/Users/J-Laptop/OneDrive - OsloMet/Master thesis - Jørgen Farner/Simulation results/feed forward", t_folder="t5000")
+delete_simulation_data("C:/Users/jorge/OneDrive - OsloMet/Master thesis - Jørgen Farner/Simulation results/feed forward", t_folder="t5000")
+compile_simulation_data("C:/Users/jorge/OneDrive - OsloMet/Master thesis - Jørgen Farner/Simulation results/feed forward", t_folder="t5000")
 #sum_simulation_data("C:/Users/jorge/OneDrive - OsloMet/Master thesis - Jørgen Farner/Simulation results/feed forward", t_folder="t5000")
