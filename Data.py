@@ -8,12 +8,9 @@ import pandas as pd
 import csv
 from collections import Counter
 from scipy.stats import linregress
-import matplotlib
 import matplotlib.pyplot as plt
 import re
 import Constants as c
-
-
 
 
 def compile_simulation_data(dir, t_folder):
@@ -302,9 +299,14 @@ def plot_spike_rate_data(dir, t_folder, topology):
         top_temp = os.path.split(os.path.split(dirs)[0])[1].split(" ")[0]
         if t_folder == os.path.split(dirs)[1] and topology == top_temp:
             df = pd.read_csv(os.path.join(dirs, "simulation_data.csv"))
+            data = df.loc[df["name"].str.startswith(topology)]
+            for k in df.keys():
+                if str(k).endswith("SR"):
+                    pass
+            return False
 
-plot_spike_rate_data("C:/Users/jorge/Documents/MASTER THESIS - SIMULATION RESULTS/feed forward", "t10000", "4n2i")
-#plot_delay_categories("C:/Users/jorge/Documents/MASTER THESIS - SIMULATION RESULTS/feed forward", "t10000", "4n2i")
-#delete_compile_sum_data("C:/Users/jorge/Documents/MASTER THESIS - SIMULATION RESULTS/feed forward", t_folder="t10000")
+
+
+
 
 

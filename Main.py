@@ -7,6 +7,38 @@ import multiprocessing as mp
 
 
 if __name__ == "__main__":
+
+    t= 10000
+    sim.run_xnxi_async(t, 4, 2, 1, 1, [20, 20.1], [1, 1.1], f"low_delay")
+    sim.run_xnxi_async(t, 4, 2, 1, 1, [20, 20.1], [20, 20.1], f"mid_delay")
+    sim.run_xnxi_async(t, 4, 2, 1, 1, [20, 20.1], [40, 40.1], f"high_delay")
+
+    sim.run_xnxi_async(t, 4, 2, 1, 1, [40, 40.1], [1, 1.1], f"low_delay")
+    sim.run_xnxi_async(t, 4, 2, 1, 1, [40, 40.1], [20, 20.1], f"mid_delay")
+    sim.run_xnxi_async(t, 4, 2, 1, 1, [40, 40.1], [40, 40.1], f"high_delay")
+
+    sim.run_xnxi_async(t, 4, 2, 1, 1, [60, 60.1], [1, 1.1], f"low_delay")
+    sim.run_xnxi_async(t, 4, 2, 1, 1, [60, 60.1], [20, 20.1], f"mid_delay")
+    sim.run_xnxi_async(t, 4, 2, 1, 1, [60, 60.1], [40, 40.1], f"high_delay")
+
+    '''
+    t = 10000
+    rng = np.random.default_rng(115)
+    low_d = [(t, 4, 2, rng.integers(0, 100000), rng.integers(0, 100000), [30, 61], [1, 1.1], f"low_delay_{x}") for x in range(100)]
+    mid_d = [(t, 4, 2, rng.integers(0, 100000), rng.integers(0, 100000), [30, 61], [20, 20.1], f"mid_delay_{x}") for x in range(100)]
+    high_d = [(t, 4, 2, rng.integers(0, 100000), rng.integers(0, 100000), [30, 61], [40, 40.1], f"high_delay_{x}") for x in range(100)]
+    with mp.Pool(mp.cpu_count() - 1) as pool:
+        pool.starmap(sim.run_xnxi_async, low_d)
+    with mp.Pool(mp.cpu_count() - 1) as pool:
+        pool.starmap(sim.run_xnxi_async, mid_d)
+    with mp.Pool(mp.cpu_count() - 1) as pool:
+        pool.starmap(sim.run_xnxi_async, high_d)
+'''
+# plot_spike_rate_data(f"C:/Users/{os.environ.get('USERNAME')}/Documents/MASTER THESIS - SIMULATION RESULTS/feed forward", "t10000", "4n2i")
+# plot_delay_categories("C:/Users/jorge/Documents/MASTER THESIS - SIMULATION RESULTS/feed forward", "t10000", "4n2i")
+# delete_compile_sum_data("C:/Users/jorge/Documents/MASTER THESIS - SIMULATION RESULTS/feed forward", t_folder="t10000")
+
+    '''
     rng = np.random.default_rng(114)
     t = 10000
     delay_seeds = rng.integers(0,1000, size=6)
@@ -101,7 +133,7 @@ if __name__ == "__main__":
         pool.starmap(sim.run_xnxi_async, din4i2_async_seeds)
 
 
-'''
+
 input_rng = np.random.default_rng(4)
 delay_rng = np.random.default_rng(3)
 i = 1
