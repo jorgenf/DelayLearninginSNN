@@ -3,23 +3,18 @@ import json
 import Population as Pop
 import numpy as np
 from scipy import stats as st
-import itertools
+import pickle
 import pandas as pd
 import csv
 from collections import Counter
 from scipy.stats import linregress
-import time
-import Population
+import matplotlib
+import matplotlib.pyplot as plt
+import re
+import Constants as c
 
-REPETITIVE_LENGTH = 5000
-CONVERGENT_LENGTH = 5000
-DIVERGENT_LENGTH = 2000
-SATURATION_LENGTH = 5000
-STD_THRESHOLD = 0.1
-CORRELATION_THRESHOLD = 0.95
-SLOPE_THRESHOLD = 0.001
-MAX_DELAY = Population.MAX_DELAY
-MIN_DELAY = Population.MIN_DELAY
+
+
 
 def compile_simulation_data(dir, t_folder):
     for dirs, subdirs, files in os.walk(dir):
@@ -45,16 +40,16 @@ def compile_simulation_data(dir, t_folder):
                         keys = data.keys()
                         for k in keys:
                             l = data[k]["d_hist"]["d"]
-                            saturation = check_saturation(l, SATURATION_LENGTH)
+                            saturation = check_saturation(l, c.SATURATION_LENGTH)
                             if saturation:
                                 data_dict[k] = saturation
                             else:
-                                if check_convergence(l, CONVERGENT_LENGTH):
+                                if check_convergence(l, c.CONVERGENT_LENGTH):
                                     if k in data_dict.keys():
                                         data_dict[k] += "-converging"
                                     else:
                                         data_dict[k] = "converging"
-                                elif check_repetitiveness(l, REPETITIVE_LENGTH):
+                                elif check_repetitiveness(l, c.REPETITIVE_LENGTH):
                                     if k in data_dict.keys():
                                         data_dict[k] += "-repeating"
                                     else:
@@ -118,7 +113,7 @@ def check_repetitiveness(l, pattern_length):
 
 
 def check_convergence(l, pattern_length):
-    if np.std(l[-pattern_length:]) < STD_THRESHOLD:
+    if np.std(l[-pattern_length:]) < c.STD_THRESHOLD:
         return True
     else:
         return False
@@ -126,9 +121,9 @@ def check_convergence(l, pattern_length):
 
 def check_divergence(l):
     slope = linregress(l["t"], l["d"])[0]
-    if slope > SLOPE_THRESHOLD:
+    if slope > c.SLOPE_THRESHOLD:
         return "increasing"
-    elif slope < -SLOPE_THRESHOLD:
+    elif slope < -c.SLOPE_THRESHOLD:
         return "decreasing"
     else:
         return False
@@ -136,9 +131,9 @@ def check_divergence(l):
 
 def check_saturation(l, pattern_length):
     mean_val = np.mean(l[-pattern_length:])
-    if MIN_DELAY - STD_THRESHOLD < mean_val < MIN_DELAY + STD_THRESHOLD:
+    if c.MIN_DELAY - c.STD_THRESHOLD < mean_val < c.MIN_DELAY + c.STD_THRESHOLD:
         return "min"
-    elif MAX_DELAY - STD_THRESHOLD < mean_val < MAX_DELAY + STD_THRESHOLD:
+    elif c.MAX_DELAY - c.STD_THRESHOLD < mean_val < c.MAX_DELAY + c.STD_THRESHOLD:
         return "max"
     else:
         return False
@@ -223,6 +218,7 @@ def sum_simulation_data(dir, t_folder):
             pros50 = {"name": "50%"}
             pros75 = {"name": "75%"}
             max = {"name": "max"}
+            dormant = {"name" : "dormant"}
 
             cols = list(df.columns)
             for col in cols:
@@ -241,8 +237,9 @@ def sum_simulation_data(dir, t_folder):
                         pros50[col] = stats["50%"]
                         pros75[col] = stats["75%"]
                         max[col] = stats["max"]
+                        dormant[col] = (df[col] == 0).sum()
             df.to_csv(os.path.join(dirs, "simulation_data.csv"), index=False)
-            data_list = [count, mean, std, min, pros25, pros50, pros75, max]
+            data_list = [count, mean, std, min, pros25, pros50, pros75, max, dormant]
             with open(os.path.join(dirs, "simulation_data.csv"), 'a', newline="") as csvfile:
                 writer = csv.DictWriter(csvfile, fieldnames=cols)
                 for d in data_list:
@@ -258,30 +255,56 @@ def delete_simulation_data(dir, t_folder):
             else:
                 print("No simulation data found for: ", os.path.split(os.path.split(dirs)[0])[1])
 
-delete_simulation_data(f"C:/Users/{os.environ['USERNAME']}/OneDrive - OsloMet/Master thesis - Jørgen Farner/Simulation results/feed forward", t_folder="t5000")
-compile_simulation_data(f"C:/Users/{os.environ['USERNAME']}/OneDrive - OsloMet/Master thesis - Jørgen Farner/Simulation results/feed forward", t_folder="t5000")
-#sum_simulation_data(f"C:/Users/{os.environ['USERNAME']}/OneDrive - OsloMet/Master thesis - Jørgen Farner/Simulation results/feed forward", t_folder="t5000")
-'''
-with open("C:/Users/J-Laptop/OneDrive - OsloMet/Master thesis - Jørgen Farner/Simulation results/feed forward/1n2i alt d/t5000/dn1i2_alt_0/synapse_data.json", "r") as file:
-    data = json.loads(file.read())
+def delete_compile_sum_data(dir, t_folder):
+    delete_simulation_data(dir, t_folder)
+    compile_simulation_data(dir, t_folder)
+    sum_simulation_data(dir, t_folder)
 
-    pattern = data["1-0"]["d_hist"]["d"][-5000:]
-    string = data["1-0"]["d_hist"]["d"][-20000: -5000]
+def save_model(object, dir):
+    with open(dir, "wb") as file:
+        pickle.dump(object, file, pickle.HIGHEST_PROTOCOL)
 
-    start = time.time()
-    if str(pattern).strip("[]") in str(string).strip("[]"):
-        print("yes")
-    print("time:",time.time()-start)
+def load_model(dir):
+    with open(os.path.join(dir), 'rb') as file:
+        return(pickle.load(file))
+
+def plot_delay_categories(dir, t_folder, topology):
+    fig, ax = plt.subplots()
+    models = {}
+    for dirs, subdirs, files in os.walk(dir):
+        top_temp = os.path.split(os.path.split(dirs)[0])[1].split(" ")[0]
+        if t_folder == os.path.split(dirs)[1] and topology == top_temp:
+            if os.path.exists(os.path.join(dirs, "simulation_data.csv")):
+                model = os.path.split(os.path.split(dirs)[0])[1]
+                df = pd.read_csv(os.path.join(dirs, "simulation_data.csv"))
+                row = df[df["name"] == "count"]
+                connections = {}
+                for conn in row.keys():
+                    if conn != "name" and re.match("[0-9]+_[0-9]+$", conn):
+                        for val in row[conn].values:
+                            val_dict = json.loads(val.replace("\'", "\""))
+                            connections[conn] = val_dict
+                models[model] = connections
+    labels = list(models.keys())
+    conn_id = list(models[labels[0]].keys())
+    for conn in conn_id:
+        d = [models[model][conn] for model in models]
+        print(conn, d)
+    #for key in labels:
+    #    ax.bar()
+    #ax.bar(labels, men_means, width, yerr=men_std, label='Men')
+    #ax.bar(labels, women_means, width, yerr=women_std, bottom=men_means,
+    #       label='Women')
+
+def plot_spike_rate_data(dir, t_folder, topology):
+    fig, ax = plt.subplots()
+    for dirs, subdirs, files in os.walk(dir):
+        top_temp = os.path.split(os.path.split(dirs)[0])[1].split(" ")[0]
+        if t_folder == os.path.split(dirs)[1] and topology == top_temp:
+            df = pd.read_csv(os.path.join(dirs, "simulation_data.csv"))
+
+plot_spike_rate_data("C:/Users/jorge/Documents/MASTER THESIS - SIMULATION RESULTS/feed forward", "t10000", "4n2i")
+#plot_delay_categories("C:/Users/jorge/Documents/MASTER THESIS - SIMULATION RESULTS/feed forward", "t10000", "4n2i")
+#delete_compile_sum_data("C:/Users/jorge/Documents/MASTER THESIS - SIMULATION RESULTS/feed forward", t_folder="t10000")
 
 
-with open("C:/Users/J-Laptop/OneDrive - OsloMet/Master thesis - Jørgen Farner/Simulation results/feed forward/1n2i async i/t5000/in1i2_async_0/synapse_data.json", "r") as file:
-    data = json.loads(file.read())
-
-    print("diverging:")
-    print(linregress(data["2-0"]["d_hist"]["t"], data["2-0"]["d_hist"]["d"])[0])
-    print(linregress(range(len(data["2-0"]["d_hist"]["d"])), data["2-0"]["d_hist"]["d"])[0])
-
-with open("C:/Users/J-Laptop/OneDrive - OsloMet/Master thesis - Jørgen Farner/Simulation results/feed forward/1n2i rep i/t5000/in1i2_rep_1/synapse_data.json", "r") as file:
-    data = json.loads(file.read())
-    print(np.std(data["2-0"]["d_hist"]["d"][-500:]))
-'''

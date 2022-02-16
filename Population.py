@@ -11,11 +11,13 @@ import seaborn as sns
 import networkx as nx
 import itertools
 import json
+import Constants
+import Data
+
 sns.set()
 global T, DT, ID
 
-COLORS = ["red", "blue", "green", "indigo", "royalblue", "peru", "palegreen", "yellow"]
-COLORS += [(np.random.random(), np.random.random(), np.random.random()) for x in range(20)]
+COLORS = Constants.COLORS
 cm = 1/2.54
 plt.rc('axes', titlesize=10)
 plt.rc('axes', labelsize=10)
@@ -23,9 +25,8 @@ plt.rc('xtick', labelsize=8)
 plt.rc('ytick', labelsize=8)
 plt.rc('figure', titlesize=14)
 plt.rcParams['figure.figsize'] = (15*cm, 15*cm)
-
-MAX_DELAY = 20
-MIN_DELAY = 0.1
+MAX_DELAY = Constants.MAX_DELAY
+MIN_DELAY = Constants.MIN_DELAY
 mpl.use("Agg")
 
 
@@ -370,7 +371,7 @@ class Population:
         sub.set_xlabel("Time (ms)")
         sub.set_ylabel("Delay (ms)")
         sub.set_ylim(0, MAX_DELAY)
-        sub.set_yticks(range(MAX_DELAY + 1))
+        sub.set_yticks(np.arange(0, MAX_DELAY + 1, 2))
         sub.legend(handles, bbox_to_anchor=(1.05, 1), prop={"size":8})
         fig.tight_layout()
         fig.savefig(f"{self.dir}/delays.png")
@@ -430,6 +431,8 @@ class Population:
             cnt += 1
         os.makedirs(self.dir, exist_ok=True)
         last_100_stop = []
+        tot_start = time.time()
+        Data.save_model(self, os.path.join(self.dir, "pre_sim_model.pkl"))
         while T < duration:
             start = time.time()
             self.update()
@@ -450,8 +453,9 @@ class Population:
                 fig.close()
         self.save_neuron_data()
         self.save_synapse_data()
+        Data.save_model(self, os.path.join(self.dir, "post_sim_model.pkl"))
         stop = time.time()
-        print(f"\nElapsed time: {stop-start}")
+        print(f"\nElapsed time: {round((stop-tot_start)/60,1)}min")
 
     def save_neuron_data(self):
         global T
@@ -478,7 +482,7 @@ class Population:
             post = synapse.post_window
             trainable = synapse.trainable
             d_hist = synapse.d_hist
-            data[f"{synapse.i}-{synapse.j}"] = {"duration" : T, "w" : w, "pre_window" : pre, "post_window" : post, "trainable" : trainable, "d_hist" : d_hist}
+            data[f"{synapse.i}_{synapse.j}"] = {"duration" : T, "w" : w, "pre_window" : pre, "post_window" : post, "trainable" : trainable, "d_hist" : d_hist}
         with open(f"{self.dir}/synapse_data.json", "w") as file:
             json.dump(data, file)
 

@@ -7,9 +7,9 @@ import os
 import random
 from mpl_toolkits import mplot3d
 from matplotlib.ticker import MaxNLocator
+import Constants
 
-COLORS = ["red", "blue", "green", "indigo", "royalblue", "peru", "palegreen", "yellow"]
-COLORS += [(np.random.random(), np.random.random(), np.random.random()) for x in range(20)]
+COLORS = Constants.COLORS
 
 cm = 1/2.54
 plt.rc('axes', titlesize=10)
@@ -652,13 +652,13 @@ def run_xnxi_alt(t, n, i, l_pattern, l_interm, delay_seed, input_seed, name=Fals
     delay_rng = np.random.default_rng(delay_seed)
     input_rng = np.random.default_rng(input_seed)
     pop = Population((n, RS), name=name)
-    pop.create_feed_forward_connections(d=list(range(1,20)), w=16, trainable=True, seed=delay_seed)
+    pop.create_feed_forward_connections(d=list(np.arange(15, 25.1, 0.1)), w=16, trainable=True, seed=delay_seed)
     for x in range(i):
-        offset1 = input_rng.integers(0, 6)
-        period1 = input_rng.integers(10,20)
+        offset1 = input_rng.integers(0, 11)
+        period1 = input_rng.integers(30,61)
         pattern1 = [(offset1 + (period1 * rep)) for rep in range(l_pattern) if (offset1 + (period1 * rep) < l_pattern)]
-        offset2 = input_rng.integers(0, 6)
-        period2 = input_rng.integers(10,20)
+        offset2 = input_rng.integers(0, 11)
+        period2 = input_rng.integers(30, 61)
         pattern2 = [(offset2 + (period2 * rep)) for rep in range(l_pattern) if (offset2 + (period2 * rep) < l_pattern)]
         pattern = []
         flip = 1
@@ -667,7 +667,7 @@ def run_xnxi_alt(t, n, i, l_pattern, l_interm, delay_seed, input_seed, name=Fals
             flip *= -1
         inp = pop.create_input(pattern)
         for j in list(pop.neurons.copy())[:int(np.ceil(np.sqrt(n)))]:
-            pop.create_synapse(inp.ID, j, w=16, d=delay_rng.integers(1, 60) / 10)
+            pop.create_synapse(inp.ID, j, w=16, d=round(delay_rng.integers(150, 251) / 10, 1))
     pop.structure = "grid"
     pop.run(t, dt=0.1, plot_network=False)
     pop.plot_delays()
@@ -680,14 +680,14 @@ def run_xnxi_rep(t, n, i, delay_seed, input_seed, name=False):
     delay_rng = np.random.default_rng(delay_seed)
     input_rng = np.random.default_rng(input_seed)
     pop = Population((n, RS), name=name)
-    pop.create_feed_forward_connections(d=list(range(1,20)), w=16, trainable=True, seed=delay_seed)
-    period = input_rng.integers(10, 20)
+    pop.create_feed_forward_connections(d=list(np.arange(15, 25.1, 0.1)), w=16, trainable=True, seed=delay_seed)
+    period = input_rng.integers(30, 61)
     for x in range(i):
-        offset = input_rng.integers(0, 6)
+        offset = input_rng.integers(0, 11)
         pattern = [offset + (period * x) for x in range(int(np.ceil((t-offset)/period))) if offset + (period * x) < t]
         inp = pop.create_input(pattern)
         for y in range(int(np.ceil(np.sqrt(n)))):
-            pop.create_synapse(inp.ID, y, w=16, d=delay_rng.integers(1, 60) / 10)
+            pop.create_synapse(inp.ID, y, w=16, d=round(delay_rng.integers(150, 251) / 10, 1))
     pop.structure = "grid"
     pop.run(t, dt=0.1, plot_network=False)
     pop.plot_delays()
@@ -699,13 +699,13 @@ def run_xnxi_async(t, n, i, delay_seed, input_seed, name=False):
     delay_rng = np.random.default_rng(delay_seed)
     input_rng = np.random.default_rng(input_seed)
     pop = Population((n, RS), name=name)
-    pop.create_feed_forward_connections(d=list(range(1,20)), w=16, trainable=True, seed=delay_seed)
+    pop.create_feed_forward_connections(d=list(np.arange(15, 25.1, 0.1)), w=16, trainable=True, seed=delay_seed)
     for x in range(i):
-        freq = input_rng.integers(10,30)
+        freq = input_rng.integers(30,61)
         xi = [x for x in range(t) if x % freq == 0]
         inp = pop.create_input(xi)
         for y in range(int(np.ceil(np.sqrt(n)))):
-            pop.create_synapse(inp.ID, y, w=16, d=delay_rng.integers(1, 60) / 10)
+            pop.create_synapse(inp.ID, y, w=16, d=round(delay_rng.integers(150, 251) / 10, 1))
     pop.structure = "grid"
     pop.run(t, dt=0.1, plot_network=False)
     pop.plot_delays()
