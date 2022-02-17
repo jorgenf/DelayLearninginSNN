@@ -358,6 +358,7 @@ class Population:
         plt.tight_layout()
         if save:
             plt.savefig(f"{self.dir}/network.png")
+            plt.close()
         else:
             return plt
 
@@ -375,6 +376,7 @@ class Population:
         sub.legend(handles, bbox_to_anchor=(1.05, 1), prop={"size":8})
         fig.tight_layout()
         fig.savefig(f"{self.dir}/delays.png")
+        plt.close()
 
     def plot_raster(self):
         fig, sub = plt.subplots()
@@ -387,6 +389,7 @@ class Population:
         sub.set_yticklabels([x if type(self.neurons[x]) != Input else f"{x} (Input)" for x in self.neurons])
         fig.tight_layout()
         fig.savefig(f"{self.dir}/spikes.png")
+        plt.close()
 
     def plot_membrane_potential(self, IDs=False):
         if IDs:
@@ -406,6 +409,7 @@ class Population:
         sub.legend(handles, bbox_to_anchor=(1.05, 1), prop={"size": 8})
         fig.tight_layout()
         fig.savefig(f"{self.dir}/potentials.png")
+        plt.close()
 
 
 
