@@ -1,5 +1,5 @@
 import time
-
+import Data
 import Population
 import Simulations as sim
 #import Population
@@ -7,9 +7,11 @@ import numpy as np
 import multiprocessing as mp
 import itertools
 
+#Data.delete_compile_sum_data(dir="C:/Users/J-Laptop/Documents/MASTER THESIS - SIMULATION RESULTS/feed forward/delayVSfrequency", t_folder="t10000")
+Data.plot_delay_categories(dir="C:/Users/J-Laptop/Documents/MASTER THESIS - SIMULATION RESULTS/feed forward/delayVSfrequency", t_folder="t10000", topology="1n2i")
 
+'''
 if __name__ == "__main__":
-
     t= 10000
     freq_range = list(range(20, 31))
     freq_combos = list(itertools.product(freq_range, freq_range))
@@ -25,8 +27,10 @@ if __name__ == "__main__":
         pool.starmap(sim.run_xnxi_async, params)
     stop = round((time.time()-start)/60,1)
     print(stop)
+'''
 
-    '''
+
+'''
     sim.run_xnxi_async(t, 4, 2, 1, 1, [20, 21], [1, 1.1], f"low_delay_high_freq")
     sim.run_xnxi_async(t, 4, 2, 1, 1, [20, 21], [20, 20.1], f"mid_delay_high_freq")
     sim.run_xnxi_async(t, 4, 2,
@@ -40,7 +44,7 @@ if __name__ == "__main__":
     sim.run_xnxi_async(t, 4, 2, 1, 1, [60, 61], [20, 20.1], f"mid_delay_low_freq")
     sim.run_xnxi_async(t, 4, 2, 1, 1, [60, 61], [40, 40.1], f"high_delay_low_freq")
 '''
-    '''
+'''
     t = 10000
     rng = np.random.default_rng(115)
     low_d = [(t, 4, 2, rng.integers(0, 100000), rng.integers(0, 100000), [30, 61], [1, 1.1], f"low_delay_{x}") for x in range(100)]
@@ -57,7 +61,7 @@ if __name__ == "__main__":
 # plot_delay_categories("C:/Users/jorge/Documents/MASTER THESIS - SIMULATION RESULTS/feed forward", "t10000", "4n2i")
 # delete_compile_sum_data("C:/Users/jorge/Documents/MASTER THESIS - SIMULATION RESULTS/feed forward", t_folder="t10000")
 
-    '''
+'''
     rng = np.random.default_rng(114)
     t = 10000
     delay_seeds = rng.integers(0,1000, size=6)

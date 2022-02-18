@@ -29,7 +29,8 @@ def compile_simulation_data(dir, t_folder):
                         for id in data:
                             spikes = len(data[id]["spikes"])
                             spike_rate = spikes / (data[id]["duration"] / 1000)
-                            data_dict[f"n{id}_SR"] = spike_rate
+                            type = "i" if data[id]["<class 'Population.Input'>"] else "n"
+                            data_dict[f"{type}{id}_SR"] = spike_rate
                 if file == "synapse_data.json":
                     print(f"\rCompiling synapse data for: {os.path.split(dirs)[1]}", end="")
                     with open(os.path.join(dirs, file), "r") as file:
@@ -266,32 +267,45 @@ def load_model(dir):
         return(pickle.load(file))
 
 def plot_delay_categories(dir, t_folder, topology):
-    fig, ax = plt.subplots()
-    models = {}
     for dirs, subdirs, files in os.walk(dir):
         top_temp = os.path.split(os.path.split(dirs)[0])[1].split(" ")[0]
         if t_folder == os.path.split(dirs)[1] and topology == top_temp:
             if os.path.exists(os.path.join(dirs, "simulation_data.csv")):
-                model = os.path.split(os.path.split(dirs)[0])[1]
                 df = pd.read_csv(os.path.join(dirs, "simulation_data.csv"))
-                row = df[df["name"] == "count"]
-                connections = {}
-                for conn in row.keys():
-                    if conn != "name" and re.match("[0-9]+_[0-9]+$", conn):
-                        for val in row[conn].values:
-                            val_dict = json.loads(val.replace("\'", "\""))
-                            connections[conn] = val_dict
-                models[model] = connections
-    labels = list(models.keys())
-    conn_id = list(models[labels[0]].keys())
-    for conn in conn_id:
-        d = [models[model][conn] for model in models]
-        print(conn, d)
-    #for key in labels:
-    #    ax.bar()
-    #ax.bar(labels, men_means, width, yerr=men_std, label='Men')
-    #ax.bar(labels, women_means, width, yerr=women_std, bottom=men_means,
-    #       label='Women')
+                index =  list(df.index[df["name"]=="count"])[0]
+                df_rows = df.loc[:index-1]
+                data = [[] for x in range(df_rows.shape[0])]
+                for col in df_rows.keys():
+                    if col == "name":
+                        names = list(df_rows[col])
+                        for i, name in enumerate(names):
+                            f1 = re.findall(r'f1-([0-9]+)', name)[0]
+                            f2 = re.findall(r'f2-([0-9]+)', name)[0]
+                            d1 = re.findall(r'd1-([0-9]+)', name)[0]
+                            d2 = re.findall(r'd2-([0-9]+)', name)[0]
+                            config = (int(f1), int(f2), int(d1), int(d2))
+                            [data[i].append(x) for x in config]
+                    elif re.match("[0-9]+_[0-9]+$", col):
+                        conn = list(df_rows[col])
+                        for i, c in enumerate(conn):
+                            data[i].append(c)
+                data = sorted(data, key=lambda element: (element[0], element[1], element[2], element[3]))
+                x = []
+                y = []
+                z = []
+                for row in data:
+                    x.append(f"{row[0]}-{row[1]}")
+                    y.append(f"{row[2]}-{row[3]}")
+                    z.append([row[4],row[5]])
+                fig, ax = plt.subplots()
+                c = ["r" if x[0] == 'converging' else "b" for x in z]
+                ax.scatter(x, y, c=c)
+                #ax.set_xticks(list(range(len(x))), x)
+                #ax.set_yticks(list(range(len(y))), y)
+                ax.set_xlabel("Frequencies")
+                ax.set_ylabel("Delays")
+                plt.savefig("test")
+
 
 def plot_spike_rate_data(dir, t_folder, topology):
     fig, ax = plt.subplots()
