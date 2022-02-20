@@ -457,7 +457,7 @@ class Population:
                 fig.close()
         self.save_neuron_data()
         self.save_synapse_data()
-        Data.save_model(self, os.path.join(self.dir, "post_sim_model.pkl"))
+        #Data.save_model(self, os.path.join(self.dir, "post_sim_model.pkl"))
         stop = time.time()
         print(f"\nElapsed time: {round((stop-tot_start)/60,1)}min")
 

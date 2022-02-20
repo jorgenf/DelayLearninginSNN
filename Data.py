@@ -1,3 +1,4 @@
+import itertools
 import os
 import json
 import Population as Pop
@@ -10,7 +11,7 @@ from collections import Counter
 from scipy.stats import linregress
 import matplotlib.pyplot as plt
 import re
-import Constants as c
+import Constants as C
 
 
 def compile_simulation_data(dir, t_folder):
@@ -29,7 +30,7 @@ def compile_simulation_data(dir, t_folder):
                         for id in data:
                             spikes = len(data[id]["spikes"])
                             spike_rate = spikes / (data[id]["duration"] / 1000)
-                            type = "i" if data[id]["<class 'Population.Input'>"] else "n"
+                            type = "i" if data[id]["type"] == "<class 'Population.Input'>" else "n"
                             data_dict[f"{type}{id}_SR"] = spike_rate
                 if file == "synapse_data.json":
                     print(f"\rCompiling synapse data for: {os.path.split(dirs)[1]}", end="")
@@ -38,16 +39,16 @@ def compile_simulation_data(dir, t_folder):
                         keys = data.keys()
                         for k in keys:
                             l = data[k]["d_hist"]["d"]
-                            saturation = check_saturation(l, c.SATURATION_LENGTH)
+                            saturation = check_saturation(l, C.SATURATION_LENGTH)
                             if saturation:
                                 data_dict[k] = saturation
                             else:
-                                if check_convergence(l, c.CONVERGENT_LENGTH):
+                                if check_convergence(l, C.CONVERGENT_LENGTH):
                                     if k in data_dict.keys():
                                         data_dict[k] += "-converging"
                                     else:
                                         data_dict[k] = "converging"
-                                elif check_repetitiveness(l, c.REPETITIVE_LENGTH):
+                                elif check_repetitiveness(l, C.REPETITIVE_LENGTH):
                                     if k in data_dict.keys():
                                         data_dict[k] += "-repeating"
                                     else:
@@ -111,7 +112,7 @@ def check_repetitiveness(l, pattern_length):
 
 
 def check_convergence(l, pattern_length):
-    if np.std(l[-pattern_length:]) < c.STD_THRESHOLD:
+    if np.std(l[-pattern_length:]) < C.STD_THRESHOLD:
         return True
     else:
         return False
@@ -119,9 +120,9 @@ def check_convergence(l, pattern_length):
 
 def check_divergence(l):
     slope = linregress(l["t"], l["d"])[0]
-    if slope > c.SLOPE_THRESHOLD:
+    if slope > C.SLOPE_THRESHOLD:
         return "increasing"
-    elif slope < -c.SLOPE_THRESHOLD:
+    elif slope < -C.SLOPE_THRESHOLD:
         return "decreasing"
     else:
         return False
@@ -129,9 +130,9 @@ def check_divergence(l):
 
 def check_saturation(l, pattern_length):
     mean_val = np.mean(l[-pattern_length:])
-    if c.MIN_DELAY - c.STD_THRESHOLD < mean_val < c.MIN_DELAY + c.STD_THRESHOLD:
+    if C.MIN_DELAY - C.STD_THRESHOLD < mean_val < C.MIN_DELAY + C.STD_THRESHOLD:
         return "min"
-    elif c.MAX_DELAY - c.STD_THRESHOLD < mean_val < c.MAX_DELAY + c.STD_THRESHOLD:
+    elif C.MAX_DELAY - C.STD_THRESHOLD < mean_val < C.MAX_DELAY + C.STD_THRESHOLD:
         return "max"
     else:
         return False
@@ -146,6 +147,7 @@ def get_SR_data(dir):
     for subdir, dirs, files in os.walk(dir):
         for file in files:
             if file == "neuron_data.json":
+                print(f"\rCompiling SR data for: {os.path.split(dirs)[1]}", end="")
                 with open(os.path.join(subdir, file), "r") as file:
                     data = json.loads(file.read())
                     for id in data:
@@ -294,17 +296,31 @@ def plot_delay_categories(dir, t_folder, topology):
                 y = []
                 z = []
                 for row in data:
+                    print(row)
                     x.append(f"{row[0]}-{row[1]}")
                     y.append(f"{row[2]}-{row[3]}")
                     z.append([row[4],row[5]])
+
                 fig, ax = plt.subplots()
-                c = ["r" if x[0] == 'converging' else "b" for x in z]
-                ax.scatter(x, y, c=c)
-                #ax.set_xticks(list(range(len(x))), x)
-                #ax.set_yticks(list(range(len(y))), y)
-                ax.set_xlabel("Frequencies")
-                ax.set_ylabel("Delays")
-                plt.savefig("test")
+                colors = []
+                cat_combos = list(itertools.product(C.DELAY_CATEGORIES, C.DELAY_CATEGORIES))
+                possible_colors = C.COLORS[:len(cat_combos)]
+                for p in z:
+                    index = cat_combos.index((p[0],p[1]))
+                    color = possible_colors[index]
+                    colors.append(color)
+                ax.scatter(y, x, s=0.1, c=colors)
+                ax.set_ylabel("Frequencies")
+                ax.set_xlabel("Delays")
+                plt.xticks(rotation=90)
+                ax.xaxis.set_major_locator(plt.MaxNLocator(50))
+                #plt.locator_params(axis='x', nbins=10)
+                path = os.path.join(os.getcwd(), "delayVSfreq.png")
+                plt.legend()
+                print("Saving data to: ", path)
+                plt.tight_layout()
+                plt.savefig(path)
+                plt.clf()
 
 
 def plot_spike_rate_data(dir, t_folder, topology):

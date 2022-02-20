@@ -6,31 +6,64 @@ import Simulations as sim
 import numpy as np
 import multiprocessing as mp
 import itertools
+import os
+import re
 
-#Data.delete_compile_sum_data(dir="C:/Users/J-Laptop/Documents/MASTER THESIS - SIMULATION RESULTS/feed forward/delayVSfrequency", t_folder="t10000")
-Data.plot_delay_categories(dir="C:/Users/J-Laptop/Documents/MASTER THESIS - SIMULATION RESULTS/feed forward/delayVSfrequency", t_folder="t10000", topology="1n2i")
+Data.delete_compile_sum_data(dir="Z:/MASTER THESIS - SIMULATION RESULTS/feed forward/delayVSfrequency", t_folder="t10000")
+Data.sum_simulation_data(dir="Z:/MASTER THESIS - SIMULATION RESULTS/feed forward/delayVSfrequency", t_folder="t10000")
+Data.plot_delay_categories(dir="Z:/MASTER THESIS - SIMULATION RESULTS/feed forward/delayVSfrequency", t_folder="t10000", topology="1n2i")
+'''
+freq_range = list(range(20, 31))
+freq_combos = list(itertools.product(freq_range, freq_range))
+delay_range = list(range(1, 21))
+delay_combos = list(itertools.product(delay_range, delay_range))
+combos = list(itertools.product(freq_combos, delay_combos))
+#print(combos)
+dir = "Z:/MASTER THESIS - SIMULATION RESULTS/feed forward\delayVSfrequency/1n2i/t10000"
+print(len(combos))
+for dirs, subdirs, files in os.walk(dir):
+    param = os.path.split(dirs)[1]
+    if param != "t10000":
+        f1 = int(re.findall(r'f1-([0-9]+)', param)[0])
+        f2 = int(re.findall(r'f2-([0-9]+)', param)[0])
+        d1 = int(re.findall(r'd1-([0-9]+)', param)[0])
+        d2 = int(re.findall(r'd2-([0-9]+)', param)[0])
+        if ((f1,f2),(d1,d2)) in combos:
+            combos.remove(((f1,f2),(d1,d2)))
 
+
+print(len(combos))
+'''
 '''
 if __name__ == "__main__":
-    t= 10000
+    t = 10000
     freq_range = list(range(20, 31))
     freq_combos = list(itertools.product(freq_range, freq_range))
     delay_range = list(range(1,21))
     delay_combos = list(itertools.product(delay_range, delay_range))
-
     combos = list(itertools.product(freq_combos, delay_combos))
-
+    print("Combo length before: ", len(combos))
+    dir = "Z:/MASTER THESIS - SIMULATION RESULTS/feed forward\delayVSfrequency/1n2i/t10000"
+    for dirs, subdirs, files in os.walk(dir):
+        param = os.path.split(dirs)[1]
+        if param != "t10000":
+            f1 = int(re.findall(r'f1-([0-9]+)', param)[0])
+            f2 = int(re.findall(r'f2-([0-9]+)', param)[0])
+            d1 = int(re.findall(r'd1-([0-9]+)', param)[0])
+            d2 = int(re.findall(r'd2-([0-9]+)', param)[0])
+            if ((f1, f2), (d1, d2)) in combos:
+                combos.remove(((f1, f2), (d1, d2)))
+    print("Combo length after: ", len(combos))
     start = time.time()
     params = [(t, 1, 2, 1, 1, [x[0][0], x[0][1]], [x[1][0], x[1][1]], [], [], f"delayVSfreq_f1-{x[0][0]}_f2-{x[0][1]}_d1-{x[1][0]}_d2-{x[1][1]}") for x in combos]
-
     with mp.Pool(mp.cpu_count() - 1) as pool:
         pool.starmap(sim.run_xnxi_async, params)
     stop = round((time.time()-start)/60,1)
     print(stop)
-'''
 
 
-'''
+
+
     sim.run_xnxi_async(t, 4, 2, 1, 1, [20, 21], [1, 1.1], f"low_delay_high_freq")
     sim.run_xnxi_async(t, 4, 2, 1, 1, [20, 21], [20, 20.1], f"mid_delay_high_freq")
     sim.run_xnxi_async(t, 4, 2,
