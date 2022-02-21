@@ -261,6 +261,10 @@ def load_model(dir):
         return(pickle.load(file))
 
 def plot_delay_categories(dir, t_folder, topology):
+    cat_list = list(itertools.combinations_with_replacement(C.DELAY_CATEGORIES_SHORTLIST, 2))
+    cat_combos = [sorted(x) for x in cat_list]
+    print(cat_combos)
+    possible_colors = C.COLORS[:len(cat_combos)]
     for dirs, subdirs, files in os.walk(dir):
         top_temp = os.path.split(os.path.split(dirs)[0])[1].split(" ")[0]
         if t_folder == os.path.split(dirs)[1] and topology == top_temp:
@@ -288,22 +292,18 @@ def plot_delay_categories(dir, t_folder, topology):
                 y = []
                 z = []
                 for row in data:
-                    print(row)
                     x.append(f"{row[0]}-{row[1]}")
                     y.append(f"{row[2]}-{row[3]}")
-                    z.append([row[4],row[5]])
-
+                    z.append(sorted([C.CATEGORY_CONVERSION[row[4]], C.CATEGORY_CONVERSION[row[5]]]))
                 fig, ax = plt.subplots()
                 colors = []
-                cat_combos = list(itertools.combinations_with_replacement(C.DELAY_CATEGORIES_SHORTLIST, 2))
-                possible_colors = C.COLORS[:len(cat_combos)]
                 for p in z:
-                    if (p[0],p[1]) in cat_combos:
-                        index = cat_combos.index((p[0],p[1]))
-                    elif (p[1],p[0]) in cat_combos:
-                        index = cat_combos.index((p[1], p[0]))
+                    if [p[0],p[1]] in cat_combos:
+                        index = cat_combos.index([p[0],p[1]])
+                    elif [p[1],p[0]] in cat_combos:
+                        index = cat_combos.index([p[1], p[0]])
                     else:
-                        raise Exception("Category combination not found!")
+                        raise Exception(f"Category combination not found: [{p[0]}, {p[1]}]")
                     color = possible_colors[index]
                     colors.append(color)
                 ax.scatter(y, x, s=0.1, c=colors)

@@ -13,3 +13,12 @@ COLORS = ["red", "blue", "green", "indigo", "royalblue", "peru", "palegreen", "y
 COLORS += [(np.random.random(), np.random.random(), np.random.random()) for x in range(50)]
 DELAY_CATEGORIES = ["converging", "repeating", "uncategorized", "increasing", "decreasing", "min", "max"]
 DELAY_CATEGORIES_SHORTLIST = ["converging", "repeating", "uncategorized", "diverging"]
+CATEGORY_CONVERSION = {
+    "converging": "converging",
+    "repeating": "repeating",
+    "uncategorized": "uncategorized",
+    "max": "diverging",
+    "min": "diverging",
+    "decreasing": "diverging",
+    "increasing": "diverging"
+}
