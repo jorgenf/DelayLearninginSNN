@@ -8,10 +8,12 @@ import multiprocessing as mp
 import itertools
 import os
 import re
+import pandas as pd
 
-Data.delete_compile_sum_data(dir="Z:/MASTER THESIS - SIMULATION RESULTS/feed forward/delayVSfrequency", t_folder="t10000")
-Data.sum_simulation_data(dir="Z:/MASTER THESIS - SIMULATION RESULTS/feed forward/delayVSfrequency", t_folder="t10000")
-Data.plot_delay_categories(dir="Z:/MASTER THESIS - SIMULATION RESULTS/feed forward/delayVSfrequency", t_folder="t10000", topology="1n2i")
+Data.compile_simulation_data(dir="Z:\\MASTER THESIS - SIMULATION RESULTS\\feed forward\\delayVSfrequency\\1n2i", t_folder="t10000")
+#Data.sum_simulation_data(dir="Z:\\MASTER THESIS - SIMULATION RESULTS\\feed forward\\delayVSfrequency\\1n2i", t_folder="t10000")
+#Data.plot_delay_categories(dir="Z:/MASTER THESIS - SIMULATION RESULTS/feed forward/delayVSfrequency\\1n2i", t_folder="t10000", topology="1n2i")
+
 '''
 freq_range = list(range(20, 31))
 freq_combos = list(itertools.product(freq_range, freq_range))

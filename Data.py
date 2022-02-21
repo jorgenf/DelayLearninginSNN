@@ -15,101 +15,97 @@ import Constants as C
 
 
 def compile_simulation_data(dir, t_folder):
+    existing_sims = []
+    sim_data = os.path.join(dir, t_folder, "simulation_data.csv")
+    if os.path.exists(sim_data):
+        print("Simulation data exists. Adding to existing data...")
+        df = pd.read_csv(sim_data)
+        if df[df["name"] == "count"].first_valid_index():
+            print("Previous summation data found. Removing summation data from: ", os.path.split(dir)[1])
+            first_id = df[df["name"] == "count"].first_valid_index()
+            df.drop(df.tail(df.shape[0] - first_id).index, inplace=True)
+        df.dropna(inplace=True)
+        existing_sims = list(df["name"])
+        df.to_csv(os.path.join(dir, "simulation_data.csv"), index=False)
+    else:
+        print("Creating new simulation data file...")
+    print(f"\rCompiling simulation data...", end="")
     for dirs, subdirs, files in os.walk(dir):
         SR_dir = os.path.join(dirs, "SR_data.json")
-        if t_folder == os.path.split(dirs)[1] and not os.path.exists(SR_dir):
-            get_SR_data(dirs)
+        #if t_folder == os.path.split(dirs)[1] and not os.path.exists(SR_dir):
+        #    get_SR_data(dirs)
         if t_folder == os.path.split(os.path.split(dirs)[0])[1]:
-            data_dict = {}
-            data_dict["name"] = os.path.basename(os.path.normpath(dirs))
-            for file in files:
-                if file == "neuron_data.json":
-                    print(f"\rCompiling neuron data for: {os.path.split(dirs)[1]}", end="")
-                    with open(os.path.join(dirs, file), "r") as file:
-                        data = json.loads(file.read())
-                        for id in data:
-                            spikes = len(data[id]["spikes"])
-                            spike_rate = spikes / (data[id]["duration"] / 1000)
-                            type = "i" if data[id]["type"] == "<class 'Population.Input'>" else "n"
-                            data_dict[f"{type}{id}_SR"] = spike_rate
-                if file == "synapse_data.json":
-                    print(f"\rCompiling synapse data for: {os.path.split(dirs)[1]}", end="")
-                    with open(os.path.join(dirs, file), "r") as file:
-                        data = json.loads(file.read())
-                        keys = data.keys()
-                        for k in keys:
-                            l = data[k]["d_hist"]["d"]
-                            saturation = check_saturation(l, C.SATURATION_LENGTH)
-                            if saturation:
-                                data_dict[k] = saturation
-                            else:
-                                if check_convergence(l, C.CONVERGENT_LENGTH):
-                                    if k in data_dict.keys():
-                                        data_dict[k] += "-converging"
-                                    else:
-                                        data_dict[k] = "converging"
-                                elif check_repetitiveness(l, C.REPETITIVE_LENGTH):
-                                    if k in data_dict.keys():
-                                        data_dict[k] += "-repeating"
-                                    else:
-                                        data_dict[k] = "repeating"
-                                divergence = check_divergence(data[k]["d_hist"])
-                                if divergence:
-                                    data_dict[k] = divergence
-                            if k not in data_dict.keys():
-                                data_dict[k] = "uncategorized"
-
-                        '''
-                            j = int(k.split("-")[1])
-                            if j not in pairs.keys():
-                                pairs[j] = [k]
-                            else:
-                                pairs[j].append(k)
-                        for pair in pairs:
-                            combs = itertools.combinations(pairs[pair], 2)
-                            for comb in combs:
-                                l1 = data[comb[0]]["d_hist"]["d"]
-                                l2 = data[comb[1]]["d_hist"]["d"]
-                                diff = [x - y for x, y in zip(l1, l2)]
-                                if check_divergence_pair(diff, DIVERGENT_LENGTH):
-                                    data_dict[f"{comb[0]}_{comb[1]}"] = "diverging"
-                                elif check_convergence_pair(diff, CONVERGENT_LENGTH):
-                                    data_dict[f"{comb[0]}_{comb[1]}"] = "converging"
-                                elif check_repetitiveness_pair(diff, REPETITIVE_LENGTH):
-                                    data_dict[f"{comb[0]}_{comb[1]}"] = "repeating"
+            if os.path.split(dirs)[1] not in existing_sims:
+                data_dict = {}
+                data_dict["name"] = os.path.basename(os.path.normpath(dirs))
+                neuron_fp = os.path.join(dirs, "neuron_data.json")
+                if os.path.exists(neuron_fp):
+                    try:
+                        with open(neuron_fp, "r") as file:
+                            data = json.loads(file.read())
+                            for id in data:
+                                spikes = len(data[id]["spikes"])
+                                spike_rate = spikes / (data[id]["duration"] / 1000)
+                                type = "i" if data[id]["type"] == "<class 'Population.Input'>" else "n"
+                                data_dict[f"{type}{id}_SR"] = spike_rate
+                    except:
+                        print(f"Unable to open: ", {os.path.join(dirs, "neuron_data.json")})
+                synapse_fp = os.path.join(dirs, "synapse_data.json")
+                if os.path.exists(synapse_fp):
+                    try:
+                        with open(synapse_fp, "r") as file:
+                            data = json.loads(file.read())
+                            keys = data.keys()
+                            for k in keys:
+                                l = data[k]["d_hist"]["d"]
+                                saturation = check_saturation(l, C.SATURATION_LENGTH)
+                                if saturation:
+                                    data_dict[k] = saturation
                                 else:
-                                    data_dict[f"{comb[0]}_{comb[1]}"] = "uncategorized"
-                        '''
-            path = os.path.join(os.path.split(dirs)[0], "simulation_data.csv")
-            exists = os.path.isfile(path)
-            with open(path, 'a' if exists else 'w', newline="") as csvfile:
-                writer = csv.DictWriter(csvfile, fieldnames=data_dict.keys())
-                if not exists:
-                    writer.writeheader()
-                writer.writerow(data_dict)
-    sum_simulation_data(dir, t_folder)
+                                    if check_convergence(l, C.CONVERGENT_LENGTH):
+                                        if k in data_dict.keys():
+                                            data_dict[k] += "-converging"
+                                        else:
+                                            data_dict[k] = "converging"
+                                    elif check_repetitiveness(l, C.REPETITIVE_LENGTH):
+                                        if k in data_dict.keys():
+                                            data_dict[k] += "-repeating"
+                                        else:
+                                            data_dict[k] = "repeating"
+                                    divergence = check_divergence(data[k]["d_hist"])
+                                    if divergence:
+                                        data_dict[k] = divergence
+                                if k not in data_dict.keys():
+                                    data_dict[k] = "uncategorized"
+                    except:
+                        print(f"Unable to open: ", synapse_fp)
+                path = os.path.join(os.path.split(dirs)[0], "simulation_data.csv")
+                exists = os.path.isfile(path)
+                with open(path, 'a' if exists else 'w', newline="") as csvfile:
+                    writer = csv.DictWriter(csvfile, fieldnames=data_dict.keys())
+                    if not exists:
+                        writer.writeheader()
+                    writer.writerow(data_dict)
 
-
-def check_repetitiveness(l, pattern_length):
-    pattern = str(l[-pattern_length:]).strip("[]")
-    string = str(l[: -pattern_length]).strip("[]")
-    if pattern in string:
-        return True
+def check_repetitiveness(l, pattern_length, use_correlation = False):
+    if use_correlation:
+        pattern = l[-pattern_length:]
+        string = l[-pattern_length * 4: -pattern_length]
+        max_corr = 0
+        for i in range(len(string) - len(pattern)):
+            corr = np.corrcoef(string[i:i + len(pattern)], pattern)[0][1]
+            max_corr = max(max_corr, corr)
+        if max_corr > C.CORRELATION_THRESHOLD:
+            return True
+        else:
+            return False
     else:
-        return False
-    '''
-    pattern = l[-pattern_length:]
-    string = l[-pattern_length*4: -pattern_length]
-    max_corr = 0
-    for i in range(len(string) - len(pattern)):
-        corr = np.corrcoef(string[i:i + len(pattern)], pattern)[0][1]
-        max_corr = max(max_corr, corr)
-    if max_corr > CORRELATION_THRESHOLD:
-        return True
-    else:
-        return False
-    '''
-
+        pattern = str(l[-pattern_length:]).strip("[]")
+        string = str(l[: -pattern_length]).strip("[]")
+        if pattern in string:
+            return True
+        else:
+            return False
 
 def check_convergence(l, pattern_length):
     if np.std(l[-pattern_length:]) < C.STD_THRESHOLD:
@@ -202,14 +198,16 @@ def get_SR_data(dir):
 
 
 def sum_simulation_data(dir, t_folder):
+    print(f"\rSumming simulation data...", end="")
     for dirs, subdirs, files in os.walk(dir):
         if t_folder == os.path.split(dirs)[1]:
-            print(f"\rSumming simulation data for: {os.path.split(os.path.split(dirs)[0])[1]}", end="")
             df = pd.read_csv(os.path.join(dirs, "simulation_data.csv"))
             if df[df["name"] == "count"].first_valid_index():
-                print("Previous summation data found in: ", os.path.split(os.path.split(dirs)[0])[1])
+                print(f"\rDeleting previous summation data...", end="")
                 first_id = df[df["name"] == "count"].first_valid_index()
                 df.drop(df.tail(df.shape[0] - first_id).index, inplace=True)
+                print(f"\rSumming simulation data...", end="")
+            df.dropna(inplace=True)
             count = {"name": "count"}
             mean = {"name": "mean"}
             std = {"name": "std"}
@@ -219,7 +217,6 @@ def sum_simulation_data(dir, t_folder):
             pros75 = {"name": "75%"}
             max = {"name": "max"}
             dormant = {"name" : "dormant"}
-
             cols = list(df.columns)
             for col in cols:
                 if not col == "name":
@@ -254,11 +251,6 @@ def delete_simulation_data(dir, t_folder):
                 print("DELETED simulation data for: ", os.path.split(os.path.split(dirs)[0])[1])
             else:
                 print("No simulation data found for: ", os.path.split(os.path.split(dirs)[0])[1])
-
-def delete_compile_sum_data(dir, t_folder):
-    delete_simulation_data(dir, t_folder)
-    compile_simulation_data(dir, t_folder)
-    sum_simulation_data(dir, t_folder)
 
 def save_model(object, dir):
     with open(dir, "wb") as file:
@@ -303,10 +295,15 @@ def plot_delay_categories(dir, t_folder, topology):
 
                 fig, ax = plt.subplots()
                 colors = []
-                cat_combos = list(itertools.product(C.DELAY_CATEGORIES, C.DELAY_CATEGORIES))
+                cat_combos = list(itertools.combinations_with_replacement(C.DELAY_CATEGORIES_SHORTLIST, 2))
                 possible_colors = C.COLORS[:len(cat_combos)]
                 for p in z:
-                    index = cat_combos.index((p[0],p[1]))
+                    if (p[0],p[1]) in cat_combos:
+                        index = cat_combos.index((p[0],p[1]))
+                    elif (p[1],p[0]) in cat_combos:
+                        index = cat_combos.index((p[1], p[0]))
+                    else:
+                        raise Exception("Category combination not found!")
                     color = possible_colors[index]
                     colors.append(color)
                 ax.scatter(y, x, s=0.1, c=colors)
