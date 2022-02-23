@@ -12,6 +12,7 @@ from scipy.stats import linregress
 import matplotlib.pyplot as plt
 import re
 import Constants as C
+import matplotlib.patches as mpatches
 
 
 def compile_simulation_data(dir, t_folder):
@@ -32,7 +33,7 @@ def compile_simulation_data(dir, t_folder):
     print(f"\rCompiling simulation data...", end="")
     for dirs, subdirs, files in os.walk(dir):
         SR_dir = os.path.join(dirs, "SR_data.json")
-        #if t_folder == os.path.split(dirs)[1] and not os.path.exists(SR_dir):
+        # if t_folder == os.path.split(dirs)[1] and not os.path.exists(SR_dir):
         #    get_SR_data(dirs)
         if t_folder == os.path.split(os.path.split(dirs)[0])[1]:
             if os.path.split(dirs)[1] not in existing_sims:
@@ -87,7 +88,8 @@ def compile_simulation_data(dir, t_folder):
                         writer.writeheader()
                     writer.writerow(data_dict)
 
-def check_repetitiveness(l, pattern_length, use_correlation = False):
+
+def check_repetitiveness(l, pattern_length, use_correlation=False):
     if use_correlation:
         pattern = l[-pattern_length:]
         string = l[-pattern_length * 4: -pattern_length]
@@ -106,6 +108,7 @@ def check_repetitiveness(l, pattern_length, use_correlation = False):
             return True
         else:
             return False
+
 
 def check_convergence(l, pattern_length):
     if np.std(l[-pattern_length:]) < C.STD_THRESHOLD:
@@ -132,6 +135,7 @@ def check_saturation(l, pattern_length):
         return "max"
     else:
         return False
+
 
 def get_SR_data(dir):
     spike_rates = []
@@ -216,7 +220,7 @@ def sum_simulation_data(dir, t_folder):
             pros50 = {"name": "50%"}
             pros75 = {"name": "75%"}
             max = {"name": "max"}
-            dormant = {"name" : "dormant"}
+            dormant = {"name": "dormant"}
             cols = list(df.columns)
             for col in cols:
                 if not col == "name":
@@ -246,32 +250,33 @@ def sum_simulation_data(dir, t_folder):
 def delete_simulation_data(dir, t_folder):
     for dirs, subdirs, files in os.walk(dir):
         if t_folder == os.path.split(dirs)[1]:
-            if os.path.exists(os.path.join(dirs,"simulation_data.csv")):
-                os.remove(os.path.join(dirs,"simulation_data.csv"))
+            if os.path.exists(os.path.join(dirs, "simulation_data.csv")):
+                os.remove(os.path.join(dirs, "simulation_data.csv"))
                 print("DELETED simulation data for: ", os.path.split(os.path.split(dirs)[0])[1])
             else:
                 print("No simulation data found for: ", os.path.split(os.path.split(dirs)[0])[1])
+
 
 def save_model(object, dir):
     with open(dir, "wb") as file:
         pickle.dump(object, file, pickle.HIGHEST_PROTOCOL)
 
+
 def load_model(dir):
     with open(os.path.join(dir), 'rb') as file:
-        return(pickle.load(file))
+        return (pickle.load(file))
+
 
 def plot_delay_categories(dir, t_folder, topology):
-    cat_list = list(itertools.combinations_with_replacement(C.DELAY_CATEGORIES_SHORTLIST, 2))
-    cat_combos = [sorted(x) for x in cat_list]
-    print(cat_combos)
-    possible_colors = C.COLORS[:len(cat_combos)]
+    cat_list = C.DELAY_CATEGORIES_SHORTLIST
+    possible_colors = C.DCAT_COLORS[:len(cat_list)]
     for dirs, subdirs, files in os.walk(dir):
         top_temp = os.path.split(os.path.split(dirs)[0])[1].split(" ")[0]
         if t_folder == os.path.split(dirs)[1] and topology == top_temp:
             if os.path.exists(os.path.join(dirs, "simulation_data.csv")):
                 df = pd.read_csv(os.path.join(dirs, "simulation_data.csv"))
-                index =  list(df.index[df["name"]=="count"])[0]
-                df_rows = df.loc[:index-1]
+                index = list(df.index[df["name"] == "count"])[0]
+                df_rows = df.loc[:index - 1]
                 data = [[] for x in range(df_rows.shape[0])]
                 for col in df_rows.keys():
                     if col == "name":
@@ -294,16 +299,25 @@ def plot_delay_categories(dir, t_folder, topology):
                 for row in data:
                     x.append(f"{row[0]}-{row[1]}")
                     y.append(f"{row[2]}-{row[3]}")
-                    z.append(sorted([C.CATEGORY_CONVERSION[row[4]], C.CATEGORY_CONVERSION[row[5]]]))
+                    cat = [row[4], row[5]]
+
+                    if any(i in cat for i in ["increasing", "decreasing", "min", "max"]):
+                        z.append("diverging")
+                    elif "uncategorized" in cat:
+                        z.append("uncategorized")
+                    elif "repeating" in cat:
+                        z.append("repeating")
+                    elif "converging" in cat:
+                        z.append("converging")
+                    else:
+                        raise Exception(f"Category {cat} not found!")
                 fig, ax = plt.subplots()
                 colors = []
                 for p in z:
-                    if [p[0],p[1]] in cat_combos:
-                        index = cat_combos.index([p[0],p[1]])
-                    elif [p[1],p[0]] in cat_combos:
-                        index = cat_combos.index([p[1], p[0]])
+                    if p in cat_list:
+                        index = cat_list.index(p)
                     else:
-                        raise Exception(f"Category combination not found: [{p[0]}, {p[1]}]")
+                        raise Exception(f"Category not found: {p}")
                     color = possible_colors[index]
                     colors.append(color)
                 ax.scatter(y, x, s=0.1, c=colors)
@@ -311,9 +325,11 @@ def plot_delay_categories(dir, t_folder, topology):
                 ax.set_xlabel("Delays")
                 plt.xticks(rotation=90)
                 ax.xaxis.set_major_locator(plt.MaxNLocator(50))
-                #plt.locator_params(axis='x', nbins=10)
+                ax.yaxis.set_major_locator(plt.MaxNLocator(30))
+                # plt.locator_params(axis='x', nbins=10)
                 path = os.path.join(os.getcwd(), "delayVSfreq.png")
-                plt.legend()
+                patches = [mpatches.Patch(color=col, label=cat) for col, cat in zip(possible_colors, cat_list)]
+                plt.legend(handles=patches, ncol=4, loc="upper center", bbox_to_anchor=(0.5, 1.2))
                 print("Saving data to: ", path)
                 plt.tight_layout()
                 plt.savefig(path)
@@ -331,9 +347,3 @@ def plot_spike_rate_data(dir, t_folder, topology):
                 if str(k).endswith("SR"):
                     pass
             return False
-
-
-
-
-
-
