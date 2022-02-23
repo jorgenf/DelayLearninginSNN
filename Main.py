@@ -12,8 +12,8 @@ import pandas as pd
 
 #Data.compile_simulation_data(dir="Z:\\MASTER THESIS - SIMULATION RESULTS\\feed forward\\delayVSfrequency\\1n2i", t_folder="t10000")
 #Data.sum_simulation_data(dir="Z:\\MASTER THESIS - SIMULATION RESULTS\\feed forward\\delayVSfrequency\\1n2i", t_folder="t10000")
-Data.plot_delay_categories(dir="Z:/MASTER THESIS - SIMULATION RESULTS/feed forward/delayVSfrequency\\1n2i", t_folder="t10000", topology="1n2i")
-
+#Data.plot_delay_categories(dir="Z:/MASTER THESIS - SIMULATION RESULTS/feed forward/delayVSfrequency\\1n2i", t_folder="t10000", topology="1n2i")
+Data.plot_spike_rate_data("C:\\Users\\J-Laptop\\Documents\\simulation_data.csv", "delayVSfreq")
 
 '''
 freq_range = list(range(20, 31))

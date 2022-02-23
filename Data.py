@@ -336,14 +336,13 @@ def plot_delay_categories(dir, t_folder, topology):
                 plt.clf()
 
 
-def plot_spike_rate_data(dir, t_folder, topology):
+def plot_spike_rate_data(path, identifier):
     fig, ax = plt.subplots()
-    for dirs, subdirs, files in os.walk(dir):
-        top_temp = os.path.split(os.path.split(dirs)[0])[1].split(" ")[0]
-        if t_folder == os.path.split(dirs)[1] and topology == top_temp:
-            df = pd.read_csv(os.path.join(dirs, "simulation_data.csv"))
-            data = df.loc[df["name"].str.startswith(topology)]
-            for k in df.keys():
-                if str(k).endswith("SR"):
-                    pass
-            return False
+    df = pd.read_csv(path)
+    data = df.loc[df["name"].str.startswith(identifier)]
+    x = data["i1_SR"]
+    y = data["i2_SR"]
+    z = data["n0_SR"]
+    ax.scatter(y, x, s=0.1, c=z, cmap=plt.cm.get_cmap("jet"))
+    plt.colorbar(z)
+    plt.savefig("SR_plot")
