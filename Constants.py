@@ -1,5 +1,6 @@
 import numpy as np
 
+
 REPETITIVE_LENGTH = 5000
 CONVERGENT_LENGTH = 5000
 DIVERGENT_LENGTH = 2000
@@ -9,7 +10,7 @@ CORRELATION_THRESHOLD = 0.95
 SLOPE_THRESHOLD = 0.001
 MAX_DELAY = 40
 MIN_DELAY = 0.1
-COLORS = ["red", "blue", "green", "yellow", "royalblue", "peru", "palegreen", "indigo"]
+COLORS = ["r", "b", "g", "y", "royalblue", "peru", "palegreen", "indigo"]
 COLORS += [(np.random.random(), np.random.random(), np.random.random()) for x in range(50)]
 DCAT_COLORS = ["green", "red", "blue","yellow"]
 DELAY_CATEGORIES = ["converging", "repeating", "uncategorized", "increasing", "decreasing", "min", "max"]

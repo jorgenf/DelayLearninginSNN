@@ -417,21 +417,21 @@ class Population:
         os.system(f"ffmpeg -y -r {fps} -i {self.dir}/t%10d.png -vcodec libx264 {self.dir}/output.mp4")
         os.system(f"ffmpeg -y -r {fps} -i {self.dir}/t%10d.png -vcodec msmpeg4 {self.dir}/output.wmv")
 
-    def run(self, duration, dt=0.1, plot_network=False):
+    def run(self, dir, duration, dt=0.1, plot_network=False):
         global T, DT
         DT = dt
         start = time.time()
         date = datetime.now().strftime("%d-%B-%Y_%H-%M-%S")
         if self.name:
-            self.dir = f"network_plots/{self.name}"
+            self.dir = f"{dir}{self.name}"
         else:
-            self.dir = f"network_plots/{date}"
+            self.dir = f"{dir}{date}"
         cnt = 1
         while os.path.exists(self.dir):
             if self.name:
-                self.dir = f"network_plots/{self.name}_{cnt}"
+                self.dir = f"{dir}{self.name}_{cnt}"
             else:
-                self.dir = f"network_plots/{date}_{cnt}"
+                self.dir = f"{dir}{date}_{cnt}"
             cnt += 1
         os.makedirs(self.dir, exist_ok=True)
         last_100_stop = []
@@ -441,13 +441,13 @@ class Population:
             start = time.time()
             self.update()
             stop = time.time() - start
-            if len(last_100_stop) >= 100:
-                last_100_stop.pop()
-            last_100_stop.insert(0,stop)
-            avg_stop = np.mean(last_100_stop)
-            prog = (T / duration) * 100
-            expected_t = round(((duration - T)/DT * avg_stop)/60)
-            print("\r |" + "#" * int(prog) + f"  {round(prog, 1) if T < duration - DT else 100}%| t={T}ms | Time per step: {round(stop,4)} sec | Time to finish: {expected_t} min", end="")
+            #if len(last_100_stop) >= 100:
+            #    last_100_stop.pop()
+            #last_100_stop.insert(0,stop)
+            #avg_stop = np.mean(last_100_stop)
+            #prog = (T / duration) * 100
+            #expected_t = round(((duration - T)/DT * avg_stop)/60)
+            #print("\r |" + "#" * int(prog) + f"  {round(prog, 1) if T < duration - DT else 100}%| t={T}ms | Time per step: {round(stop,4)} sec | Time to finish: {expected_t} min", end="")
             T = round(T + DT,3)
             if plot_network:
                 fig = self.show_network(save=False)
@@ -459,6 +459,7 @@ class Population:
         self.save_synapse_data()
         #Data.save_model(self, os.path.join(self.dir, "post_sim_model.pkl"))
         stop = time.time()
+        print(f"Simulation finished: {self.name}")
         print(f"\nElapsed time: {round((stop-tot_start)/60,1)}min")
 
     def save_neuron_data(self):

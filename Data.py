@@ -1,6 +1,7 @@
 import itertools
 import os
 import json
+import matplotlib.colors
 import Population as Pop
 import numpy as np
 from scipy import stats as st
@@ -13,11 +14,12 @@ import matplotlib.pyplot as plt
 import re
 import Constants as C
 import matplotlib.patches as mpatches
+from sklearn.preprocessing import StandardScaler
 
 
-def compile_simulation_data(dir, t_folder):
+def compile_simulation_data(dir):
     existing_sims = []
-    sim_data = os.path.join(dir, t_folder, "simulation_data.csv")
+    sim_data = os.path.join(dir, "simulation_data.csv")
     if os.path.exists(sim_data):
         print("Simulation data exists. Adding to existing data...")
         df = pd.read_csv(sim_data)
@@ -27,66 +29,65 @@ def compile_simulation_data(dir, t_folder):
             df.drop(df.tail(df.shape[0] - first_id).index, inplace=True)
         df.dropna(inplace=True)
         existing_sims = list(df["name"])
-        df.to_csv(os.path.join(dir, "simulation_data.csv"), index=False)
+        df.to_csv(sim_data, index=False)
     else:
         print("Creating new simulation data file...")
     print(f"\rCompiling simulation data...", end="")
     for dirs, subdirs, files in os.walk(dir):
-        SR_dir = os.path.join(dirs, "SR_data.json")
+        #SR_dir = os.path.join(dirs, "SR_data.json")
         # if t_folder == os.path.split(dirs)[1] and not os.path.exists(SR_dir):
         #    get_SR_data(dirs)
-        if t_folder == os.path.split(os.path.split(dirs)[0])[1]:
-            if os.path.split(dirs)[1] not in existing_sims:
-                data_dict = {}
-                data_dict["name"] = os.path.basename(os.path.normpath(dirs))
-                neuron_fp = os.path.join(dirs, "neuron_data.json")
-                if os.path.exists(neuron_fp):
-                    try:
-                        with open(neuron_fp, "r") as file:
-                            data = json.loads(file.read())
-                            for id in data:
-                                spikes = len(data[id]["spikes"])
-                                spike_rate = spikes / (data[id]["duration"] / 1000)
-                                type = "i" if data[id]["type"] == "<class 'Population.Input'>" else "n"
-                                data_dict[f"{type}{id}_SR"] = spike_rate
-                    except:
-                        print(f"Unable to open: ", {os.path.join(dirs, "neuron_data.json")})
-                synapse_fp = os.path.join(dirs, "synapse_data.json")
-                if os.path.exists(synapse_fp):
-                    try:
-                        with open(synapse_fp, "r") as file:
-                            data = json.loads(file.read())
-                            keys = data.keys()
-                            for k in keys:
-                                l = data[k]["d_hist"]["d"]
-                                saturation = check_saturation(l, C.SATURATION_LENGTH)
-                                if saturation:
-                                    data_dict[k] = saturation
-                                else:
-                                    if check_convergence(l, C.CONVERGENT_LENGTH):
-                                        if k in data_dict.keys():
-                                            data_dict[k] += "-converging"
-                                        else:
-                                            data_dict[k] = "converging"
-                                    elif check_repetitiveness(l, C.REPETITIVE_LENGTH):
-                                        if k in data_dict.keys():
-                                            data_dict[k] += "-repeating"
-                                        else:
-                                            data_dict[k] = "repeating"
-                                    divergence = check_divergence(data[k]["d_hist"])
-                                    if divergence:
-                                        data_dict[k] = divergence
-                                if k not in data_dict.keys():
-                                    data_dict[k] = "uncategorized"
-                    except:
-                        print(f"Unable to open: ", synapse_fp)
-                path = os.path.join(os.path.split(dirs)[0], "simulation_data.csv")
-                exists = os.path.isfile(path)
-                with open(path, 'a' if exists else 'w', newline="") as csvfile:
-                    writer = csv.DictWriter(csvfile, fieldnames=data_dict.keys())
-                    if not exists:
-                        writer.writeheader()
-                    writer.writerow(data_dict)
+        if os.path.split(dirs)[1] not in existing_sims and not os.path.split(dirs)[1].str.beginswith("t"):
+            data_dict = {}
+            data_dict["name"] = os.path.basename(os.path.normpath(dirs))
+            neuron_fp = os.path.join(dirs, "neuron_data.json")
+            if os.path.exists(neuron_fp):
+                try:
+                    with open(neuron_fp, "r") as file:
+                        data = json.loads(file.read())
+                        for id in data:
+                            spikes = len(data[id]["spikes"])
+                            spike_rate = spikes / (data[id]["duration"] / 1000)
+                            type = "i" if data[id]["type"] == "<class 'Population.Input'>" else "n"
+                            data_dict[f"{type}{id}_SR"] = spike_rate
+                except:
+                    print(f"Unable to open: ", {os.path.join(dirs, "neuron_data.json")})
+            synapse_fp = os.path.join(dirs, "synapse_data.json")
+            if os.path.exists(synapse_fp):
+                try:
+                    with open(synapse_fp, "r") as file:
+                        data = json.loads(file.read())
+                        keys = data.keys()
+                        for k in keys:
+                            l = data[k]["d_hist"]["d"]
+                            saturation = check_saturation(l, C.SATURATION_LENGTH)
+                            if saturation:
+                                data_dict[k] = saturation
+                            else:
+                                if check_convergence(l, C.CONVERGENT_LENGTH):
+                                    if k in data_dict.keys():
+                                        data_dict[k] += "-converging"
+                                    else:
+                                        data_dict[k] = "converging"
+                                elif check_repetitiveness(l, C.REPETITIVE_LENGTH):
+                                    if k in data_dict.keys():
+                                        data_dict[k] += "-repeating"
+                                    else:
+                                        data_dict[k] = "repeating"
+                                divergence = check_divergence(data[k]["d_hist"])
+                                if divergence:
+                                    data_dict[k] = divergence
+                            if k not in data_dict.keys():
+                                data_dict[k] = "uncategorized"
+                except:
+                    print(f"Unable to open: ", synapse_fp)
+            path = os.path.join(os.path.split(dirs)[0], "simulation_data.csv")
+            exists = os.path.isfile(path)
+            with open(path, 'a' if exists else 'w', newline="") as csvfile:
+                writer = csv.DictWriter(csvfile, fieldnames=data_dict.keys())
+                if not exists:
+                    writer.writeheader()
+                writer.writerow(data_dict)
 
 
 def check_repetitiveness(l, pattern_length, use_correlation=False):
@@ -201,60 +202,56 @@ def get_SR_data(dir):
         json.dump(SR_data, f)
 
 
-def sum_simulation_data(dir, t_folder):
+def sum_simulation_data(dir):
     print(f"\rSumming simulation data...", end="")
-    for dirs, subdirs, files in os.walk(dir):
-        if t_folder == os.path.split(dirs)[1]:
-            df = pd.read_csv(os.path.join(dirs, "simulation_data.csv"))
-            if df[df["name"] == "count"].first_valid_index():
-                print(f"\rDeleting previous summation data...", end="")
-                first_id = df[df["name"] == "count"].first_valid_index()
-                df.drop(df.tail(df.shape[0] - first_id).index, inplace=True)
-                print(f"\rSumming simulation data...", end="")
-            df.dropna(inplace=True)
-            count = {"name": "count"}
-            mean = {"name": "mean"}
-            std = {"name": "std"}
-            min = {"name": "min"}
-            pros25 = {"name": "25%"}
-            pros50 = {"name": "50%"}
-            pros75 = {"name": "75%"}
-            max = {"name": "max"}
-            dormant = {"name": "dormant"}
-            cols = list(df.columns)
-            for col in cols:
-                if not col == "name":
-                    if df[col].dtypes == object:
-                        counts = Counter(list(df[col]))
-                        count[col] = dict(counts)
-                        mean[col] = counts.most_common()[0]
-                    else:
-                        stats = round(df[col].describe(), 1)
-                        count[col] = stats["count"]
-                        mean[col] = stats["mean"]
-                        std[col] = stats["std"]
-                        min[col] = stats["min"]
-                        pros25[col] = stats["25%"]
-                        pros50[col] = stats["50%"]
-                        pros75[col] = stats["75%"]
-                        max[col] = stats["max"]
-                        dormant[col] = (df[col] == 0).sum()
-            df.to_csv(os.path.join(dirs, "simulation_data.csv"), index=False)
-            data_list = [count, mean, std, min, pros25, pros50, pros75, max, dormant]
-            with open(os.path.join(dirs, "simulation_data.csv"), 'a', newline="") as csvfile:
-                writer = csv.DictWriter(csvfile, fieldnames=cols)
-                for d in data_list:
-                    writer.writerow(d)
-
-
-def delete_simulation_data(dir, t_folder):
-    for dirs, subdirs, files in os.walk(dir):
-        if t_folder == os.path.split(dirs)[1]:
-            if os.path.exists(os.path.join(dirs, "simulation_data.csv")):
-                os.remove(os.path.join(dirs, "simulation_data.csv"))
-                print("DELETED simulation data for: ", os.path.split(os.path.split(dirs)[0])[1])
+    df = pd.read_csv(os.path.join(dir, "simulation_data.csv"))
+    if df[df["name"] == "count"].first_valid_index():
+        print(f"\rDeleting previous summation data...", end="")
+        first_id = df[df["name"] == "count"].first_valid_index()
+        df.drop(df.tail(df.shape[0] - first_id).index, inplace=True)
+        print(f"\rSumming simulation data...", end="")
+    df.dropna(inplace=True)
+    count = {"name": "count"}
+    mean = {"name": "mean"}
+    std = {"name": "std"}
+    min = {"name": "min"}
+    pros25 = {"name": "25%"}
+    pros50 = {"name": "50%"}
+    pros75 = {"name": "75%"}
+    max = {"name": "max"}
+    dormant = {"name": "dormant"}
+    cols = list(df.columns)
+    for col in cols:
+        if not col == "name":
+            if df[col].dtypes == object:
+                counts = Counter(list(df[col]))
+                count[col] = dict(counts)
+                mean[col] = counts.most_common()[0]
             else:
-                print("No simulation data found for: ", os.path.split(os.path.split(dirs)[0])[1])
+                stats = round(df[col].describe(), 1)
+                count[col] = stats["count"]
+                mean[col] = stats["mean"]
+                std[col] = stats["std"]
+                min[col] = stats["min"]
+                pros25[col] = stats["25%"]
+                pros50[col] = stats["50%"]
+                pros75[col] = stats["75%"]
+                max[col] = stats["max"]
+                dormant[col] = (df[col] == 0).sum()
+    df.to_csv(os.path.join(dir, "simulation_data.csv"), index=False)
+    data_list = [count, mean, std, min, pros25, pros50, pros75, max, dormant]
+    with open(os.path.join(dir, "simulation_data.csv"), 'a', newline="") as csvfile:
+        writer = csv.DictWriter(csvfile, fieldnames=cols)
+        for d in data_list:
+            writer.writerow(d)
+
+
+def delete_simulation_data(dir):
+    if os.path.exists(os.path.join(dir, "simulation_data.csv")):
+        os.remove(os.path.join(dir, "simulation_data.csv"))
+        print("DELETED simulation data for: ", os.path.split(os.path.split(dir)[0])[1])
+    else:
+        print("No simulation data found for: ", os.path.split(os.path.split(dir)[0])[1])
 
 
 def save_model(object, dir):
@@ -267,82 +264,134 @@ def load_model(dir):
         return (pickle.load(file))
 
 
-def plot_delay_categories(dir, t_folder, topology):
+def plot_delay_categories(dir):
     cat_list = C.DELAY_CATEGORIES_SHORTLIST
     possible_colors = C.DCAT_COLORS[:len(cat_list)]
     for dirs, subdirs, files in os.walk(dir):
-        top_temp = os.path.split(os.path.split(dirs)[0])[1].split(" ")[0]
-        if t_folder == os.path.split(dirs)[1] and topology == top_temp:
-            if os.path.exists(os.path.join(dirs, "simulation_data.csv")):
-                df = pd.read_csv(os.path.join(dirs, "simulation_data.csv"))
-                index = list(df.index[df["name"] == "count"])[0]
-                df_rows = df.loc[:index - 1]
-                data = [[] for x in range(df_rows.shape[0])]
-                for col in df_rows.keys():
-                    if col == "name":
-                        names = list(df_rows[col])
-                        for i, name in enumerate(names):
-                            f1 = re.findall(r'f1-([0-9]+)', name)[0]
-                            f2 = re.findall(r'f2-([0-9]+)', name)[0]
-                            d1 = re.findall(r'd1-([0-9]+)', name)[0]
-                            d2 = re.findall(r'd2-([0-9]+)', name)[0]
-                            config = (int(f1), int(f2), int(d1), int(d2))
-                            [data[i].append(x) for x in config]
-                    elif re.match("[0-9]+_[0-9]+$", col):
-                        conn = list(df_rows[col])
-                        for i, c in enumerate(conn):
-                            data[i].append(c)
-                data = sorted(data, key=lambda element: (element[0], element[1], element[2], element[3]))
-                x = []
-                y = []
-                z = []
-                for row in data:
-                    x.append(f"{row[0]}-{row[1]}")
-                    y.append(f"{row[2]}-{row[3]}")
-                    cat = [row[4], row[5]]
+        if os.path.exists(os.path.join(dirs, "simulation_data.csv")):
+            df = pd.read_csv(os.path.join(dirs, "simulation_data.csv"))
+            index = list(df.index[df["name"] == "count"])[0]
+            df_rows = df.loc[:index - 1]
+            data = [[] for x in range(df_rows.shape[0])]
+            for col in df_rows.keys():
+                if col == "name":
+                    names = list(df_rows[col])
+                    for i, name in enumerate(names):
+                        f1 = re.findall(r'f1-([0-9]+)', name)[0]
+                        f2 = re.findall(r'f2-([0-9]+)', name)[0]
+                        d1 = re.findall(r'd1-([0-9]+)', name)[0]
+                        d2 = re.findall(r'd2-([0-9]+)', name)[0]
+                        config = (int(f1), int(f2), int(d1), int(d2))
+                        [data[i].append(x) for x in config]
+                elif re.match("[0-9]+_[0-9]+$", col):
+                    conn = list(df_rows[col])
+                    for i, c in enumerate(conn):
+                        data[i].append(c)
+            data = sorted(data, key=lambda element: (element[0], element[1], element[2], element[3]))
+            x = []
+            y = []
+            z = []
+            for row in data:
+                x.append(f"{row[0]}-{row[1]}")
+                y.append(f"{row[2]}-{row[3]}")
+                cat = [row[4], row[5]]
 
-                    if any(i in cat for i in ["increasing", "decreasing", "min", "max"]):
-                        z.append("diverging")
-                    elif "uncategorized" in cat:
-                        z.append("uncategorized")
-                    elif "repeating" in cat:
-                        z.append("repeating")
-                    elif "converging" in cat:
-                        z.append("converging")
-                    else:
-                        raise Exception(f"Category {cat} not found!")
-                fig, ax = plt.subplots()
-                colors = []
-                for p in z:
-                    if p in cat_list:
-                        index = cat_list.index(p)
-                    else:
-                        raise Exception(f"Category not found: {p}")
-                    color = possible_colors[index]
-                    colors.append(color)
-                ax.scatter(y, x, s=0.1, c=colors)
-                ax.set_ylabel("Frequencies")
-                ax.set_xlabel("Delays")
-                plt.xticks(rotation=90)
-                ax.xaxis.set_major_locator(plt.MaxNLocator(50))
-                ax.yaxis.set_major_locator(plt.MaxNLocator(30))
-                # plt.locator_params(axis='x', nbins=10)
-                path = os.path.join(os.getcwd(), "delayVSfreq.png")
-                patches = [mpatches.Patch(color=col, label=cat) for col, cat in zip(possible_colors, cat_list)]
-                plt.legend(handles=patches, ncol=4, loc="upper center", bbox_to_anchor=(0.5, 1.2))
-                print("Saving data to: ", path)
-                plt.tight_layout()
-                plt.savefig(path)
-                plt.clf()
+                if any(i in cat for i in ["increasing", "decreasing", "min", "max"]):
+                    z.append("diverging")
+                elif "uncategorized" in cat:
+                    z.append("uncategorized")
+                elif "repeating" in cat:
+                    z.append("repeating")
+                elif "converging" in cat:
+                    z.append("converging")
+                else:
+                    raise Exception(f"Category {cat} not found!")
+            fig, ax = plt.subplots()
+            colors = []
+            for p in z:
+                if p in cat_list:
+                    index = cat_list.index(p)
+                else:
+                    raise Exception(f"Category not found: {p}")
+                color = possible_colors[index]
+                colors.append(color)
+            ax.scatter(y, x, s=0.1, c=colors)
+            ax.set_ylabel("Spike intervals (ms)")
+            ax.set_xlabel("Delays (ms)")
+            plt.xticks(rotation=90)
+            ax.xaxis.set_major_locator(plt.MaxNLocator(50))
+            ax.yaxis.set_major_locator(plt.MaxNLocator(30))
+            # plt.locator_params(axis='x', nbins=10)
+            path = os.path.join(os.getcwd(), "delayVSfreq.png")
+            patches = [mpatches.Patch(color=col, label=cat) for col, cat in zip(possible_colors, cat_list)]
+            plt.legend(handles=patches, ncol=4, loc="upper center", bbox_to_anchor=(0.5, 1.2))
+            print("Saving data to: ", path)
+            plt.tight_layout()
+            plt.savefig(path)
+            plt.clf()
 
 
 def plot_spike_rate_data(path, identifier):
     fig, ax = plt.subplots()
     df = pd.read_csv(path)
     data = df.loc[df["name"].str.startswith(identifier)]
-    x = data["i1_SR"]
-    y = data["i2_SR"]
-    z = data["n0_SR"]
-    ax.scatter(y, x, s=0.1, c=z, cmap=plt.cm.get_cmap("jet"))
-    plt.colorbar(z)
+    names = list(data["name"])
+    data_unsort = [[] for x in range(data.shape[0])]
+    SR = data["n0_SR"]
+    for i, name in enumerate(names):
+        f1 = re.findall(r'f1-([0-9]+)', name)[0]
+        f2 = re.findall(r'f2-([0-9]+)', name)[0]
+        d1 = re.findall(r'd1-([0-9]+)', name)[0]
+        d2 = re.findall(r'd2-([0-9]+)', name)[0]
+        data_unsort[i] = [int(d1),int(d2),int(f1), int(f2), SR[i]]
+
+    data_sort = sorted(data_unsort, key=lambda element: (element[0], element[1], element[2], element[3]))
+    x = [f"{f[0]}-{f[1]}" for f in data_sort]
+    y = [f"{f[2]}-{f[3]}" for f in data_sort]
+    z = [f[4] for f in data_sort]
+    norm = matplotlib.colors.Normalize(vmin=0, vmax=max(z))
+    ax.scatter(x, y, s=0.1, c=z, cmap=plt.cm.get_cmap("Reds"))
+    fig.colorbar(plt.cm.ScalarMappable(norm=norm, cmap=plt.cm.get_cmap("Reds")), ax=ax)
+    ax.set_xlabel("Delays (ms)")
+    ax.set_ylabel("Spike intervals (ms)")
+    plt.xticks(rotation=90)
+    ax.xaxis.set_major_locator(plt.MaxNLocator(50))
+    ax.yaxis.set_major_locator(plt.MaxNLocator(30))
+    plt.tight_layout()
     plt.savefig("SR_plot")
+
+def plot_categories_PCA(path):
+    df = pd.read_csv(path)
+    first_id = df[df["name"] == "count"].first_valid_index()
+    df.drop(df.tail(df.shape[0] - first_id).index, inplace=True)
+    df.dropna(inplace=True)
+    names = list(df["name"])
+    data_unsort = [[] for x in range(df.shape[0])]
+    labels = df.keys()
+    connections = [x for x in labels if re.search("^\d+_\d+$",str(x))]
+    z = [df[c] for c in connections]
+
+    for i, name in enumerate(names):
+        f1 = re.findall(r'f1-([0-9]+)', name)[0]
+        f2 = re.findall(r'f2-([0-9]+)', name)[0]
+        f3 = re.findall(r'f3-([0-9]+)', name)[0]
+        d1 = re.findall(r'd1-([0-9]+)', name)[0]
+        d2 = re.findall(r'd2-([0-9]+)', name)[0]
+        d3 = re.findall(r'd3-([0-9]+)', name)[0]
+        config = [int(d1), int(d2), int(d3), int(f1), int(f2), int(f3)]
+        cat = [c[i] for c in z]
+        if any(i in cat for i in ["increasing", "decreasing", "min", "max"]):
+            config.append("diverging")
+        elif "uncategorized" in cat:
+            config.append("uncategorized")
+        elif "repeating" in cat:
+            config.append("repeating")
+        elif "converging" in cat:
+            config.append("converging")
+        else:
+            raise Exception(f"Category {cat} not found!")
+        data_unsort[i] = config
+
+    data_sort = sorted(data_unsort, key=lambda element: (element[0], element[1], element[2], element[3]))
+    for d in data_sort:
+        print(d)
