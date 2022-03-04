@@ -293,10 +293,6 @@ def plot_delay_categories(dir, file_title, identifier_title, identifiers, nd):
                             f.append(int(re.findall(f'{fx}-([0-9]+)', name)[0]))
                         for dx in range(nd):
                             d.append(int(re.findall(f'd{dx + 1}-([0-9]+)', name)[0]))
-                        #f1 = re.findall(r'f1-([0-9]+)', name)[0]
-                        #f2 = re.findall(r'f2-([0-9]+)', name)[0]
-                        #d1 = re.findall(r'd1-([0-9]+)', name)[0]
-                        #d2 = re.findall(r'd2-([0-9]+)', name)[0]
                         config = (f + d)
                         [data[i].append(x) for x in config]
                 elif re.match("[0-9]+_[0-9]+$", col):
@@ -344,13 +340,19 @@ def plot_delay_categories(dir, file_title, identifier_title, identifiers, nd):
                     raise Exception(f"Category not found: {p}")
                 color = possible_colors[index]
                 colors.append(color)
-            ax.scatter(x, y, s=0.1, c=colors)
-            ax.set_ylabel(identifier_title)
-            ax.set_xlabel("Delays (ms)")
+            if len(x) > len(y):
+                ax.scatter(x, y, s=0.1, c=colors)
+                ax.set_ylabel(identifier_title)
+                ax.set_xlabel("Delays (ms)")
+                ax.xaxis.set_major_locator(plt.MaxNLocator(min(50, len(set(x)))))
+                ax.yaxis.set_major_locator(plt.MaxNLocator(min(30, len(set(y)))))
+            else:
+                ax.scatter(y, x, s=0.1, c=colors)
+                ax.set_xlabel(identifier_title)
+                ax.set_ylabel("Delays (ms)")
+                ax.xaxis.set_major_locator(plt.MaxNLocator(min(50, len(set(y)))))
+                ax.yaxis.set_major_locator(plt.MaxNLocator(min(30, len(set(x)))))
             plt.xticks(rotation=90)
-            ax.xaxis.set_major_locator(plt.MaxNLocator(min(50, len(set(x)))))
-            ax.yaxis.set_major_locator(plt.MaxNLocator(min(30, len(set(y)))))
-            # plt.locator_params(axis='x', nbins=10)
             path = os.path.join(os.getcwd(), f"{file_title}.png")
             patches = [mpatches.Patch(color=col, label=cat) for col, cat in zip(possible_colors, cat_list)]
             plt.legend(handles=patches, ncol=4, loc="upper center", bbox_to_anchor=(0.5, 1.2))
@@ -403,13 +405,23 @@ def plot_spike_rate_data(path, file_title, identifier_title, identifiers, nd):
         y.append(y_str)
         z.append(row[-1])
     norm = matplotlib.colors.Normalize(vmin=0, vmax=max(z))
-    ax.scatter(x, y, s=0.1, c=z, cmap=plt.cm.get_cmap("Reds"))
+    if len(x) > len(y):
+        ax.scatter(x, y, s=0.1, c=z, cmap=plt.cm.get_cmap("Reds"))
+        ax.set_xlabel("Delays (ms)")
+        ax.set_ylabel(identifier_title)
+        plt.xticks(rotation=90)
+        ax.xaxis.set_major_locator(plt.MaxNLocator(min(50, len(set(x)))))
+        ax.yaxis.set_major_locator(plt.MaxNLocator(min(30, len(set(y)))))
+    else:
+        ax.scatter(y, x, s=0.1, c=z, cmap=plt.cm.get_cmap("Reds"))
+        ax.set_ylabel("Delays (ms)")
+        ax.set_xlabel(identifier_title)
+        plt.xticks(rotation=90)
+        ax.xaxis.set_major_locator(plt.MaxNLocator(min(50, len(set(y)))))
+        ax.yaxis.set_major_locator(plt.MaxNLocator(min(30, len(set(x)))))
+
     fig.colorbar(plt.cm.ScalarMappable(norm=norm, cmap=plt.cm.get_cmap("Reds")), ax=ax)
-    ax.set_xlabel("Delays (ms)")
-    ax.set_ylabel(identifier_title)
-    plt.xticks(rotation=90)
-    ax.xaxis.set_major_locator(plt.MaxNLocator(min(50, len(set(x)))))
-    ax.yaxis.set_major_locator(plt.MaxNLocator(min(30, len(set(y)))))
+
     plt.tight_layout()
     plt.savefig(file_title)
 
