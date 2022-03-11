@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 import re
 import Constants as C
 import matplotlib.patches as mpatches
+import shutil
 from sklearn.preprocessing import StandardScaler
 
 
@@ -34,61 +35,58 @@ def compile_simulation_data(dir):
         print(f"\rCreating new simulation data file...", end="\t")
     print(f"\rCompiling simulation data for {dir}", end="")
     compiled_data = []
-    try:
-        for dirs, subdirs, files in os.walk(dir):
-            #SR_dir = os.path.join(dirs, "SR_data.json")
-            # if t_folder == os.path.split(dirs)[1] and not os.path.exists(SR_dir):
-            #    get_SR_data(dirs)
-            if os.path.split(dirs)[1] not in existing_sims and os.path.split(os.path.split(dirs)[0])[1].startswith("t"):
-                data_dict = {}
-                data_dict["name"] = os.path.basename(os.path.normpath(dirs))
-                neuron_fp = os.path.join(dirs, "neuron_data.json")
-                if os.path.exists(neuron_fp):
-                    try:
-                        with open(neuron_fp, "r") as file:
-                            data = json.loads(file.read())
-                            for id in data:
-                                spikes = len(data[id]["spikes"])
-                                spike_rate = spikes / (data[id]["duration"] / 1000)
-                                type = "i" if data[id]["type"] == "<class 'Population.Input'>" else "n"
-                                data_dict[f"{type}{id}_SR"] = spike_rate
-                    except:
-                        print(f"Unable to open: ", {os.path.join(dirs, "neuron_data.json")})
-                synapse_fp = os.path.join(dirs, "synapse_data.json")
-                if os.path.exists(synapse_fp):
-                    try:
-                        with open(synapse_fp, "r") as file:
-                            data = json.loads(file.read())
-                            keys = data.keys()
-                            for k in keys:
-                                l = data[k]["d_hist"]["d"]
-                                saturation = check_saturation(l, C.SATURATION_LENGTH)
-                                if saturation:
-                                    data_dict[k] = saturation
+    for dirs, subdirs, files in os.walk(dir):
+        #SR_dir = os.path.join(dirs, "SR_data.json")
+        # if t_folder == os.path.split(dirs)[1] and not os.path.exists(SR_dir):
+        #    get_SR_data(dirs)
+        if os.path.split(dirs)[1] not in existing_sims and os.path.split(os.path.split(dirs)[0])[1].startswith("t"):
+            data_dict = {}
+            data_dict["name"] = os.path.basename(os.path.normpath(dirs))
+            neuron_fp = os.path.join(dirs, "neuron_data.json")
+            if os.path.exists(neuron_fp):
+                with open(neuron_fp, "r") as file:
+                    data = json.load(file)
+                    for id in data:
+                        spikes = len(data[id]["spikes"])
+                        spike_rate = spikes / (data[id]["duration"] / 1000)
+                        type = "i" if data[id]["type"] == "<class 'Population.Input'>" else "n"
+                        data_dict[f"{type}{id}_SR"] = spike_rate
+            synapse_fp = os.path.join(dirs, "synapse_data.json")
+            if os.path.exists(synapse_fp):
+                with open(synapse_fp, "r") as file:
+                    data = json.load(file)
+                    keys = data.keys()
+                    for k in keys:
+                        try:
+                            l = data[k]["d_hist"]["d"]
+                        except:
+                            l = data[k]["d_hist"]
+                        saturation = check_saturation(l, C.SATURATION_LENGTH)
+                        if saturation:
+                            data_dict[k] = saturation
+                        else:
+                            if check_convergence(l, C.CONVERGENT_LENGTH):
+                                if k in data_dict.keys():
+                                    data_dict[k] += "-converging"
                                 else:
-                                    if check_convergence(l, C.CONVERGENT_LENGTH):
-                                        if k in data_dict.keys():
-                                            data_dict[k] += "-converging"
-                                        else:
-                                            data_dict[k] = "converging"
-                                    elif check_repetitiveness(l, C.REPETITIVE_LENGTH):
-                                        if k in data_dict.keys():
-                                            data_dict[k] += "-repeating"
-                                        else:
-                                            data_dict[k] = "repeating"
-                                    divergence = check_divergence(data[k]["d_hist"])
-                                    if divergence:
-                                        data_dict[k] = divergence
-                                if k not in data_dict.keys():
-                                    data_dict[k] = "uncategorized"
-                    except:
-                        print(f"Unable to open: ", synapse_fp)
-
-                compiled_data.append(data_dict)
-    except:
-        print("Compiling failed. Saving current data...")
-        save_sim_data(dir, compiled_data)
+                                    data_dict[k] = "converging"
+                            elif check_repetitiveness(l, C.REPETITIVE_LENGTH):
+                                if k in data_dict.keys():
+                                    data_dict[k] += "-repeating"
+                                else:
+                                    data_dict[k] = "repeating"
+                            try:
+                                divergence = check_divergence(data[k]["d_hist"]["d"])
+                            except:
+                                divergence = check_divergence(data[k]["d_hist"])
+                            if divergence:
+                                data_dict[k] = divergence
+                        if k not in data_dict.keys():
+                            data_dict[k] = "uncategorized"
+            compiled_data.append(data_dict)
     save_sim_data(dir, compiled_data)
+    print("Finished compiling data for: ", dir)
+
 
 def save_sim_data(dir, data):
     path = os.path.join(dir, "simulation_data.csv")
@@ -129,7 +127,7 @@ def check_convergence(l, pattern_length):
 
 
 def check_divergence(l):
-    slope = linregress(l["t"], l["d"])[0]
+    slope = linregress(np.round(np.arange(0, np.round(len(l)/10, 1), 0.1), 1), l)[0]
     if slope > C.SLOPE_THRESHOLD:
         return "increasing"
     elif slope < -C.SLOPE_THRESHOLD:
@@ -254,7 +252,7 @@ def sum_simulation_data(dir):
         writer = csv.DictWriter(csvfile, fieldnames=cols)
         for d in data_list:
             writer.writerow(d)
-
+    print("Finished summing data for: ", dir)
 
 def delete_simulation_data(dir):
     if os.path.exists(os.path.join(dir, "simulation_data.csv")):
@@ -299,7 +297,23 @@ def plot_delay_categories(dir, file_title, identifier_title, identifiers, nd):
                     conn = list(df_rows[col])
                     for i, c in enumerate(conn):
                         data[i].append(c)
-            data = sorted(data, key=lambda element: tuple([element[x] for x in range(len(identifiers) + nd)]))
+
+
+            data = sorted(data, key=lambda element: (np.mean([abs(x[0] - x[1]) for x in itertools.combinations([element[x] for x in
+                                                      range(len(identifiers))], 2)]),
+                                                  sum(element[x] for x in
+                                                      range(len(identifiers), len(identifiers) + nd)),
+                                                  element[0], element[len(identifiers)]))
+            '''
+
+            data = sorted(data, key=lambda element: (np.mean([abs(x[0] - x[1]) for x in itertools.combinations([element[x] for x in
+                                                                       range(len(identifiers))], 2)]),
+            np.mean([abs(x[0] - x[1]) for x in
+                     itertools.combinations([element[x] for x in
+                                             range(len(identifiers), len(identifiers) + nd)], 2)]),
+            element[0], element[len(identifiers)]))
+            '''
+
             x = []
             y = []
             z = []
@@ -340,18 +354,11 @@ def plot_delay_categories(dir, file_title, identifier_title, identifiers, nd):
                     raise Exception(f"Category not found: {p}")
                 color = possible_colors[index]
                 colors.append(color)
-            if len(x) > len(y):
-                ax.scatter(x, y, s=0.1, c=colors)
-                ax.set_ylabel(identifier_title)
-                ax.set_xlabel("Delays (ms)")
-                ax.xaxis.set_major_locator(plt.MaxNLocator(min(50, len(set(x)))))
-                ax.yaxis.set_major_locator(plt.MaxNLocator(min(30, len(set(y)))))
-            else:
-                ax.scatter(y, x, s=0.1, c=colors)
-                ax.set_xlabel(identifier_title)
-                ax.set_ylabel("Delays (ms)")
-                ax.xaxis.set_major_locator(plt.MaxNLocator(min(50, len(set(y)))))
-                ax.yaxis.set_major_locator(plt.MaxNLocator(min(30, len(set(x)))))
+            ax.scatter(y, x, s=0.1, c=colors)
+            ax.set_xlabel(identifier_title)
+            ax.set_ylabel("Delays (ms)")
+            ax.xaxis.set_major_locator(plt.MaxNLocator(min(50, len(set(y)))))
+            ax.yaxis.set_major_locator(plt.MaxNLocator(min(30, len(set(x)))))
             plt.xticks(rotation=90)
             path = os.path.join(os.getcwd(), f"{file_title}.png")
             patches = [mpatches.Patch(color=col, label=cat) for col, cat in zip(possible_colors, cat_list)]
@@ -371,7 +378,6 @@ def plot_spike_rate_data(path, file_title, identifier_title, identifiers, nd):
     names = list(df_rows["name"])
     data = [[] for x in range(df_rows.shape[0])]
     SR_keys = [k for k in list(df.keys()) if k.endswith("SR") and k.startswith("n")]
-
     for i, name in enumerate(names):
         f = []
         d = []
@@ -383,14 +389,26 @@ def plot_spike_rate_data(path, file_title, identifier_title, identifiers, nd):
         config = (f + d)
         config.append(sr)
         [data[i].append(x) for x in config]
-    data_sort = sorted(data, key=lambda element: tuple([element[x] for x in range(len(identifiers) + nd)]))
+
+    data_sort = sorted(data, key=lambda element: (np.mean([abs(x[0] - x[1]) for x in itertools.combinations([element[x] for x in
+                                                      range(len(identifiers))], 2)]),
+                                                  sum(element[x] for x in
+                                                      range(len(identifiers), len(identifiers) + nd)),
+                                                  element[0], element[len(identifiers)]))
+    '''
+    data_sort = sorted(data, key=lambda element: (np.mean([abs(x[0] - x[1]) for x in itertools.combinations([element[x] for x in
+                                                      range(len(identifiers))], 2)]),
+                                                  np.mean([abs(x[0] - x[1]) for x in
+                                                           itertools.combinations([element[x] for x in
+                                                                                   range(len(identifiers), len(identifiers) + nd)], 2)]),
+                                                  element[0], element[len(identifiers)]))
+    '''
     x = []
     y = []
     z = []
     for row in data_sort:
         x_str = ""
         y_str = ""
-        cat = []
         for yid in range(len(identifiers)):
             if yid < len(identifiers) - 1:
                 y_str += f"{row[yid]}-"
@@ -405,25 +423,17 @@ def plot_spike_rate_data(path, file_title, identifier_title, identifiers, nd):
         y.append(y_str)
         z.append(row[-1])
     norm = matplotlib.colors.Normalize(vmin=0, vmax=max(z))
-    if len(x) > len(y):
-        ax.scatter(x, y, s=0.1, c=z, cmap=plt.cm.get_cmap("Reds"))
-        ax.set_xlabel("Delays (ms)")
-        ax.set_ylabel(identifier_title)
-        plt.xticks(rotation=90)
-        ax.xaxis.set_major_locator(plt.MaxNLocator(min(50, len(set(x)))))
-        ax.yaxis.set_major_locator(plt.MaxNLocator(min(30, len(set(y)))))
-    else:
-        ax.scatter(y, x, s=0.1, c=z, cmap=plt.cm.get_cmap("Reds"))
-        ax.set_ylabel("Delays (ms)")
-        ax.set_xlabel(identifier_title)
-        plt.xticks(rotation=90)
-        ax.xaxis.set_major_locator(plt.MaxNLocator(min(50, len(set(y)))))
-        ax.yaxis.set_major_locator(plt.MaxNLocator(min(30, len(set(x)))))
-
+    ax.scatter(y, x, s=0.1, c=z, cmap=plt.cm.get_cmap("Reds"))
+    ax.set_ylabel("Delays (ms)")
+    ax.set_xlabel(identifier_title)
+    plt.xticks(rotation=90)
+    ax.xaxis.set_major_locator(plt.MaxNLocator(min(50, len(set(y)))))
+    ax.yaxis.set_major_locator(plt.MaxNLocator(min(30, len(set(x)))))
     fig.colorbar(plt.cm.ScalarMappable(norm=norm, cmap=plt.cm.get_cmap("Reds")), ax=ax)
-
     plt.tight_layout()
-    plt.savefig(file_title)
+    path = os.path.join(os.getcwd(), f"{file_title}.png")
+    print("Saving data to: ", path)
+    plt.savefig(path)
 
 def plot_categories_PCA(path):
     df = pd.read_csv(path)
@@ -460,3 +470,37 @@ def plot_categories_PCA(path):
     data_sort = sorted(data_unsort, key=lambda element: (element[0], element[1], element[2], element[3]))
     for d in data_sort:
         print(d)
+
+def reduce_sim_file_size(dir):
+    for dirs, subdirs, files in os.walk(dir):
+        if "synapse_data.json" in files:
+            file = os.path.join(dirs, "synapse_data.json")
+            new_data = {}
+            with open(file, "r") as json_file:
+                try:
+                    data = json.load(json_file)
+                except:
+                    print("Unable to load:", file)
+                if any([k for k in data.keys() if type(data[k]["d_hist"]) == dict]):
+                    for k in data.keys():
+                        if type(data[k]["d_hist"]) == dict:
+                            data[k]["d_hist"] = data[k]["d_hist"]["d"]
+                    new_data = data
+            if new_data:
+                os.remove(file)
+                with open(file, "w") as new_file:
+                    json.dump(data, new_file)
+                    print("Made changes to: ", file)
+
+def change_name(dir, string_to_remove):
+    # MÅ FIKSES!!!
+    main_dir = os.path.split(dir)[0]
+    if re.search(string_to_remove,dir):
+        sd = dir.replace(string_to_remove, "")
+        dd = os.path.join(main_dir, sd)
+        print("before: ", dir)
+        try:
+            os.rename(os.path.join(main_dir,dir),dd)
+            print("after: ", dd)
+        except:
+            print(dir)

@@ -13,6 +13,7 @@ import itertools
 import json
 import Constants
 import Data
+import matplotlib.colors
 
 sns.set()
 global T, DT, ID
@@ -32,6 +33,7 @@ mpl.use("Agg")
 
 class Input:
     global T
+
     def __init__(self, spike_times=False, p=0.0, seed=False):
         global ID
         self.ID = str(ID)
@@ -40,11 +42,11 @@ class Input:
         self.spike_times = spike_times
         self.p = p
         self.down = []
-
         if seed:
             self.rng = np.random.default_rng(seed)
         else:
             self.rng = np.random.default_rng()
+
     def update(self, neurons=None):
         if self.spike_times and T in self.spike_times:
             [syn.add_spike() for syn in self.down]
@@ -78,9 +80,18 @@ class Population:
         for neuron in reversed(self.neurons):
             self.neurons[neuron].update(self.neurons)
 
-    def create_input(self, spike_times=[], p=0.0, seed=False):
+    def create_input(self, spike_times=[], p=0.0, j=False, wj=False, seed=False):
         inp = Input(spike_times, p, seed)
         self.add_neuron(inp)
+        if j:
+            for ij in j:
+                if type(wj) == list:
+                    w = wj.pop(0)
+                elif wj:
+                    w = wj
+                else:
+                    w = Constants.W
+                self.create_synapse(inp.ID, ij, w=w, d=1, trainable=False)
         return inp
 
     def add_neuron(self, neuron):
@@ -338,7 +349,7 @@ class Population:
             labels[node] = int(node)
         nx.draw_networkx_labels(G, pos, labels, font_size=8)
         ax = plt.gca()
-        colors = plt.cm.rainbow(np.linspace(0, 1, int(MAX_DELAY / DT)))
+        colors = plt.cm.Reds(np.linspace(0, 1, int(MAX_DELAY / DT)))
         color_id = {}
         for d, c in enumerate(colors):
             color_id[round(d*DT + DT,1)] = c
@@ -354,10 +365,12 @@ class Population:
         patches = []
         for i in range(1, MAX_DELAY + 1):
             patches.append(mpatches.Patch(color=color_id[i], label=f'd={i}'))
-        plt.legend(loc="lower left", fancybox=True, bbox_to_anchor=(1.06, 0), handles=patches, prop={'size': 8})
+        #plt.legend(loc="lower left", fancybox=True, bbox_to_anchor=(1.06, 0), handles=patches, prop={'size': 8})
+        norm = matplotlib.colors.Normalize(vmin=0, vmax=MAX_DELAY + 1)
+        plt.colorbar(plt.cm.ScalarMappable(norm=norm, cmap=plt.cm.get_cmap("Reds")), ax=ax)
         plt.tight_layout()
         if save:
-            plt.savefig(f"{self.dir}/network.png")
+            plt.savefig(os.path.join(self.dir, "network.png"))
             plt.close()
         else:
             return plt
@@ -373,9 +386,9 @@ class Population:
         sub.set_ylabel("Delay (ms)")
         sub.set_ylim(0, MAX_DELAY)
         sub.set_yticks(np.arange(0, MAX_DELAY + 1, 2))
-        sub.legend(handles, bbox_to_anchor=(1.05, 1), prop={"size":8})
+        sub.legend(handles, bbox_to_anchor=(1, 1), prop={"size":8}, ncol=2)
         fig.tight_layout()
-        fig.savefig(f"{self.dir}/delays.png")
+        fig.savefig(os.path.join(self.dir, "delays.png"))
         plt.close()
 
     def plot_raster(self):
@@ -388,7 +401,7 @@ class Population:
         sub.set_yticks(range(len(self.neurons)))
         sub.set_yticklabels([x if type(self.neurons[x]) != Input else f"{x} (Input)" for x in self.neurons])
         fig.tight_layout()
-        fig.savefig(f"{self.dir}/spikes.png")
+        fig.savefig(os.path.join(self.dir, "spikes.png"))
         plt.close()
 
     def plot_membrane_potential(self, IDs=False):
@@ -408,7 +421,7 @@ class Population:
         sub.set_ylim(-90, 40)
         sub.legend(handles, bbox_to_anchor=(1.05, 1), prop={"size": 8})
         fig.tight_layout()
-        fig.savefig(f"{self.dir}/potentials.png")
+        fig.savefig(os.path.join(self.dir, "potentials.png"))
         plt.close()
 
 
@@ -423,15 +436,15 @@ class Population:
         start = time.time()
         date = datetime.now().strftime("%d-%B-%Y_%H-%M-%S")
         if self.name:
-            self.dir = f"{dir}{self.name}"
+            self.dir = os.path.join(dir, self.name)
         else:
-            self.dir = f"{dir}{date}"
+            self.dir = os.path.join(dir, date)
         cnt = 1
         while os.path.exists(self.dir):
             if self.name:
-                self.dir = f"{dir}{self.name}_{cnt}"
+                self.dir = os.path.join(dir, f"{self.name}_{cnt}")
             else:
-                self.dir = f"{dir}{date}_{cnt}"
+                self.dir = os.path.join(dir, f"{date}_{cnt}")
             cnt += 1
         os.makedirs(self.dir, exist_ok=True)
         last_100_stop = []
@@ -453,7 +466,7 @@ class Population:
                 fig = self.show_network(save=False)
                 fig.title(f"Time={T}ms")
                 file_name = "t" + str(T).replace(".","").rjust(10,"0")
-                fig.savefig(f"{self.dir}/{file_name}.png")
+                fig.savefig(os.path.join(self.dir, f"{file_name}.png"))
                 fig.close()
         self.save_neuron_data()
         self.save_synapse_data()
@@ -475,7 +488,7 @@ class Population:
             ref_t = None if isinstance(neuron, Input) else neuron.ref_t
             spikes = list(neuron.spikes)
             data[id] = {"duration" : T, "type" : type_, "n_up" : n_up, "n_down" : n_down, "up" : up, "down" : down, "ref_t" : ref_t, "spikes": spikes}
-        with open(f"{self.dir}/neuron_data.json", "w") as file:
+        with open(os.path.join(self.dir, "neuron_data.json"), "w") as file:
             json.dump(data, file)
 
     def save_synapse_data(self):
@@ -487,8 +500,8 @@ class Population:
             post = synapse.post_window
             trainable = synapse.trainable
             d_hist = synapse.d_hist
-            data[f"{synapse.i}_{synapse.j}"] = {"duration" : T, "w" : w, "pre_window" : pre, "post_window" : post, "trainable" : trainable, "d_hist" : d_hist}
-        with open(f"{self.dir}/synapse_data.json", "w") as file:
+            data[f"{synapse.i}_{synapse.j}"] = {"duration" : T, "w" : w, "pre_window" : pre, "post_window" : post, "trainable" : trainable, "d_hist" : d_hist["d"]}
+        with open(os.path.join(self.dir, "synapse_data.json"), "w") as file:
             json.dump(data, file)
 
     class Synapse:

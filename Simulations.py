@@ -7,7 +7,7 @@ import os
 import random
 from mpl_toolkits import mplot3d
 from matplotlib.ticker import MaxNLocator
-import Constants
+import Constants as C
 
 COLORS = Constants.COLORS
 
@@ -653,7 +653,7 @@ def run_xnxi_alt(dir, t, n, i, l_pattern, l_interm, delay_seed, input_seed, offs
     input_rng = np.random.default_rng(input_seed)
     pop = Population((n, RS), name=name)
     ff_d = delay_list if delay_list else list(np.arange(delay_range[0], delay_range[1], 0.1))
-    pop.create_feed_forward_connections(d=ff_d, w=16, trainable=True, seed=delay_seed)
+    pop.create_feed_forward_connections(d=ff_d, w=C.W, trainable=True, seed=delay_seed)
     if offset and delay_list:
         for x in range(i):
             offset1 = offset.pop(0)
@@ -669,7 +669,7 @@ def run_xnxi_alt(dir, t, n, i, l_pattern, l_interm, delay_seed, input_seed, offs
                 flip *= -1
             inp = pop.create_input(pattern)
             for j in list(pop.neurons.copy())[:int(np.ceil(np.sqrt(n)))]:
-                pop.create_synapse(inp.ID, j, w=16, d=delay_list.pop())
+                pop.create_synapse(inp.ID, j, w=C.W, d=delay_list.pop())
     else:
         for x in range(i):
             offset1 = input_rng.integers(0, 11)
@@ -685,7 +685,7 @@ def run_xnxi_alt(dir, t, n, i, l_pattern, l_interm, delay_seed, input_seed, offs
                 flip *= -1
             inp = pop.create_input(pattern)
             for j in list(pop.neurons.copy())[:int(np.ceil(np.sqrt(n)))]:
-                pop.create_synapse(inp.ID, j, w=16, d=round(delay_rng.integers(150, 251) / 10, 1))
+                pop.create_synapse(inp.ID, j, w=C.W, d=round(delay_rng.integers(150, 251) / 10, 1))
     pop.structure = "grid"
     pop.run(dir, t, dt=0.1, plot_network=False)
     pop.plot_delays()
@@ -698,14 +698,14 @@ def run_xnxi_rep(dir, t, n, i, delay_seed, input_seed, name=False):
     delay_rng = np.random.default_rng(delay_seed)
     input_rng = np.random.default_rng(input_seed)
     pop = Population((n, RS), name=name)
-    pop.create_feed_forward_connections(d=list(np.arange(15, 25.1, 0.1)), w=16, trainable=True, seed=delay_seed)
+    pop.create_feed_forward_connections(d=list(np.arange(15, 25.1, 0.1)), w=C.W, trainable=True, seed=delay_seed)
     period = input_rng.integers(30, 61)
     for x in range(i):
         offset = input_rng.integers(0, 11)
         pattern = [offset + (period * x) for x in range(int(np.ceil((t-offset)/period))) if offset + (period * x) < t]
         inp = pop.create_input(pattern)
         for y in range(int(np.ceil(np.sqrt(n)))):
-            pop.create_synapse(inp.ID, y, w=16, d=round(delay_rng.integers(150, 251) / 10, 1))
+            pop.create_synapse(inp.ID, y, w=C.W, d=round(delay_rng.integers(150, 251) / 10, 1))
     pop.structure = "grid"
     pop.run(dir, t, dt=0.1, plot_network=False)
     pop.plot_delays()
@@ -718,7 +718,7 @@ def run_xnxi_async(dir, t, n, i, delay_seed, input_seed, freq_list = [], delay_l
     input_rng = np.random.default_rng(input_seed)
     pop = Population((n, RS), name=name)
     ff_d = delay_list if delay_list else list(np.arange(delay_range[0], delay_range[1], 0.1))
-    pop.create_feed_forward_connections(d=ff_d, w=16, trainable=True, seed=delay_seed)
+    pop.create_feed_forward_connections(d=ff_d, w=C.W, trainable=True, seed=delay_seed)
     for x in range(i):
         if freq_list:
             freq = freq_list.pop(0)
@@ -728,7 +728,7 @@ def run_xnxi_async(dir, t, n, i, delay_seed, input_seed, freq_list = [], delay_l
         inp = pop.create_input(xi)
         for y in range(int(np.ceil(np.sqrt(n)))):
             d = delay_list.pop(0) if delay_list else delay_rng.choice(np.arange(delay_range[0], delay_range[1], 0.1))
-            pop.create_synapse(inp.ID, y, w=16, d=d)
+            pop.create_synapse(inp.ID, y, w=C.W, d=d)
     pop.structure = "grid"
     pop.run(dir, t, dt=0.1, plot_network=False)
     pop.plot_delays()
