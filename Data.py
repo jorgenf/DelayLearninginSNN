@@ -16,6 +16,8 @@ import Constants as C
 import matplotlib.patches as mpatches
 import shutil
 from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
+
 
 
 def compile_simulation_data(dir):
@@ -298,7 +300,7 @@ def plot_delay_categories(dir, file_title, identifier_title, identifiers, nd):
                     for i, c in enumerate(conn):
                         data[i].append(c)
 
-
+            '''
             data = sorted(data, key=lambda element: (np.mean([abs(x[0] - x[1]) for x in itertools.combinations([element[x] for x in
                                                       range(len(identifiers))], 2)]),
                                                   sum(element[x] for x in
@@ -312,7 +314,7 @@ def plot_delay_categories(dir, file_title, identifier_title, identifiers, nd):
                      itertools.combinations([element[x] for x in
                                              range(len(identifiers), len(identifiers) + nd)], 2)]),
             element[0], element[len(identifiers)]))
-            '''
+
 
             x = []
             y = []
@@ -374,7 +376,6 @@ def plot_spike_rate_data(path, file_title, identifier_title, identifiers, nd):
     df = pd.read_csv(path)
     index = list(df.index[df["name"] == "count"])[0]
     df_rows= df.loc[:index - 1]
-    #data = df.loc[df["name"].str.startswith(identifiers)]
     names = list(df_rows["name"])
     data = [[] for x in range(df_rows.shape[0])]
     SR_keys = [k for k in list(df.keys()) if k.endswith("SR") and k.startswith("n")]
@@ -389,7 +390,7 @@ def plot_spike_rate_data(path, file_title, identifier_title, identifiers, nd):
         config = (f + d)
         config.append(sr)
         [data[i].append(x) for x in config]
-
+    '''
     data_sort = sorted(data, key=lambda element: (np.mean([abs(x[0] - x[1]) for x in itertools.combinations([element[x] for x in
                                                       range(len(identifiers))], 2)]),
                                                   sum(element[x] for x in
@@ -401,8 +402,8 @@ def plot_spike_rate_data(path, file_title, identifier_title, identifiers, nd):
                                                   np.mean([abs(x[0] - x[1]) for x in
                                                            itertools.combinations([element[x] for x in
                                                                                    range(len(identifiers), len(identifiers) + nd)], 2)]),
-                                                  element[0], element[len(identifiers)]))
-    '''
+                                                  element[:len(identifiers) + nd]))
+
     x = []
     y = []
     z = []
@@ -435,41 +436,6 @@ def plot_spike_rate_data(path, file_title, identifier_title, identifiers, nd):
     print("Saving data to: ", path)
     plt.savefig(path)
 
-def plot_categories_PCA(path):
-    df = pd.read_csv(path)
-    first_id = df[df["name"] == "count"].first_valid_index()
-    df.drop(df.tail(df.shape[0] - first_id).index, inplace=True)
-    df.dropna(inplace=True)
-    names = list(df["name"])
-    data_unsort = [[] for x in range(df.shape[0])]
-    labels = df.keys()
-    connections = [x for x in labels if re.search("^\d+_\d+$",str(x))]
-    z = [df[c] for c in connections]
-
-    for i, name in enumerate(names):
-        f1 = re.findall(r'f1-([0-9]+)', name)[0]
-        f2 = re.findall(r'f2-([0-9]+)', name)[0]
-        f3 = re.findall(r'f3-([0-9]+)', name)[0]
-        d1 = re.findall(r'd1-([0-9]+)', name)[0]
-        d2 = re.findall(r'd2-([0-9]+)', name)[0]
-        d3 = re.findall(r'd3-([0-9]+)', name)[0]
-        config = [int(d1), int(d2), int(d3), int(f1), int(f2), int(f3)]
-        cat = [c[i] for c in z]
-        if any(i in cat for i in ["increasing", "decreasing", "min", "max"]):
-            config.append("diverging")
-        elif "uncategorized" in cat:
-            config.append("uncategorized")
-        elif "repeating" in cat:
-            config.append("repeating")
-        elif "converging" in cat:
-            config.append("converging")
-        else:
-            raise Exception(f"Category {cat} not found!")
-        data_unsort[i] = config
-
-    data_sort = sorted(data_unsort, key=lambda element: (element[0], element[1], element[2], element[3]))
-    for d in data_sort:
-        print(d)
 
 def reduce_sim_file_size(dir):
     for dirs, subdirs, files in os.walk(dir):
@@ -504,3 +470,179 @@ def change_name(dir, string_to_remove):
             print("after: ", dd)
         except:
             print(dir)
+
+
+def plot_delay_catetgories_heatmap(dir, file_title, identifier_title, identifiers, nd):
+    cat_list = C.DELAY_CATEGORIES_SHORTLIST
+    possible_colors = C.DCAT_COLORS[:len(cat_list)]
+    df = pd.read_csv(os.path.join(dir, "simulation_data.csv"))
+    index = list(df.index[df["name"] == "count"])[0]
+    df_rows = df.loc[:index - 1]
+    data = [[] for x in range(df_rows.shape[0])]
+    for col in df_rows.keys():
+        if col == "name":
+            names = list(df_rows[col])
+            for i, name in enumerate(names):
+                f = []
+                d = []
+                for fx in identifiers:
+                    f.append(int(re.findall(f'{fx}-([0-9]+)', name)[0]))
+                for dx in range(nd):
+                    d.append(int(re.findall(f'd{dx + 1}-([0-9]+)', name)[0]))
+                config = (f + d)
+                [data[i].append(x) for x in config]
+        elif re.match("[0-9]+_[0-9]+$", col):
+            conn = list(df_rows[col])
+            for i, c in enumerate(conn):
+                data[i].append(c)
+    data = sorted(data, key=lambda element: (np.mean([abs(x[0] - x[1]) for x in itertools.combinations([element[x] for x in
+                                                               range(len(identifiers))], 2)]),
+    np.mean([abs(x[0] - x[1]) for x in
+             itertools.combinations([element[x] for x in
+                                     range(len(identifiers), len(identifiers) + nd)], 2)]),
+    element[:len(identifiers) + nd]))
+    x = []
+    y = []
+    z = []
+    dct = {}
+    for row in data:
+        x_str = ""
+        y_str = ""
+        cat = []
+        for yid in range(len(identifiers)):
+            if yid < len(identifiers) - 1:
+                y_str += f"{row[yid]}-"
+            else:
+                y_str += f"{row[yid]}"
+        for xid in range(len(identifiers), nd + len(identifiers)):
+            if xid < nd + len(identifiers) - 1:
+                x_str += f"{row[xid]}-"
+            else:
+                x_str += f"{row[xid]}"
+        x.append(x_str)
+        y.append(y_str)
+        for catid in range(nd + len(identifiers), len(row)):
+            cat.append(row[catid])
+        if any(i in cat for i in ["increasing", "decreasing", "min", "max"]):
+            z.append("diverging")
+            if x_str not in dct.keys():
+                dct[x_str] = {}
+            dct[x_str][y_str] = cat_list.index("diverging")
+        elif "uncategorized" in cat:
+            z.append("uncategorized")
+            if x_str not in dct.keys():
+                dct[x_str] = {}
+            dct[x_str][y_str] = cat_list.index("uncategorized")
+        elif "repeating" in cat:
+            z.append("repeating")
+            if x_str not in dct.keys():
+                dct[x_str] = {}
+            dct[x_str][y_str] = cat_list.index("repeating")
+        elif "converging" in cat:
+            z.append("converging")
+            if x_str not in dct.keys():
+                dct[x_str] = {}
+            dct[x_str][y_str] = cat_list.index("converging")
+        else:
+            raise Exception(f"Category {cat} not found!")
+    dff = pd.DataFrame(dct)
+    dff = dff.loc[::-1]
+    fig, ax = plt.subplots()
+    im = ax.imshow(dff, cmap=matplotlib.colors.ListedColormap(["g", "r", "b", "y"]), interpolation="none", aspect='auto', vmin=0, vmax=3)
+    ax.set_ylabel(identifier_title)
+    ax.set_xlabel("Delays (ms)")
+    ax.set_xticks(range(len(dff.keys())))
+    ax.set_yticks(range(len(dff.index)))
+    ax.set_xticklabels(dff.keys())
+    ax.set_yticklabels(dff.index)
+    ax.xaxis.set_major_locator(plt.MaxNLocator(min(50, len(set(y)))))
+    ax.yaxis.set_major_locator(plt.MaxNLocator(min(15, len(set(x)))))
+    ax.grid(False)
+    plt.xticks(rotation=90)
+    colors = [im.cmap(im.norm(value)) for value in range(len(C.DELAY_CATEGORIES_SHORTLIST))]
+    patches = [mpatches.Patch(color=col, label=cat) for col, cat in zip(colors, cat_list)]
+    plt.legend(handles=patches, ncol=4, loc="upper center", bbox_to_anchor=(0.5, 1.2))
+    plt.tight_layout()
+    plt.savefig(file_title, bbox_inches='tight')
+
+
+
+def plot_SR_heatmap(path, file_title, identifier_title, identifiers, nd):
+    fig, ax = plt.subplots()
+    df = pd.read_csv(os.path.join(path, "simulation_data.csv"))
+    index = list(df.index[df["name"] == "count"])[0]
+    df_rows = df.loc[:index - 1]
+    names = list(df_rows["name"])
+    data = [[] for x in range(df_rows.shape[0])]
+    SR_keys = [k for k in list(df.keys()) if k.endswith("SR") and k.startswith("n")]
+    for i, name in enumerate(names):
+        f = []
+        d = []
+        for fx in identifiers:
+            f.append(int(re.findall(f'{fx}-([0-9]+)', name)[0]))
+        for dx in range(nd):
+            d.append(int(re.findall(f'd{dx + 1}-([0-9]+)', name)[0]))
+        sr = np.mean([x for x in [df_rows.iloc[i][srk] for srk in SR_keys]])
+        config = (f + d)
+        config.append(sr)
+        [data[i].append(x) for x in config]
+    data_sort = sorted(data, key=lambda element: (
+    np.mean([abs(x[0] - x[1]) for x in itertools.combinations([element[x] for x in
+                                                               range(len(identifiers))], 2)]),
+    np.mean([abs(x[0] - x[1]) for x in
+             itertools.combinations([element[x] for x in
+                                     range(len(identifiers), len(identifiers) + nd)], 2)]),
+    element[:len(identifiers) + nd]))
+
+    dct = {}
+    for row in data_sort:
+        x_str = ""
+        y_str = ""
+        for yid in range(len(identifiers)):
+            if yid < len(identifiers) - 1:
+                y_str += f"{row[yid]}-"
+            else:
+                y_str += f"{row[yid]}"
+        for xid in range(len(identifiers), nd + len(identifiers)):
+            if xid < nd + len(identifiers) - 1:
+                x_str += f"{row[xid]}-"
+            else:
+                x_str += f"{row[xid]}"
+        if not x_str in dct.keys():
+            dct[x_str] = {}
+        dct[x_str][y_str] = row[-1]
+
+    dff = pd.DataFrame(dct)
+    dff = dff.loc[::-1]
+    fig, ax = plt.subplots()
+    V_MAX = 60
+    im = ax.imshow(dff, cmap=plt.cm.get_cmap("Reds"), interpolation="none", aspect='auto', vmin=0, vmax=V_MAX)
+    ax.set_ylabel(identifier_title)
+    ax.set_xlabel("Delays (ms)")
+    ax.set_xticks(range(len(dff.keys())))
+    ax.set_yticks(range(len(dff.index)))
+    ax.set_xticklabels(dff.keys())
+    ax.set_yticklabels(dff.index)
+    ax.xaxis.set_major_locator(plt.MaxNLocator(50))
+    ax.yaxis.set_major_locator(plt.MaxNLocator(15))
+    ax.grid(False)
+    plt.xticks(rotation=90)
+    norm = matplotlib.colors.Normalize(vmin=0, vmax=V_MAX)
+    fig.colorbar(plt.cm.ScalarMappable(norm=norm, cmap=plt.cm.get_cmap("Reds")), ax=ax)
+    plt.tight_layout()
+    plt.savefig(file_title, bbox_inches='tight')
+
+    '''
+    norm = matplotlib.colors.Normalize(vmin=0, vmax=max(z))
+    ax.scatter(y, x, s=0.1, c=z, cmap=plt.cm.get_cmap("Reds"))
+    ax.set_ylabel("Delays (ms)")
+    ax.set_xlabel(identifier_title)
+    plt.xticks(rotation=90)
+    ax.xaxis.set_major_locator(plt.MaxNLocator(min(50, len(set(y)))))
+    ax.yaxis.set_major_locator(plt.MaxNLocator(min(30, len(set(x)))))
+    fig.colorbar(plt.cm.ScalarMappable(norm=norm, cmap=plt.cm.get_cmap("Reds")), ax=ax)
+    plt.tight_layout()
+    path = os.path.join(os.getcwd(), f"{file_title}.png")
+    print("Saving data to: ", path)
+    plt.savefig(path)
+    '''
