@@ -561,7 +561,7 @@ def plot_delay_catetgories_heatmap(dir, file_title, identifier_title, identifier
     plt.xticks(rotation=90)
     colors = [im.cmap(im.norm(value)) for value in range(len(C.DELAY_CATEGORIES_SHORTLIST))]
     patches = [mpatches.Patch(color=col, label=cat) for col, cat in zip(colors, cat_list)]
-    plt.legend(handles=patches, ncol=4, loc="upper center", bbox_to_anchor=(0.5, 1.2))
+    plt.legend(handles=patches, ncol=4, loc="upper center", bbox_to_anchor=(0.4, 1.2), handletextpad=0.2)
     plt.tight_layout()
     plt.savefig(file_title, bbox_inches='tight')
 
