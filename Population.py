@@ -57,7 +57,7 @@ class Input:
 
 
 class Population:
-    def __init__(self, *populations, name=False):
+    def __init__(self, *populations, path, name=False):
         global T, ID
         T = 0.0
         ID = 0
@@ -73,25 +73,43 @@ class Population:
                 self.neurons[neuron.ID] = neuron
         self.name = name
         self.structure = False
-        self.dir = False
+        date = datetime.now().strftime("%d-%B-%Y_%H-%M-%S")
+        if self.name:
+            self.dir = os.path.join(path, self.name)
+        else:
+            self.dir = os.path.join(path, date)
+        cnt = 1
+        while os.path.exists(self.dir):
+            if self.name:
+                self.dir = os.path.join(path, f"{self.name}_{cnt}")
+            else:
+                self.dir = os.path.join(path, f"{date}_{cnt}")
+            cnt += 1
+        os.makedirs(self.dir, exist_ok=True)
 
 
     def update(self):
         for neuron in reversed(self.neurons):
             self.neurons[neuron].update(self.neurons)
 
-    def create_input(self, spike_times=[], p=0.0, j=False, wj=False, seed=False):
+    def create_input(self, spike_times=[], p=0.0, j=False, wj=False, dj=False, seed=False):
         inp = Input(spike_times, p, seed)
         self.add_neuron(inp)
         if j:
             for ij in j:
-                if type(wj) == list:
+                if isinstance(wj, list):
                     w = wj.pop(0)
                 elif wj:
                     w = wj
                 else:
                     w = Constants.W
-                self.create_synapse(inp.ID, ij, w=w, d=1, trainable=False)
+                if isinstance(dj, list):
+                    d = dj.pop(0)
+                elif dj:
+                    d = dj
+                else:
+                    d = 1
+                self.create_synapse(inp.ID, ij, w=w, d=d, trainable=False)
         return inp
 
     def add_neuron(self, neuron):
@@ -141,7 +159,6 @@ class Population:
                         exp = (lambda x,y,row,col: (row == x or col == y) if not diagonals else True)
                         if exp(x, y, row, col) and 0 <= x < dim and 0 <= y < dim:
                             self.create_synapse(matrix[row][col],matrix[x][y], w=rng.choice(w), d=rng.choice(d), trainable=trainable)
-
 
     def create_random_connections(self, p, d, w, trainable, seed=False):
         if seed:
@@ -304,7 +321,7 @@ class Population:
                     for neuron_j in layers[layers.index(layer) + 1]:
                         self.create_synapse(neuron_i, neuron_j, w=rng.choice(w), d=rng.choice(d), trainable=trainable)
 
-    def show_network(self, save=False):
+    def plot_topology(self):
         global T
         plt.figure()
         G = nx.DiGraph()
@@ -349,7 +366,7 @@ class Population:
             labels[node] = int(node)
         nx.draw_networkx_labels(G, pos, labels, font_size=8)
         ax = plt.gca()
-        colors = plt.cm.Reds(np.linspace(0, 1, int(MAX_DELAY / DT)))
+        colors = plt.cm.brg(np.linspace(0, 1, int(MAX_DELAY / DT)))
         color_id = {}
         for d, c in enumerate(colors):
             color_id[round(d*DT + DT,1)] = c
@@ -367,13 +384,11 @@ class Population:
             patches.append(mpatches.Patch(color=color_id[i], label=f'd={i}'))
         #plt.legend(loc="lower left", fancybox=True, bbox_to_anchor=(1.06, 0), handles=patches, prop={'size': 8})
         norm = matplotlib.colors.Normalize(vmin=0, vmax=MAX_DELAY + 1)
-        plt.colorbar(plt.cm.ScalarMappable(norm=norm, cmap=plt.cm.get_cmap("Reds")), ax=ax)
+        plt.colorbar(plt.cm.ScalarMappable(norm=norm, cmap=plt.cm.get_cmap("brg")), ax=ax)
         plt.tight_layout()
-        if save:
-            plt.savefig(os.path.join(self.dir, "network.png"))
-            plt.close()
-        else:
-            return plt
+        plt.savefig(os.path.join(self.dir, "network.png"))
+        plt.close()
+
 
     def plot_delays(self):
         fig, sub = plt.subplots()
@@ -430,24 +445,9 @@ class Population:
         os.system(f"ffmpeg -y -r {fps} -i {self.dir}/t%10d.png -vcodec libx264 {self.dir}/output.mp4")
         os.system(f"ffmpeg -y -r {fps} -i {self.dir}/t%10d.png -vcodec msmpeg4 {self.dir}/output.wmv")
 
-    def run(self, dir, duration, dt=0.1, plot_network=False):
+    def run(self, duration, dt=0.1, save_post_model=False, record=False):
         global T, DT
         DT = dt
-        start = time.time()
-        date = datetime.now().strftime("%d-%B-%Y_%H-%M-%S")
-        if self.name:
-            self.dir = os.path.join(dir, self.name)
-        else:
-            self.dir = os.path.join(dir, date)
-        cnt = 1
-        while os.path.exists(self.dir):
-            if self.name:
-                self.dir = os.path.join(dir, f"{self.name}_{cnt}")
-            else:
-                self.dir = os.path.join(dir, f"{date}_{cnt}")
-            cnt += 1
-        os.makedirs(self.dir, exist_ok=True)
-        last_100_stop = []
         tot_start = time.time()
         Data.save_model(self, os.path.join(self.dir, "pre_sim_model.pkl"))
         while T < duration:
@@ -462,15 +462,16 @@ class Population:
             #expected_t = round(((duration - T)/DT * avg_stop)/60)
             #print("\r |" + "#" * int(prog) + f"  {round(prog, 1) if T < duration - DT else 100}%| t={T}ms | Time per step: {round(stop,4)} sec | Time to finish: {expected_t} min", end="")
             T = round(T + DT,3)
-            if plot_network:
-                fig = self.show_network(save=False)
+            if record:
+                fig = self.plot_topology()
                 fig.title(f"Time={T}ms")
                 file_name = "t" + str(T).replace(".","").rjust(10,"0")
                 fig.savefig(os.path.join(self.dir, f"{file_name}.png"))
                 fig.close()
         self.save_neuron_data()
         self.save_synapse_data()
-        #Data.save_model(self, os.path.join(self.dir, "post_sim_model.pkl"))
+        if save_post_model:
+            Data.save_model(self, os.path.join(self.dir, "post_sim_model.pkl"))
         stop = time.time()
         print(f"Simulation finished: {self.name}")
         print(f"\nElapsed time: {round((stop-tot_start)/60,1)}min")

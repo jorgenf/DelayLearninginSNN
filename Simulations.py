@@ -362,7 +362,7 @@ def random():
         plt.savefig(f"output/random/{input_pattern}")
         # plt.show()
         plt.clf()
-        pop.show_network(input_pattern)
+        pop.plot_topology(input_pattern)
 
 
 def delay_learning():
@@ -691,7 +691,7 @@ def run_xnxi_alt(dir, t, n, i, l_pattern, l_interm, delay_seed, input_seed, offs
     pop.plot_delays()
     pop.plot_raster()
     pop.plot_membrane_potential()
-    pop.show_network(save=True)
+    pop.plot_topology(save=True)
 
 
 def run_xnxi_rep(dir, t, n, i, delay_seed, input_seed, name=False):
@@ -711,7 +711,7 @@ def run_xnxi_rep(dir, t, n, i, delay_seed, input_seed, name=False):
     pop.plot_delays()
     pop.plot_raster()
     pop.plot_membrane_potential()
-    pop.show_network(save=True)
+    pop.plot_topology(save=True)
 
 def run_xnxi_async(dir, t, n, i, delay_seed, input_seed, freq_list = [], delay_list=[], freq_range = [30, 61], delay_range = [15, 25.1], name=False):
     delay_rng = np.random.default_rng(delay_seed)
@@ -734,6 +734,6 @@ def run_xnxi_async(dir, t, n, i, delay_seed, input_seed, freq_list = [], delay_l
     pop.plot_delays()
     pop.plot_raster()
     pop.plot_membrane_potential()
-    pop.show_network(save=True)
+    pop.plot_topology(save=True)
 
 
