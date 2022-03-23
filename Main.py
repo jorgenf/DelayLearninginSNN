@@ -362,12 +362,59 @@ pop.plot_membrane_potential()
 pop.show_network(save=True)
 '''
 
+'''
 t = 1000
-pop = Population.Population((10, Population.RS), path="./network_plots", name="directional_ring_lattice_10n1i_k2")
-pop.create_directional_ring_lattice_connections(2, d=20, w=16, trainable=True, seed=1)
-spike_train = [x for x in range(1, t) if x %10 == 0]
-pop.create_input(spike_train, j=[0, 1], wj=30, dj=20)
-pop.run(t)
+k = 2
+n = 10
+#internal_d = 20
+internal_d = [29,60,29,60,29,60,29,60,29,60,29,60,29,60,29,60,29,60,29,60,29,60]
+internal_w = 16
+input_d = [29, 60]
+input_w = [32, 16]
+input_connections = [0, 1]
+input_freq = [0, 600]
+
+pop = Population.Population((n, Population.RS), path="./network_plots", name=f"directional_ring_lattice_{n}n1i_k{k}_d{internal_d}_w{internal_w}_inpd{input_d}_inpw{input_w}_freq{input_freq}_conn{input_connections}")
+pop.create_directional_ring_lattice_connections(k=k, d=internal_d, w=internal_w, trainable=True)
+
+#spike_train = [x for x in range(0, t) if x % input_freq == 0]
+pop.create_input(input_freq, j=input_connections, wj=input_w, dj=input_d)
+pop.run(t, save_post_model=True)
 pop.plot_topology()
 pop.plot_delays()
 pop.plot_raster()
+pop.plot_membrane_potential()
+'''
+pre_model = Data.load_model("network_plots/directional_ring_lattice_10n1i_k2_d[29, 60, 29, 60, 29, 60, 29, 60, 29, 60, 29, 60, 29, 60, 29, 60, 29, 60, 29, 60, 29, 60]_w16_inpd[29, 60]_inpw[30, 16]_freq[0, 600]_conn[0, 1]_1/pre_sim_model.pkl")
+post_model = Data.load_model("network_plots/directional_ring_lattice_10n1i_k2_d[29, 60, 29, 60, 29, 60, 29, 60, 29, 60, 29, 60, 29, 60, 29, 60, 29, 60, 29, 60, 29, 60]_w16_inpd[29, 60]_inpw[30, 16]_freq[0, 600]_conn[0, 1]_1/post_sim_model.pkl")
+
+print("Spikes n8: ", post_model.neurons["8"].spikes)
+print("Delay 8-0 at t=277.2: ", [syn.d_hist["d"] for syn in post_model.synapses if syn.i == 8 and syn.j == 0][0][2772])
+
+print("Spikes n9: ", post_model.neurons["9"].spikes)
+print("Delay 9-0 at t=308.0: ", [syn.d_hist["d"] for syn in post_model.synapses if syn.i == 9 and syn.j == 0][0][3080])
+print("Delay 9-1 at t=307.0: ", [syn.d_hist["d"] for syn in post_model.synapses if syn.i == 9 and syn.j == 1][0][3070])
+
+print("Spikes n0: ", post_model.neurons["0"].spikes)
+print("Delay 0-1 at t=338.8: ", [syn.d_hist["d"] for syn in post_model.synapses if syn.i == 0 and syn.j == 1][0][3388])
+
+
+for v,u,t in zip(post_model.neurons["0"].v_hist["v"][3270:3390],post_model.neurons["0"].u_hist["u"][3270:3390], post_model.neurons["0"].u_hist["t"][3270:3390]):
+    print(v,u, t)
+
+print("-------------------")
+
+for v,u,t in zip(post_model.neurons["1"].v_hist["v"][3600:3800],post_model.neurons["1"].u_hist["u"][3600:3800], post_model.neurons["1"].u_hist["t"][3600:3800]):
+    print(v,u, t)
+
+
+
+'''
+t = sorted([round(np.random.random()*100,1) for x in range(1000)])
+print(t)
+
+#t = [2.3, 4.5, 4.7, 4.9, 5.8, 6, 6.8]
+
+h = np.histogram(t, bins=10, range=[0,100])
+print(h)
+'''

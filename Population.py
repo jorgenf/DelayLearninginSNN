@@ -14,7 +14,7 @@ import json
 import Constants
 import Data
 import matplotlib.colors
-
+from scipy.stats import binned_statistic
 sns.set()
 global T, DT, ID
 
@@ -71,6 +71,7 @@ class Population:
                     ref_t = 0
                 neuron = population[1](ref_t=ref_t)
                 self.neurons[neuron.ID] = neuron
+        self.duration = 0
         self.name = name
         self.structure = False
         date = datetime.now().strftime("%d-%B-%Y_%H-%M-%S")
@@ -285,8 +286,6 @@ class Population:
         self.structure = "ring"
         if seed:
             rng = np.random.default_rng(seed)
-        else:
-            rng = np.random.default_rng()
         if not isinstance(d, list):
             d = [d]
         if not isinstance(w, list):
@@ -296,7 +295,10 @@ class Population:
             for i in range(1, k + 1):
                 j = (neuron + i) % len(self.neurons)
                 if neuron != j:
-                    self.create_synapse(neuron, j, w=rng.choice(w), d=rng.choice(d), trainable=trainable)
+                    if seed:
+                        self.create_synapse(neuron, j, w=rng.choice(w), d=rng.choice(d), trainable=trainable)
+                    else:
+                        self.create_synapse(neuron, j, w=w[0], d=d.pop(0), trainable=trainable)
 
     def create_feed_forward_connections(self, d, w, trainable, seed=False):
         if seed:
@@ -439,18 +441,33 @@ class Population:
         fig.savefig(os.path.join(self.dir, "potentials.png"))
         plt.close()
 
-
+    def plot_spike_rate(self):
+        fig, subs = plt.subplots(len(self.neurons))
+        spikes = [np.histogram(self.neurons[x].spikes, bins=round(self.duration/10), range=[0, self.duration])[0] for x in self.neurons]
+        for sub, sr in zip(subs, spikes):
+            sub.plot(sr)
+        '''
+        sub.set_xlabel("Time (ms)")
+        sub.set_ylabel("Neuron ID")
+        sub.set_ylim([-1, len(self.neurons)])
+        sub.set_yticks(range(len(self.neurons)))
+        sub.set_yticklabels([x if type(self.neurons[x]) != Input else f"{x} (Input)" for x in self.neurons])
+        '''
+        fig.tight_layout()
+        fig.savefig(os.path.join(self.dir, "SR.png"))
+        plt.close()
 
     def create_video(self, fps):
         os.system(f"ffmpeg -y -r {fps} -i {self.dir}/t%10d.png -vcodec libx264 {self.dir}/output.mp4")
         os.system(f"ffmpeg -y -r {fps} -i {self.dir}/t%10d.png -vcodec msmpeg4 {self.dir}/output.wmv")
 
     def run(self, duration, dt=0.1, save_post_model=False, record=False):
+        self.duration = duration
         global T, DT
         DT = dt
         tot_start = time.time()
         Data.save_model(self, os.path.join(self.dir, "pre_sim_model.pkl"))
-        while T < duration:
+        while T < self.duration:
             start = time.time()
             self.update()
             stop = time.time() - start
@@ -531,16 +548,18 @@ class Population:
             return count
 
         def F(self, delta_tdist):
-            dd = -3*m.tanh(delta_tdist/3)
-            self.d += dd
-            self.d = round(max(self.d, DT), 1 if DT==0.1 else 0)
-            self.d = min(self.d, MAX_DELAY)
+            if self.trainable:
+                dd = -3*m.tanh(delta_tdist/3)
+                self.d += dd
+                self.d = round(max(self.d, DT), 1 if DT==0.1 else 0)
+                self.d = min(self.d, MAX_DELAY)
 
         def G(self, delta_t):
-            dd = (3/2)*m.tanh(2.5625-0.625*delta_t)+1.5
-            self.d += dd
-            self.d = round(self.d, 1 if DT==0.1 else 0)
-            self.d = min(self.d, MAX_DELAY)
+            if self.trainable:
+                dd = (3/2)*m.tanh(2.5625-0.625*delta_t)+1.5
+                self.d += dd
+                self.d = round(self.d, 1 if DT == 0.1 else 0)
+                self.d = min(self.d, MAX_DELAY)
 
 
 class Neuron:
@@ -593,23 +612,22 @@ class Neuron:
             [syn.add_spike() for syn in self.down]
             syn_list  = []
             for syn in self.up:
-                if syn.trainable:
-                    spikes = neurons[str(syn.i)].spikes
-                    if spikes:
-                        pre_spikes = []
-                        post_spikes = []
-                        for spike in spikes:
-                            delta_t = (spike + syn.d) - T
-                            if syn.pre_window <= delta_t <= 0:
-                                pre_spikes.append(delta_t)
-                            elif syn.post_window >= delta_t > 0:
-                                post_spikes.append(delta_t)
-                        if pre_spikes:
-                            min_pre = max(pre_spikes)
-                            syn_list.append((syn,min_pre))
-                        elif post_spikes:
-                            min_post = min(post_spikes)
-                            syn.G(min_post)
+                spikes = neurons[str(syn.i)].spikes
+                if spikes:
+                    pre_spikes = []
+                    post_spikes = []
+                    for spike in spikes:
+                        delta_t = (spike + syn.d) - T
+                        if syn.pre_window <= delta_t <= 0:
+                            pre_spikes.append(delta_t)
+                        elif syn.post_window >= delta_t > 0:
+                            post_spikes.append(delta_t)
+                    if pre_spikes:
+                        min_pre = max(pre_spikes)
+                        syn_list.append((syn,min_pre))
+                    elif post_spikes:
+                        min_post = min(post_spikes)
+                        syn.G(min_post)
             if syn_list:
                 avg_delta_t = round(sum(x[1] for x in syn_list)/len(syn_list), 1 if DT==0.1 else 0)
                 [syn[0].F(syn[1]-avg_delta_t) for syn in syn_list]
