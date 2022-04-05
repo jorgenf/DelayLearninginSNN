@@ -8,9 +8,10 @@ import random
 from mpl_toolkits import mplot3d
 from matplotlib.ticker import MaxNLocator
 import Constants as C
+import gc
+import pandas as pd
 
 COLORS = Constants.COLORS
-
 cm = 1/2.54
 plt.rc('axes', titlesize=10)
 plt.rc('axes', labelsize=10)
@@ -418,81 +419,93 @@ def delay_learning():
 
 def spike_shift(L, D, W):
     DURATION = 50
-    dt = 0.1
-    pop = Population((1, RS))
+    dt = 1
+    pop = Population((1, RS), path="none", name="none", save_data=False)
     spike_times1 = [21.0]
     spike_times2 = [21.0 + D]
-    input = Input(spike_times1)
-    input2 = Input(spike_times2)
-    pop.add_neuron(input)
-    pop.add_neuron(input2)
-    pop.create_synapse(input.ID, 0, w=W, d=1)
-    pop.create_synapse(input2.ID, 0, w=W, d=1)
-    pop.run(DURATION, dt=dt)
-    L.append((max(pop.neurons["0"].v_hist["v"]), D, W))
-
-def spike_shift_sensitivity(d_start = 0, d_end = 15, w_start = 8, w_end = 18, d_step = 0.1, w_step = 0.1):
-    if __name__ == '__main__':
-        m = mp.Manager()
-        L = m.list()
-        d_start = d_start
-        d_end = d_end
-        w_start = w_start
-        w_end = w_end
-        d_step = d_step
-        w_step = w_step
-        li = list(itertools.product(np.arange(d_start, d_end, d_step), np.arange(w_start, w_end, w_step)))
-        li = [(L, round(x[0], 2), round(x[1], 2)) for x in li]
-        with mp.Pool(os.cpu_count() - 1) as p:
-            p.starmap(spike_shift, li)
-
-        fig = plt.figure()
-        ax = fig.add_subplot(111)
-        X = [round(x[2], 3) for x in L]
-        Y = [round(x[1], 3) for x in L]
-        Z = []
-        for z in [x[0] for x in L]:
-            if z < 30:
-                Z.append("red")
-            else:
-                Z.append("blue")
-        ax.scatter(X, Y, c=Z, s=0.5)
-        ax.set_xlabel("Weight")
-        ax.set_ylabel("Shift (ms)")
-        ax.set_yticks(np.arange(d_start, d_end + 1, 1))
-        ax.set_xticks(np.arange(w_start, w_end + 1, 1))
-        plt.tight_layout()
-        plt.show()
+    pop.create_input(spike_times=spike_times1, j=[0], wj=W, dj=1)
+    pop.create_input(spike_times=spike_times2, j=[0], wj=W, dj=1)
+    pop.run(DURATION, dt=dt, show_process=False)
+    max_v = max(pop.neurons["0"].v_hist["v"])
+    L.append((max_v, D, W))
 
 
-def weight_shift_response(weight, shift_start, shift_end):
+def spike_shift_sensitivity(d_start = 0, d_end = 15, w_start = 8, w_end = 18, d_step = 1, w_step = 0.1):
+    m = mp.Manager()
+    L = m.list()
+    d_start = d_start
+    d_end = d_end
+    w_start = w_start
+    w_end = w_end
+    d_step = d_step
+    w_step = w_step
+    li = list(itertools.product(np.arange(d_start, d_end, d_step), np.arange(w_start, w_end, w_step)))
+    param = [(L, round(x[0], 1), round(x[1], 1)) for x in li]
+    with mp.Pool(os.cpu_count() - 10) as p:
+        p.starmap(spike_shift, param)
+    df = pd.DataFrame(index=np.round(np.arange(d_start, d_end, d_step)[::-1],1), columns=np.round(np.arange(w_start, w_end, w_step),1))
+
+    for row in L:
+        x = row[2]
+        y = row[1]
+        z = 0 if row[0] < 30 else 1
+        df.at[y,x] = z
+    fig, ax = plt.subplots(figsize=(8*cm, 8*cm))
+    im = ax.imshow(df.values.tolist(), cmap=matplotlib.colors.ListedColormap(["r", "b"]), interpolation="none", aspect='auto', vmin=0, vmax=1, extent=[8, 18, 0, 15])
+    ax.set_ylabel("Shift (ms)")
+    ax.set_xlabel("Weight")
+    ax.xaxis.set_major_locator(plt.MaxNLocator(10))
+    ax.yaxis.set_major_locator(plt.MaxNLocator(15))
+    patches = [mpatches.Patch(color=col, label=cat) for col, cat in zip(["r", "b"], ["Dormant", "Spiking"])]
+    plt.legend(handles=patches, ncol=1, loc="lower right")
+    plt.tight_layout()
+    plt.savefig("spike_shift_dt1", bbox_inches='tight')
+
+
+
+
+def weight_shift_response(L, dt, w, shift_start, shift_end):
     DURATION = 50
-    dt = 1
     response_delay = []
-    for shift in range(shift_start, shift_end):
-        pop = Population((1, RS))
+    for shift in np.arange(shift_start, shift_end, dt):
+        pop = Population((1, RS), path="none", save_data=False)
         spike_times1 = [21.0]
         spike_times2 = [21.0 + shift]
-        input = Input(spike_times1)
-        input2 = Input(spike_times2)
-        pop.add_neuron(input)
-        pop.add_neuron(input2)
-        pop.create_synapse(input.ID, 0, w=weight, d=1)
-        pop.create_synapse(input2.ID, 0, w=weight, d=1)
-        pop.run(DURATION, dt=dt)
-        st = pop.neurons["0"].spikes[0]
-        response_delay.append(round(st-(spike_times2[0] + 1), 2))
-    return response_delay
-    '''
-    plt.plot(range(shift_start, shift_end), response_delay)
+        pop.create_input(spike_times=spike_times1, j=[0], wj=w, dj=1)
+        pop.create_input(spike_times=spike_times2, j=[0], wj=w, dj=1)
+        pop.run(DURATION, dt=dt, show_process=False)
+        if len(pop.neurons["0"].spikes) > 0:
+            st = pop.neurons["0"].spikes[0]
+            response_delay.append((shift,round(st-(spike_times2[0] + 1), 2)))
+    L.append((w,response_delay))
+
+
+
+def weight_shift_response_mt():
+    shift_start = 0
+    shift_end = 11
+    dt = 0.1
+    w = np.arange(9, 17)
+    colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
+    m = mp.Manager()
+    L = m.list()
+    param = [(L, dt, x, shift_start, shift_end) for x in w]
+    with mp.Pool(mp.cpu_count() - 1) as p:
+        p.starmap(weight_shift_response, param)
+    l_sorted = sorted(L, key=lambda element: (element[0]))
+    fig, sub = plt.subplots()
+    patches = []
+    for sim_w in l_sorted:
+        shift = [x[0] for x in sim_w[1]]
+        response = [x[1] for x in sim_w[1]]
+        sub.plot(shift, response)
+        patches.append(mpatches.Patch(color=colors.pop(0), label=f"W={sim_w[0]}"))
     plt.xlabel("Shift (ms)")
     plt.ylabel("Neuron response (ms)")
-    plt.xticks(range(shift_start, shift_end, 1))
-    plt.yticks(range(int(min(response_delay)),int(max(response_delay) + 1),1))
-    plt.title(f"Shift respone for weight {weight}")
+    plt.legend(handles=patches, ncol=1, loc="lower right")
     plt.tight_layout()
-    plt.show()
-    '''
+    plt.savefig("weight_shift")
+
 
 
 def spike_effect_duration(weight):
@@ -613,40 +626,6 @@ def random_large_network():
     #plt.clf()
     #pop.show_network(show=True)
 
-def spike_shift_sensitivity_mt():
-    if __name__ == '__main__':
-        m = mp.Manager()
-        L = m.list()
-        d_start = 0
-        d_end = 15
-        w_start = 8
-        w_end = 18
-        d_step = 0.1
-        w_step = 0.1
-        l = list(itertools.product(np.arange(d_start,d_end,d_step), np.arange(w_start, w_end, w_step)))
-        l = [(L,round(x[0],2), round(x[1],2)) for x in l]
-        with mp.Pool(os.cpu_count() - 1) as p:
-            p.starmap(spike_shift_sensitivity, l)
-
-        fig = plt.figure()
-        ax = fig.add_subplot(111)
-        X = [round(x[2],3) for x in L]
-        Y = [round(x[1],3) for x in L]
-        Z = []
-        for z in [x[0] for x in L]:
-            if z < 30:
-                Z.append("red")
-            else:
-                Z.append("blue")
-
-        ax.scatter(X, Y, c=Z, s=0.5)
-        ax.set_xlabel("Weight")
-        ax.set_ylabel("Shift (ms)")
-        ax.set_yticks(np.arange(d_start,d_end + 1, 1))
-        ax.set_xticks(np.arange(w_start, w_end + 1, 1))
-        plt.tight_layout()
-        plt.show()
-
 
 def run_xnxi_alt(dir, t, n, i, l_pattern, l_interm, delay_seed, input_seed, offset = [], delay_list=[], delay_range = [15, 25.1], name=False):
     delay_rng = np.random.default_rng(delay_seed)
@@ -655,12 +634,12 @@ def run_xnxi_alt(dir, t, n, i, l_pattern, l_interm, delay_seed, input_seed, offs
     ff_d = delay_list if delay_list else list(np.arange(delay_range[0], delay_range[1], 0.1))
     pop.create_feed_forward_connections(d=ff_d, w=C.W, trainable=True, seed=delay_seed)
     if offset and delay_list:
+        period1 = 30
+        period2 = 30
         for x in range(i):
             offset1 = offset.pop(0)
-            period1 = 30
             pattern1 = [(offset1 + (period1 * rep)) for rep in range(l_pattern) if (offset1 + (period1 * rep) < l_pattern)]
             offset2 = offset.pop(0)
-            period2 = 30
             pattern2 = [(offset2 + (period2 * rep)) for rep in range(l_pattern) if (offset2 + (period2 * rep) < l_pattern)]
             pattern = []
             flip = 1
@@ -671,12 +650,12 @@ def run_xnxi_alt(dir, t, n, i, l_pattern, l_interm, delay_seed, input_seed, offs
             for j in list(pop.neurons.copy())[:int(np.ceil(np.sqrt(n)))]:
                 pop.create_synapse(inp.ID, j, w=C.W, d=delay_list.pop())
     else:
+        period1 = input_rng.integers(30, 61)
+        period2 = input_rng.integers(30, 61)
         for x in range(i):
             offset1 = input_rng.integers(0, 11)
-            period1 = input_rng.integers(30,61)
             pattern1 = [(offset1 + (period1 * rep)) for rep in range(l_pattern) if (offset1 + (period1 * rep) < l_pattern)]
             offset2 = input_rng.integers(0, 11)
-            period2 = input_rng.integers(30, 61)
             pattern2 = [(offset2 + (period2 * rep)) for rep in range(l_pattern) if (offset2 + (period2 * rep) < l_pattern)]
             pattern = []
             flip = 1
@@ -735,5 +714,44 @@ def run_xnxi_async(dir, t, n, i, delay_seed, input_seed, freq_list = [], delay_l
     pop.plot_raster()
     pop.plot_membrane_potential()
     pop.plot_topology(save=True)
+
+
+def refractory_period(L, interval, offset):
+    pop = Population((1, RS), path="network_plots/", name="TEST", save_data=False)
+    pop.create_input(spike_times=[0], dj=0.1, wj=32, j=[0])
+    pop.create_input(spike_times=[interval], dj=0.1, wj=16, j=[0])
+    pop.create_input(spike_times=[interval + offset], dj=0.1, wj=16, j=[0])
+    pop.run(duration=600, show_process=False)
+    if len(pop.neurons["0"].spikes) > 1:
+        L.append((1, interval, offset))
+    else:
+        L.append((0, interval, offset))
+
+def refractory_period_mt():
+    interval = np.arange(0, 500)
+    offset = np.round(np.arange(0, 10, 0.1),1)
+    comb = itertools.product(interval, offset)
+    m = mp.Manager()
+    L = m.list()
+    param = [(L, x[0], x[1]) for x in comb]
+    with mp.Pool(mp.cpu_count() - 1) as p:
+        p.starmap(refractory_period, param)
+    df = pd.DataFrame(index=offset[::-1], columns=interval)
+
+    for row in L:
+        i = row[1]
+        o = row[2]
+        df.at[o,i] = row[0]
+    print(df)
+    fig, ax = plt.subplots()
+    im = ax.imshow(df.values.tolist(), cmap=matplotlib.colors.ListedColormap(["r", "b"]), interpolation="none", aspect='auto', vmin=0, vmax=1, extent=[0, 500, 0, 10])
+    ax.set_xlabel("Interval (ms)")
+    ax.set_ylabel("Offset (ms)")
+    ax.xaxis.set_major_locator(plt.MaxNLocator(20))
+    ax.yaxis.set_major_locator(plt.MaxNLocator(10))
+    patches = [mpatches.Patch(color=col, label=cat) for col, cat in zip(["r", "b"], ["Dormant", "Spiking"])]
+    plt.legend(handles=patches, ncol=1, loc="lower right")
+    plt.tight_layout()
+    plt.savefig("refractory_period", bbox_inches='tight')
 
 

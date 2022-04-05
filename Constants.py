@@ -8,13 +8,13 @@ SATURATION_LENGTH = 10000
 STD_THRESHOLD = 0.1
 CORRELATION_THRESHOLD = 0.95
 SLOPE_THRESHOLD = 0.001
-MAX_DELAY = 100
+MAX_DELAY = 60
 MIN_DELAY = 0.1
 COLORS = ["r", "b", "g", "y", "royalblue", "peru", "palegreen", "indigo"]
 COLORS += [(np.random.random(), np.random.random(), np.random.random()) for x in range(50)]
 DCAT_COLORS = ["green", "red", "blue","yellow"]
 DELAY_CATEGORIES = ["converging", "repeating", "uncategorized", "increasing", "decreasing", "min", "max"]
-DELAY_CATEGORIES_SHORTLIST = ["converging", "diverging", "repeating", "uncategorized"]
+DELAY_CATEGORIES_SHORTLIST = ["converging", "diverging", "repeating", "uncategorized", "dormant"]
 CATEGORY_CONVERSION = {
     "converging": "converging",
     "repeating": "repeating",

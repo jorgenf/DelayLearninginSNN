@@ -57,7 +57,7 @@ class Input:
 
 
 class Population:
-    def __init__(self, *populations, path, name=False):
+    def __init__(self, *populations, path, name=False, save_data=True):
         global T, ID
         T = 0.0
         ID = 0
@@ -74,29 +74,32 @@ class Population:
         self.duration = 0
         self.name = name
         self.structure = False
-        date = datetime.now().strftime("%d-%B-%Y_%H-%M-%S")
-        if self.name:
-            self.dir = os.path.join(path, self.name)
-        else:
-            self.dir = os.path.join(path, date)
-        cnt = 1
-        while os.path.exists(self.dir):
+        self.save_data = save_data
+        if save_data:
+            date = datetime.now().strftime("%d-%B-%Y_%H-%M-%S")
             if self.name:
-                self.dir = os.path.join(path, f"{self.name}_{cnt}")
+                self.dir = os.path.join(path, self.name)
             else:
-                self.dir = os.path.join(path, f"{date}_{cnt}")
-            cnt += 1
-        os.makedirs(self.dir, exist_ok=True)
+                self.dir = os.path.join(path, date)
+            cnt = 1
+            while os.path.exists(self.dir):
+                if self.name:
+                    self.dir = os.path.join(path, f"{self.name}_{cnt}")
+                else:
+                    self.dir = os.path.join(path, f"{date}_{cnt}")
+                cnt += 1
+            os.makedirs(self.dir, exist_ok=True)
 
 
     def update(self):
         for neuron in reversed(self.neurons):
             self.neurons[neuron].update(self.neurons)
 
-    def create_input(self, spike_times=[], p=0.0, j=False, wj=False, dj=False, seed=False):
+    def create_input(self, spike_times=[], p=0.0, j=False, wj=False, dj=False, seed=False, trainable=False):
         inp = Input(spike_times, p, seed)
         self.add_neuron(inp)
         if j:
+            j = list(j)
             for ij in j:
                 if isinstance(wj, list):
                     w = wj.pop(0)
@@ -110,7 +113,7 @@ class Population:
                     d = dj
                 else:
                     d = 1
-                self.create_synapse(inp.ID, ij, w=w, d=d, trainable=False)
+                self.create_synapse(inp.ID, ij, w=w, d=d, trainable=trainable)
         return inp
 
     def add_neuron(self, neuron):
@@ -176,6 +179,7 @@ class Population:
                     self.create_synapse(id, id_2, d=rng.choice(d), w=rng.choice(w), trainable=trainable)
 
     def create_random_distance_delayed_connections(self, p, w, trainable, seed=False):
+            self.structure = "grid"
             if seed:
                 rng = np.random.default_rng(seed)
             else:
@@ -190,7 +194,7 @@ class Population:
             for neuron, p1 in zip(self.neurons, pos):
                 for neuron2, p2 in zip(self.neurons, pos):
                     if rng.random() < p and type(self.neurons[neuron2]) != Input and neuron != neuron2:
-                        d = round(np.sqrt(((p1[0]-p2[0])**2)+((p1[1]-p2[1])**2)),1)
+                        d = round(np.sqrt(((p1[0]-p2[0])**2)+((p1[1]-p2[1])**2)), 1)
                         self.create_synapse(neuron, neuron2, w=rng.choice(w), d=d, trainable=trainable)
 
     def create_watts_strogatz_connections(self, k, p, d, w, trainable, seed=False):
@@ -298,7 +302,10 @@ class Population:
                     if seed:
                         self.create_synapse(neuron, j, w=rng.choice(w), d=rng.choice(d), trainable=trainable)
                     else:
-                        self.create_synapse(neuron, j, w=w[0], d=d.pop(0), trainable=trainable)
+                        if len(d) > 1:
+                            self.create_synapse(neuron, j, w=w[0], d=d.pop(0), trainable=trainable)
+                        else:
+                            self.create_synapse(neuron, j, w=w[0], d=d[0], trainable=trainable)
 
     def create_feed_forward_connections(self, d, w, trainable, seed=False):
         if seed:
@@ -408,9 +415,15 @@ class Population:
         fig.savefig(os.path.join(self.dir, "delays.png"))
         plt.close()
 
-    def plot_raster(self):
+    def plot_raster(self, duration=False):
         fig, sub = plt.subplots()
-        spikes = [self.neurons[x].spikes for x in self.neurons]
+        if duration:
+            spikes = []
+            for n in self.neurons:
+                sp = [x for x in list(self.neurons[n].spikes) if duration[0] < x < duration[1]]
+                spikes.append(sp)
+        else:
+            spikes = [self.neurons[x].spikes for x in self.neurons]
         sub.eventplot(spikes, colors='black', lineoffsets=1, linelengths=1, linewidths=0.5)
         sub.set_xlabel("Time (ms)")
         sub.set_ylabel("Neuron ID")
@@ -461,23 +474,20 @@ class Population:
         os.system(f"ffmpeg -y -r {fps} -i {self.dir}/t%10d.png -vcodec libx264 {self.dir}/output.mp4")
         os.system(f"ffmpeg -y -r {fps} -i {self.dir}/t%10d.png -vcodec msmpeg4 {self.dir}/output.wmv")
 
-    def run(self, duration, dt=0.1, save_post_model=False, record=False):
+    def run(self, duration, dt=0.1, save_post_model=False, record=False, show_process=True):
         self.duration = duration
         global T, DT
         DT = dt
         tot_start = time.time()
-        Data.save_model(self, os.path.join(self.dir, "pre_sim_model.pkl"))
+        if self.save_data:
+            Data.save_model(self, os.path.join(self.dir, "pre_sim_model.pkl"))
         while T < self.duration:
             start = time.time()
             self.update()
-            stop = time.time() - start
-            #if len(last_100_stop) >= 100:
-            #    last_100_stop.pop()
-            #last_100_stop.insert(0,stop)
-            #avg_stop = np.mean(last_100_stop)
-            #prog = (T / duration) * 100
-            #expected_t = round(((duration - T)/DT * avg_stop)/60)
-            #print("\r |" + "#" * int(prog) + f"  {round(prog, 1) if T < duration - DT else 100}%| t={T}ms | Time per step: {round(stop,4)} sec | Time to finish: {expected_t} min", end="")
+            if show_process:
+                stop = time.time() - start
+                prog = (T / duration) * 100
+                print("\r |" + "#" * int(prog) + f"  {round(prog, 1) if T < duration - DT else 100}%| t={T}ms | Time per step: {round(stop,4)} sec", end="")
             T = round(T + DT,3)
             if record:
                 fig = self.plot_topology()
@@ -485,13 +495,15 @@ class Population:
                 file_name = "t" + str(T).replace(".","").rjust(10,"0")
                 fig.savefig(os.path.join(self.dir, f"{file_name}.png"))
                 fig.close()
-        self.save_neuron_data()
-        self.save_synapse_data()
+        if self.save_data:
+            self.save_neuron_data()
+            self.save_synapse_data()
         if save_post_model:
             Data.save_model(self, os.path.join(self.dir, "post_sim_model.pkl"))
         stop = time.time()
-        print(f"Simulation finished: {self.name}")
-        print(f"\nElapsed time: {round((stop-tot_start)/60,1)}min")
+        if show_process:
+            print(f"Simulation finished: {self.name}")
+            print(f"\nElapsed time: {round((stop-tot_start)/60,1)}min")
 
     def save_neuron_data(self):
         global T
@@ -542,7 +554,7 @@ class Population:
             self.d_hist["d"].append(self.d)
             count = 0
             for spike in self.spikes:
-                if spike["t"] + spike["d"] == T:
+                if round(spike["t"] + spike["d"], 1) == T:
                     count += spike["w"]
                     self.spikes.remove(spike)
             return count
@@ -610,6 +622,7 @@ class Neuron:
             self.u += self.d
             self.refractory = self.ref_t
             [syn.add_spike() for syn in self.down]
+            self.inputs.clear()
             syn_list  = []
             for syn in self.up:
                 spikes = neurons[str(syn.i)].spikes
@@ -629,10 +642,10 @@ class Neuron:
                         min_post = min(post_spikes)
                         syn.G(min_post)
             if syn_list:
-                avg_delta_t = round(sum(x[1] for x in syn_list)/len(syn_list), 1 if DT==0.1 else 0)
+                avg_delta_t = round(sum(x[1] for x in syn_list)/len(syn_list), 1 if DT == 0.1 else 0)
                 [syn[0].F(syn[1]-avg_delta_t) for syn in syn_list]
         else:
-            self.refractory = max(0, self.refractory - DT)
+            self.refractory = max(0, np.round(self.refractory - DT, 1))
 
 
 class FS(Neuron):

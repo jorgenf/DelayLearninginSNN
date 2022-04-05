@@ -63,8 +63,11 @@ def compile_simulation_data(dir):
                             l = data[k]["d_hist"]["d"]
                         except:
                             l = data[k]["d_hist"]
+
                         saturation = check_saturation(l, C.SATURATION_LENGTH)
-                        if saturation:
+                        if data_dict[f"n0_SR"] <= 0.1:
+                            data_dict[k] = "dormant"
+                        elif saturation:
                             data_dict[k] = saturation
                         else:
                             if check_convergence(l, C.CONVERGENT_LENGTH):
@@ -300,13 +303,6 @@ def plot_delay_categories(dir, file_title, identifier_title, identifiers, nd):
                     for i, c in enumerate(conn):
                         data[i].append(c)
 
-            '''
-            data = sorted(data, key=lambda element: (np.mean([abs(x[0] - x[1]) for x in itertools.combinations([element[x] for x in
-                                                      range(len(identifiers))], 2)]),
-                                                  sum(element[x] for x in
-                                                      range(len(identifiers), len(identifiers) + nd)),
-                                                  element[0], element[len(identifiers)]))
-            '''
 
             data = sorted(data, key=lambda element: (np.mean([abs(x[0] - x[1]) for x in itertools.combinations([element[x] for x in
                                                                        range(len(identifiers))], 2)]),
@@ -523,7 +519,12 @@ def plot_delay_catetgories_heatmap(dir, file_title, identifier_title, identifier
         y.append(y_str)
         for catid in range(nd + len(identifiers), len(row)):
             cat.append(row[catid])
-        if any(i in cat for i in ["increasing", "decreasing", "min", "max"]):
+        if "dormant" in cat:
+            z.append("dormant")
+            if x_str not in dct.keys():
+                dct[x_str] = {}
+            dct[x_str][y_str] = cat_list.index("dormant")
+        elif any(i in cat for i in ["increasing", "decreasing", "min", "max"]):
             z.append("diverging")
             if x_str not in dct.keys():
                 dct[x_str] = {}
@@ -548,7 +549,7 @@ def plot_delay_catetgories_heatmap(dir, file_title, identifier_title, identifier
     dff = pd.DataFrame(dct)
     dff = dff.loc[::-1]
     fig, ax = plt.subplots()
-    im = ax.imshow(dff, cmap=matplotlib.colors.ListedColormap(["g", "r", "b", "y"]), interpolation="none", aspect='auto', vmin=0, vmax=3)
+    im = ax.imshow(dff, cmap=matplotlib.colors.ListedColormap(["g", "r", "b", "y", "black"]), interpolation="none", aspect='auto', vmin=0, vmax=4)
     ax.set_ylabel(identifier_title)
     ax.set_xlabel("Delays (ms)")
     ax.set_xticks(range(len(dff.keys())))
@@ -560,15 +561,14 @@ def plot_delay_catetgories_heatmap(dir, file_title, identifier_title, identifier
     ax.grid(False)
     plt.xticks(rotation=90)
     colors = [im.cmap(im.norm(value)) for value in range(len(C.DELAY_CATEGORIES_SHORTLIST))]
-    patches = [mpatches.Patch(color=col, label=cat) for col, cat in zip(colors, cat_list)]
-    plt.legend(handles=patches, ncol=4, loc="upper center", bbox_to_anchor=(0.4, 1.2), handletextpad=0.2)
+    patches = [mpatches.Patch(color=col, label=cat.capitalize()) for col, cat in zip(colors, cat_list)]
+    plt.legend(handles=patches, ncol=5, fontsize=9,loc="upper center", bbox_to_anchor=(0.4, 1.2), handletextpad=0.2)
     plt.tight_layout()
     plt.savefig(file_title, bbox_inches='tight')
 
 
 
 def plot_SR_heatmap(path, file_title, identifier_title, identifiers, nd):
-    fig, ax = plt.subplots()
     df = pd.read_csv(os.path.join(path, "simulation_data.csv"))
     index = list(df.index[df["name"] == "count"])[0]
     df_rows = df.loc[:index - 1]
@@ -628,7 +628,8 @@ def plot_SR_heatmap(path, file_title, identifier_title, identifiers, nd):
     ax.grid(False)
     plt.xticks(rotation=90)
     norm = matplotlib.colors.Normalize(vmin=0, vmax=V_MAX)
-    fig.colorbar(plt.cm.ScalarMappable(norm=norm, cmap=plt.cm.get_cmap("Reds")), ax=ax)
+    cb = fig.colorbar(plt.cm.ScalarMappable(norm=norm, cmap=plt.cm.get_cmap("Reds")), ax=ax)
+    cb.set_label('spikes/s', rotation=90, labelpad=5)
     plt.tight_layout()
     plt.savefig(file_title, bbox_inches='tight')
 
@@ -646,3 +647,57 @@ def plot_SR_heatmap(path, file_title, identifier_title, identifiers, nd):
     print("Saving data to: ", path)
     plt.savefig(path)
     '''
+
+
+def create_dataset(samples, input_length, seed):
+    rng = np.random.default_rng(seed)
+    x = []
+    y = []
+    for n in range(samples):
+        type = np.random.choice(["alternating", "repeating", "asynchronous"])
+        if type == "alternating":
+            pass
+        if type == "repeating":
+            pass
+        if type == "asynchronous":
+            freq = rng.integers(1, 10)
+            xi = [x for x in range(1, input_length) if x % freq == 0]
+            x.append(xi)
+            y.append()
+
+
+def create_alternating_input(i, l):
+    l_pattern = 500
+    l_interm = 500
+    pattern = []
+    period1 = np.random.randint(30, 61)
+    period2 = np.random.randint(30, 61)
+    for x in range(i):
+        offset1 = np.random.randint(0, 11)
+        pattern1 = [(offset1 + (period1 * rep)) for rep in range(l_pattern) if (offset1 + (period1 * rep) < l_pattern)]
+        offset2 = np.random.randint(0, 11)
+        pattern2 = [(offset2 + (period2 * rep)) for rep in range(l_pattern) if (offset2 + (period2 * rep) < l_pattern)]
+        p = []
+        flip = 1
+        for rnd in range(int(l / (l_pattern + l_interm)) + 1):
+            [p.append(inp + (l_pattern + l_interm) * rnd) for inp in (pattern1 if flip == 1 else pattern2)]
+            flip *= -1
+        pattern.append(p)
+    return pattern
+
+def create_asynchronous_input(i, l):
+    pattern = []
+    for input in range(i):
+        interval = np.random.randint(20,50)
+        p = [x for x in range(l) if x % interval == 0]
+        pattern.append(p)
+    return pattern
+
+def create_repeating_input(i , l):
+    pattern = []
+    period = np.random.randint(30, 61)
+    for input in range(i):
+        offset = np.random.randint(0, 10)
+        p = [offset + (period * x) for x in range(int(np.ceil((l - offset) / period))) if offset + (period * x) < l]
+        pattern.append(p)
+    return pattern

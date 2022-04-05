@@ -1,6 +1,6 @@
 import time
 import Data
-import Population
+from Population import *
 import Simulations as sim
 #import Population
 import numpy as np
@@ -317,22 +317,6 @@ if __name__ == "__main__":
 #Data.sum_simulation_data(dir="Z:/MASTER THESIS - SIMULATION RESULTS/feed forward/delayVSfrequency/1n3i w8/t10000")
 
 
-#Data.plot_delay_categories("Z:/MASTER THESIS - SIMULATION RESULTS/feed forward/delayVSoff/1n2i/t10000", file_title="delayVSoff1n2i_delayplot",identifier_title="Spike offsets (ms)", identifiers=["off11", "off12", "off21", "off22"], nd=2)
-#Data.plot_delay_categories("Z:/MASTER THESIS - SIMULATION RESULTS/feed forward/delayVSoff/1n3i/t10000", file_title="delayVSoff1n3i_delayplot",identifier_title="Spike offsets (ms)", identifiers=["off11", "off12", "off21", "off22", "off31", "off32"], nd=3)
-#Data.plot_delay_categories("Z:/MASTER THESIS - SIMULATION RESULTS/feed forward/delayVSoff/1n3i w8/t10000", file_title="delayVSoff1n3i_w8_delayplot",identifier_title="Spike offsets (ms)", identifiers=["off11", "off12", "off21", "off22", "off31", "off32"], nd=3)
-#Data.plot_delay_categories("Z:/MASTER THESIS - SIMULATION RESULTS/feed forward/delayVSfrequency/1n2i/t10000", file_title="delayVSfreq1n2i_delayplot",identifier_title="Spike intervals (ms)", identifiers=["f1", "f2"], nd=2)
-#Data.plot_delay_categories("Z:/MASTER THESIS - SIMULATION RESULTS/feed forward/delayVSfrequency/1n3i/t10000", file_title="delayVSfreq1n3i_delayplot",identifier_title="Spike intervals (ms)", identifiers=["f1", "f2", "f3"], nd=3)
-#Data.plot_delay_categories("Z:/MASTER THESIS - SIMULATION RESULTS/feed forward/delayVSfrequency/1n3i w8/t10000", file_title="delayVSfreq1n3i_w8_delayplot",identifier_title="Spike intervals (ms)", identifiers=["f1", "f2", "f3"], nd=3)
-
-'''
-Data.plot_spike_rate_data("Z:/MASTER THESIS - SIMULATION RESULTS/feed forward\delayVSoff/1n2i/t10000/simulation_data.csv", file_title="delayVSoff1n2i_spikeplot", identifier_title="Spike offsets (ms)",identifiers=["off11", "off12", "off21", "off22"], nd=2)
-Data.plot_spike_rate_data("Z:/MASTER THESIS - SIMULATION RESULTS/feed forward\delayVSoff/1n3i/t10000/simulation_data.csv", file_title="delayVSoff1n3i_spikeplot", identifier_title="Spike offsets (ms)",identifiers=["off11", "off12", "off21", "off22", "off31", "off32"], nd=3)
-Data.plot_spike_rate_data("Z:/MASTER THESIS - SIMULATION RESULTS/feed forward\delayVSoff/1n3i w8/t10000/simulation_data.csv", file_title="delayVSoff1n3i_w8_spikeplot", identifier_title="Spike offsets (ms)",identifiers=["off11", "off12", "off21", "off22", "off31", "off32"], nd=3)
-Data.plot_spike_rate_data("Z:/MASTER THESIS - SIMULATION RESULTS/feed forward/delayVSfrequency/1n2i/t10000/simulation_data.csv", file_title="delayVSfreq1n2i_spikeplot", identifier_title="Spike intervals (ms)",identifiers=["f1", "f2"], nd=2)
-Data.plot_spike_rate_data("Z:/MASTER THESIS - SIMULATION RESULTS/feed forward/delayVSfrequency/1n3i/t10000/simulation_data.csv", file_title="delayVSfreq1n3i_spikeplot", identifier_title="Spike intervals (ms)",identifiers=["f1", "f2", "f3"], nd=3)
-Data.plot_spike_rate_data("Z:/MASTER THESIS - SIMULATION RESULTS/feed forward/delayVSfrequency/1n3i w8/t10000/simulation_data.csv", file_title="delayVSfreq1n3i_w8_spikeplot", identifier_title="Spike intervals (ms)",identifiers=["f1", "f2", "f3"], nd=3)
-'''
-
 
 #Data.plot_delay_catetgories_heatmap("Z:/MASTER THESIS - SIMULATION RESULTS/feed forward/delayVSfrequency/1n2i/t10000", file_title="delayVSfreq1n2i_delayplot", identifier_title="Spike intervals (ms)", identifiers=["f1", "f2"], nd=2)
 #Data.plot_delay_catetgories_heatmap("Z:/MASTER THESIS - SIMULATION RESULTS/feed forward/delayVSfrequency/1n3i/t10000", file_title="delayVSfreq1n3i_delayplot",identifier_title="Spike intervals (ms)", identifiers=["f1", "f2", "f3"], nd=3)
@@ -340,15 +324,15 @@ Data.plot_spike_rate_data("Z:/MASTER THESIS - SIMULATION RESULTS/feed forward/de
 #Data.plot_delay_catetgories_heatmap("Z:/MASTER THESIS - SIMULATION RESULTS/feed forward/delayVSoff/1n2i/t10000", file_title="delayVSoff1n2i_delayplot",identifier_title="Spike offsets (ms)", identifiers=["off11", "off12", "off21", "off22"], nd=2)
 #Data.plot_delay_catetgories_heatmap("Z:/MASTER THESIS - SIMULATION RESULTS/feed forward/delayVSoff/1n3i/t10000", file_title="delayVSoff1n3i_delayplot",identifier_title="Spike offsets (ms)", identifiers=["off11", "off12", "off21", "off22", "off31", "off32"], nd=3)
 #Data.plot_delay_catetgories_heatmap("Z:/MASTER THESIS - SIMULATION RESULTS/feed forward/delayVSoff/1n3i w8/t10000", file_title="delayVSoff1n3i_w8_delayplot",identifier_title="Spike offsets (ms)", identifiers=["off11", "off12", "off21", "off22", "off31", "off32"], nd=3)
-'''
 
-Data.plot_SR_heatmap("Z:/MASTER THESIS - SIMULATION RESULTS/feed forward\delayVSoff/1n2i/t10000", file_title="delayVSoff1n2i_spikeplot", identifier_title="Spike offsets (ms)",identifiers=["off11", "off12", "off21", "off22"], nd=2)
-Data.plot_SR_heatmap("Z:/MASTER THESIS - SIMULATION RESULTS/feed forward\delayVSoff/1n3i/t10000", file_title="delayVSoff1n3i_spikeplot", identifier_title="Spike offsets (ms)",identifiers=["off11", "off12", "off21", "off22", "off31", "off32"], nd=3)
-Data.plot_SR_heatmap("Z:/MASTER THESIS - SIMULATION RESULTS/feed forward\delayVSoff/1n3i w8/t10000", file_title="delayVSoff1n3i_w8_spikeplot", identifier_title="Spike offsets (ms)",identifiers=["off11", "off12", "off21", "off22", "off31", "off32"], nd=3)
-Data.plot_SR_heatmap("Z:/MASTER THESIS - SIMULATION RESULTS/feed forward/delayVSfrequency/1n2i/t10000", file_title="delayVSfreq1n2i_spikeplot", identifier_title="Spike intervals (ms)",identifiers=["f1", "f2"], nd=2)
-Data.plot_SR_heatmap("Z:/MASTER THESIS - SIMULATION RESULTS/feed forward/delayVSfrequency/1n3i/t10000", file_title="delayVSfreq1n3i_spikeplot", identifier_title="Spike intervals (ms)",identifiers=["f1", "f2", "f3"], nd=3)
-Data.plot_SR_heatmap("Z:/MASTER THESIS - SIMULATION RESULTS/feed forward/delayVSfrequency/1n3i w8/t10000", file_title="delayVSfreq1n3i_w8_spikeplot", identifier_title="Spike intervals (ms)",identifiers=["f1", "f2", "f3"], nd=3)
-'''
+
+#Data.plot_SR_heatmap("Z:/MASTER THESIS - SIMULATION RESULTS/feed forward\delayVSoff/1n2i/t10000", file_title="delayVSoff1n2i_spikeplot", identifier_title="Spike offsets (ms)",identifiers=["off11", "off12", "off21", "off22"], nd=2)
+#Data.plot_SR_heatmap("Z:/MASTER THESIS - SIMULATION RESULTS/feed forward\delayVSoff/1n3i/t10000", file_title="delayVSoff1n3i_spikeplot", identifier_title="Spike offsets (ms)",identifiers=["off11", "off12", "off21", "off22", "off31", "off32"], nd=3)
+#Data.plot_SR_heatmap("Z:/MASTER THESIS - SIMULATION RESULTS/feed forward\delayVSoff/1n3i w8/t10000", file_title="delayVSoff1n3i_w8_spikeplot", identifier_title="Spike offsets (ms)",identifiers=["off11", "off12", "off21", "off22", "off31", "off32"], nd=3)
+#Data.plot_SR_heatmap("Z:/MASTER THESIS - SIMULATION RESULTS/feed forward/delayVSfrequency/1n2i/t10000", file_title="delayVSfreq1n2i_spikeplot", identifier_title="Spike intervals (ms)",identifiers=["f1", "f2"], nd=2)
+#Data.plot_SR_heatmap("Z:/MASTER THESIS - SIMULATION RESULTS/feed forward/delayVSfrequency/1n3i/t10000", file_title="delayVSfreq1n3i_spikeplot", identifier_title="Spike intervals (ms)",identifiers=["f1", "f2", "f3"], nd=3)
+#Data.plot_SR_heatmap("Z:/MASTER THESIS - SIMULATION RESULTS/feed forward/delayVSfrequency/1n3i w8/t10000", file_title="delayVSfreq1n3i_w8_spikeplot", identifier_title="Spike intervals (ms)",identifiers=["f1", "f2", "f3"], nd=3)
+
 '''
 pop = Population.Population((10, Population.RS), name="ring_n10i1_k1_1conn_lowsr")
 pop.create_ring_lattice_connections(k = 2, d=list(range(10,31)),w=30, trainable=True, seed=2)
@@ -362,28 +346,49 @@ pop.plot_membrane_potential()
 pop.show_network(save=True)
 '''
 
+
+
+
 '''
-t = 1000
+#def just_do_it(i,j):
+t = 50000
 k = 2
 n = 10
 #internal_d = 20
-internal_d = [29,60,29,60,29,60,29,60,29,60,29,60,29,60,29,60,29,60,29,60,29,60]
+internal_d = [5 for x in range(20)]
+
 internal_w = 16
-input_d = [29, 60]
+input_d = [1, 2]
 input_w = [32, 16]
 input_connections = [0, 1]
-input_freq = [0, 600]
+input_freq = 5
 
-pop = Population.Population((n, Population.RS), path="./network_plots", name=f"directional_ring_lattice_{n}n1i_k{k}_d{internal_d}_w{internal_w}_inpd{input_d}_inpw{input_w}_freq{input_freq}_conn{input_connections}")
+pop = Population.Population((n, Population.RS), path="./network_plots", name=f"dir_RL_t{t}_{n}n1i_k{k}_d{internal_d}_w{internal_w}_inpd{input_d}_inpw{input_w}_freq{input_freq}_conn{input_connections}")
 pop.create_directional_ring_lattice_connections(k=k, d=internal_d, w=internal_w, trainable=True)
-
-#spike_train = [x for x in range(0, t) if x % input_freq == 0]
-pop.create_input(input_freq, j=input_connections, wj=input_w, dj=input_d)
+pop.create_synapse(3,6, w=16,d=5)
+pop.create_synapse(1,7, w=16,d=5)
+spike_train = [x for x in range(0, t) if x % input_freq == 0]
+pop.create_input(spike_train, j=input_connections, wj=input_w, dj=input_d)
 pop.run(t, save_post_model=True)
 pop.plot_topology()
 pop.plot_delays()
 pop.plot_raster()
 pop.plot_membrane_potential()
+
+#i = [x for x in range(1,20)]
+#if __name__ == "__main__":
+#    with mp.Pool(os.cpu_count() - 1) as p:
+#        p.map(just_do_it, i)
+'''
+
+
+'''
+
+
+post_model = Data.load_model("Z:\\MASTER THESIS - SIMULATION RESULTS\\ring lattice\homogenous delays\\dir_RL_t50000_10n1i_k2_d[5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5]_w16_inpd[29, 60]_inpw[32, 16]_freq5_conn[0, 1]/post_sim_model.pkl")
+post_model.plot_raster(duration=[30000,31000])
+'''
+
 '''
 pre_model = Data.load_model("network_plots/directional_ring_lattice_10n1i_k2_d[29, 60, 29, 60, 29, 60, 29, 60, 29, 60, 29, 60, 29, 60, 29, 60, 29, 60, 29, 60, 29, 60]_w16_inpd[29, 60]_inpw[30, 16]_freq[0, 600]_conn[0, 1]_1/pre_sim_model.pkl")
 post_model = Data.load_model("network_plots/directional_ring_lattice_10n1i_k2_d[29, 60, 29, 60, 29, 60, 29, 60, 29, 60, 29, 60, 29, 60, 29, 60, 29, 60, 29, 60, 29, 60]_w16_inpd[29, 60]_inpw[30, 16]_freq[0, 600]_conn[0, 1]_1/post_sim_model.pkl")
@@ -393,7 +398,7 @@ print("Delay 8-0 at t=277.2: ", [syn.d_hist["d"] for syn in post_model.synapses 
 
 print("Spikes n9: ", post_model.neurons["9"].spikes)
 print("Delay 9-0 at t=308.0: ", [syn.d_hist["d"] for syn in post_model.synapses if syn.i == 9 and syn.j == 0][0][3080])
-print("Delay 9-1 at t=307.0: ", [syn.d_hist["d"] for syn in post_model.synapses if syn.i == 9 and syn.j == 1][0][3070])
+print("Delay 9-1 at t=308.0: ", [syn.d_hist["d"] for syn in post_model.synapses if syn.i == 9 and syn.j == 1][0][3080])
 
 print("Spikes n0: ", post_model.neurons["0"].spikes)
 print("Delay 0-1 at t=338.8: ", [syn.d_hist["d"] for syn in post_model.synapses if syn.i == 0 and syn.j == 1][0][3388])
@@ -406,15 +411,71 @@ print("-------------------")
 
 for v,u,t in zip(post_model.neurons["1"].v_hist["v"][3600:3800],post_model.neurons["1"].u_hist["u"][3600:3800], post_model.neurons["1"].u_hist["t"][3600:3800]):
     print(v,u, t)
+'''
 
+'''
+pop = Population.Population((1, Population.RS), path="network_plots/", name="TEST")
+
+#pop.create_input(spike_times=[0, 8.9, 8.9+30, 9++30+8.9 ], dj=0.1, wj=16, j=[0])
+#pop.create_input(spike_times=[0, 55], dj=0.1, wj=17.8, j=[0])
+interval = 90
+ofset =
+pop.create_input(spike_times=[0], dj=0.1, wj=32, j=[0])
+pop.create_input(spike_times=[interval + 0, interval + ofset], dj=0.1, wj=16, j=[0])
+pop.run(duration=1000)
+pop.plot_membrane_potential(IDs=[0])
+
+#print(pop.neurons["0"].v_hist["v"])
+
+print(pop.neurons["0"].v_hist["v"][-1])
+for i, v in zip(pop.neurons["0"].v_hist["t"], pop.neurons["0"].v_hist["v"]):
+    print(i,v)
+    if v >= -75 and i > 100:
+        print(i)
+        break
+'''
 
 
 '''
-t = sorted([round(np.random.random()*100,1) for x in range(1000)])
-print(t)
-
-#t = [2.3, 4.5, 4.7, 4.9, 5.8, 6, 6.8]
-
-h = np.histogram(t, bins=10, range=[0,100])
-print(h)
+if __name__ == "__main__":
+    sim.refractory_period_mt()
 '''
+'''
+interval = 2
+offset = 0
+pop = Population((1, RS), path="network_plots/", name="TESTYTEST", save_data=True)
+pop.create_input(spike_times=[0], dj=0.1, wj=32, j=[0])
+pop.create_input(spike_times=[interval], dj=0.1, wj=16, j=[0])
+pop.create_input(spike_times=[interval + offset], dj=0.1, wj=16, j=[0])
+pop.run(duration=600, show_process=False)
+pop.plot_raster()
+pop.plot_delays()
+pop.plot_membrane_potential()
+'''
+
+#if __name__ == "__main__":
+#    sim.weight_shift_response_mt()
+
+t = 50000
+k = 2
+n = 10
+internal_d = 5
+internal_w = 16
+input_d = [1, 2]
+input_w = [32, 16]
+input_conn = [0, 1]
+input_spike_train = Data.create_alternating_input(2, 50000)
+
+
+pop = Population((n, RS), path="./network_plots",
+                 name=f"xringlattice_alternating_input")
+pop.create_directional_ring_lattice_connections(k=k, d=internal_d, w=internal_w, trainable=True)
+pop.create_synapse(3, 6, w=16, d=5)
+pop.create_synapse(1, 7, w=16, d=5)
+pop.create_input(input_spike_train, j=input_conn, wj=input_w, dj=input_d)
+pop.create_input(input_spike_train, j=input_conn, wj=input_w, dj=input_d)
+pop.run(t, save_post_model=True)
+pop.plot_topology()
+pop.plot_delays()
+pop.plot_raster()
+pop.plot_membrane_potential()
