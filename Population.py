@@ -100,15 +100,15 @@ class Population:
         self.add_neuron(inp)
         if j:
             j = list(j)
-            for ij in j:
+            for n,ij in enumerate(j):
                 if isinstance(wj, list):
-                    w = wj.pop(0)
+                    w = wj[n]
                 elif wj:
                     w = wj
                 else:
                     w = Constants.W
                 if isinstance(dj, list):
-                    d = dj.pop(0)
+                    d = dj[n]
                 elif dj:
                     d = dj
                 else:
