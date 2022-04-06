@@ -456,6 +456,9 @@ pop.plot_membrane_potential()
 #if __name__ == "__main__":
 #    sim.weight_shift_response_mt()
 
+
+
+'''
 t = 50000
 k = 2
 n = 10
@@ -464,10 +467,10 @@ internal_w = 16
 input_d = [1, 2]
 input_w = [32, 16]
 input_conn = [0, 1]
-input_spike_train = Data.create_asynchronous_input(2, 50000)
+input_spike_train = Data.create_alternating_input(2, 50000)
 
 pop = Population((n, RS), path="./network_plots",
-                 name=f"ringlattice_asynchronous_input")
+                 name=f"ringlattice_alternating_input")
 pop.create_directional_ring_lattice_connections(k=k, d=internal_d, w=internal_w, trainable=True)
 pop.create_synapse(3, 6, w=16, d=5)
 pop.create_synapse(1, 7, w=16, d=5)
@@ -478,3 +481,30 @@ pop.plot_topology()
 pop.plot_delays()
 pop.plot_raster()
 pop.plot_membrane_potential()
+'''
+
+
+t = 50000
+n = 16
+internal_d = list(range(1,10))
+internal_w = 16
+input_d = 1
+input_w = 32
+
+input_spike_train = Data.create_alternating_input(4, 50000)
+
+pop = Population((n, RS), path="./network_plots",
+                 name=f"ff_alternating_input")
+pop.create_feed_forward_connections(d=internal_d, w=internal_w, trainable=True, seed=1)
+
+pop.create_input(input_spike_train[0], j=[0], wj=input_w, dj=input_d)
+pop.create_input(input_spike_train[1], j=[1], wj=input_w, dj=input_d)
+pop.create_input(input_spike_train[2], j=[2], wj=input_w, dj=input_d)
+pop.create_input(input_spike_train[3], j=[3], wj=input_w, dj=input_d)
+pop.run(t, save_post_model=True)
+pop.plot_topology()
+pop.plot_delays()
+pop.plot_raster()
+pop.plot_membrane_potential()
+
+

@@ -308,6 +308,7 @@ class Population:
                             self.create_synapse(neuron, j, w=w[0], d=d[0], trainable=trainable)
 
     def create_feed_forward_connections(self, d, w, trainable, seed=False):
+        self.structure = "grid"
         if seed:
             rng = np.random.default_rng(seed)
         else:
