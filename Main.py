@@ -483,7 +483,7 @@ pop.plot_raster()
 pop.plot_membrane_potential()
 '''
 
-
+'''
 t = 50000
 n = 16
 internal_d = list(range(1,10))
@@ -491,10 +491,10 @@ internal_w = 16
 input_d = 1
 input_w = 32
 
-input_spike_train = Data.create_alternating_input(4, 50000)
+input_spike_train = Data.create_asynchronous_input(4, 50000)
 
 pop = Population((n, RS), path="./network_plots",
-                 name=f"ff_alternating_input")
+                 name=f"ff_asynchronous_input")
 pop.create_feed_forward_connections(d=internal_d, w=internal_w, trainable=True, seed=1)
 
 pop.create_input(input_spike_train[0], j=[0], wj=input_w, dj=input_d)
@@ -506,5 +506,31 @@ pop.plot_topology()
 pop.plot_delays()
 pop.plot_raster()
 pop.plot_membrane_potential()
+'''
 
+
+t = 1000
+n = 50
+internal_d = list(range(1,10))
+internal_w = 16
+input_d = 1
+input_w = 32
+rng = np.random.default_rng(1)
+
+
+input_spike_train = Data.create_repeating_input(4, 50000, 100)
+
+pop = Population((n, RS), path="./network_plots",
+                 name=f"reservoir_repeating")
+pop.create_random_connections(p=0.1, d=internal_d, w=internal_w, trainable=True, seed=1)
+
+pop.create_input(input_spike_train[0], j=[rng.integers(0,n-1)], wj=input_w, dj=input_d)
+pop.create_input(input_spike_train[1], j=[rng.integers(0,n-1)], wj=input_w, dj=input_d)
+pop.create_input(input_spike_train[2], j=[rng.integers(0,n-1)], wj=input_w, dj=input_d)
+pop.create_input(input_spike_train[3], j=[rng.integers(0,n-1)], wj=input_w, dj=input_d)
+pop.run(t, save_post_model=True)
+pop.plot_topology()
+pop.plot_delays()
+pop.plot_raster()
+pop.plot_membrane_potential()
 

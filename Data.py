@@ -689,15 +689,16 @@ def create_asynchronous_input(i, l):
     pattern = []
     for input in range(i):
         interval = np.random.randint(20,50)
-        p = [x for x in range(l) if x % interval == 0]
+        p = [x for x in range(1, l) if x % interval == 0]
         pattern.append(p)
     return pattern
 
-def create_repeating_input(i , l):
+def create_repeating_input(i , l, interval=None):
     pattern = []
-    period = np.random.randint(30, 61)
+    if interval is None:
+        interval = np.random.randint(30, 61)
     for input in range(i):
         offset = np.random.randint(0, 10)
-        p = [offset + (period * x) for x in range(int(np.ceil((l - offset) / period))) if offset + (period * x) < l]
+        p = [offset + (interval * x) for x in range(1,int(np.ceil((l - offset) / interval))) if offset + (interval * x) < l]
         pattern.append(p)
     return pattern

@@ -165,6 +165,7 @@ class Population:
                             self.create_synapse(matrix[row][col],matrix[x][y], w=rng.choice(w), d=rng.choice(d), trainable=trainable)
 
     def create_random_connections(self, p, d, w, trainable, seed=False):
+        self.structure = "grid"
         if seed:
             rng = np.random.default_rng(seed)
         else:
@@ -503,7 +504,7 @@ class Population:
             Data.save_model(self, os.path.join(self.dir, "post_sim_model.pkl"))
         stop = time.time()
         if show_process:
-            print(f"Simulation finished: {self.name}")
+            print(f"\nSimulation finished: {self.name}")
             print(f"\nElapsed time: {round((stop-tot_start)/60,1)}min")
 
     def save_neuron_data(self):
