@@ -42,6 +42,7 @@ class Input:
         self.spike_times = spike_times
         self.p = p
         self.down = []
+        self.poly_group = {}
         if seed:
             self.rng = np.random.default_rng(seed)
         else:
@@ -51,6 +52,7 @@ class Input:
         if self.spike_times and T in self.spike_times:
             [syn.add_spike() for syn in self.down]
             self.spikes.append(T)
+            self.poly_group[T] = [f"t{T}"]
         elif self.rng.random() < self.p and not self.spike_times:
             [syn.add_spike() for syn in self.down]
             self.spikes.append(T)
@@ -74,6 +76,7 @@ class Population:
         self.duration = 0
         self.name = name
         self.structure = False
+        self.poly_groups = []
         self.save_data = save_data
         if save_data:
             date = datetime.now().strftime("%d-%B-%Y_%H-%M-%S")
@@ -543,8 +546,8 @@ class Population:
             self.w = w
             self.d = float(d)
             self.d_hist = {"t":[], "d":[]}
-            self.pre_window = -10
-            self.post_window = 7
+            self.pre_window = Constants.PRE_WINDOW
+            self.post_window = Constants.POST_WINDOW
             self.spikes = []
             self.trainable = trainable
 
@@ -590,12 +593,13 @@ class Neuron:
         self.th = 30
         self.ref_t = ref_t
         self.refractory = 0
-        self.v_hist = {"t":[], "v":[]}
-        self.u_hist = {"t":[], "u":[]}
+        self.v_hist = {"t":[], "v": []}
+        self.u_hist = {"t":[], "u": []}
         self.spikes = deque()
         self.up = []
         self.down = []
         self.inputs = []
+        self.poly_group = {}
 
     def update(self, neurons):
         for syn in self.up:
@@ -619,6 +623,7 @@ class Neuron:
         self.u_hist["t"].append(T)
         self.u_hist["u"].append(self.u)
         if self.th <= self.v:
+            print(f"ID: {self.ID} spiked at t={T}!")
             self.spikes.append(T)
             self.v = self.c
             self.u += self.d
@@ -626,26 +631,42 @@ class Neuron:
             [syn.add_spike() for syn in self.down]
             self.inputs.clear()
             syn_list  = []
+            temp_poly_group = {}
             for syn in self.up:
+                print(f"Syn: {syn.i}-{syn.j}")
                 spikes = neurons[str(syn.i)].spikes
+                print(f"Spikes: {spikes}")
                 if spikes:
                     pre_spikes = []
+                    pre_spike_t = []
                     post_spikes = []
                     for spike in spikes:
-                        delta_t = (spike + syn.d) - T
+                        print(f"Spike: {spike}")
+                        index = syn.d_hist["t"].index(spike)
+                        delta_t = round((spike + syn.d_hist["d"][index]) - T, 1)
+                        print(f"Delta t: {delta_t}")
                         if syn.pre_window <= delta_t <= 0:
                             pre_spikes.append(delta_t)
+                            pre_spike_t.append(spike)
                         elif syn.post_window >= delta_t > 0:
                             post_spikes.append(delta_t)
                     if pre_spikes:
                         min_pre = max(pre_spikes)
                         syn_list.append((syn,min_pre))
+                        min_pre_index = pre_spikes.index(max(pre_spikes))
+                        min_pre_t = pre_spike_t[min_pre_index]
+                        temp_poly_group[str(syn.i)] = neurons[str(syn.i)].poly_group[min_pre_t]
+                        print(f"T: {T} Temp poly. ID: {self.ID}. Polygroup: {temp_poly_group}")
                     elif post_spikes:
                         min_post = min(post_spikes)
                         syn.G(min_post)
             if syn_list:
                 avg_delta_t = round(sum(x[1] for x in syn_list)/len(syn_list), 1 if DT == 0.1 else 0)
                 [syn[0].F(syn[1]-avg_delta_t) for syn in syn_list]
+            self.poly_group[T] = temp_poly_group
+            print(f"ID: {self.ID}, depth: {Data.get_polygroup_depth(self.poly_group[T])} polygroups: {self.poly_group[T]}")
+            print("Input times: ", list(Data.get_input_times(self.poly_group[T])))
+
         else:
             self.refractory = max(0, np.round(self.refractory - DT, 1))
 

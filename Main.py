@@ -509,7 +509,7 @@ pop.plot_membrane_potential()
 '''
 
 
-t = 1000
+t = 250
 n = 50
 internal_d = list(range(1,10))
 internal_w = 16
@@ -518,19 +518,21 @@ input_w = 32
 rng = np.random.default_rng(1)
 
 
-input_spike_train = Data.create_repeating_input(4, 50000, 100)
+input_spike_train = Data.create_repeating_input(4, 50000, 100, seed=1)
 
 pop = Population((n, RS), path="./network_plots",
                  name=f"reservoir_repeating")
 pop.create_random_connections(p=0.1, d=internal_d, w=internal_w, trainable=True, seed=1)
 
-pop.create_input(input_spike_train[0], j=[rng.integers(0,n-1)], wj=input_w, dj=input_d)
-pop.create_input(input_spike_train[1], j=[rng.integers(0,n-1)], wj=input_w, dj=input_d)
-pop.create_input(input_spike_train[2], j=[rng.integers(0,n-1)], wj=input_w, dj=input_d)
-pop.create_input(input_spike_train[3], j=[rng.integers(0,n-1)], wj=input_w, dj=input_d)
-pop.run(t, save_post_model=True)
+pop.create_input(input_spike_train[0], j=[int(rng.integers(0, n-1))], wj=input_w, dj=input_d)
+pop.create_input(input_spike_train[1], j=[int(rng.integers(0, n-1))], wj=input_w, dj=input_d)
+pop.create_input(input_spike_train[2], j=[int(rng.integers(0, n-1))], wj=input_w, dj=input_d)
+pop.create_input(input_spike_train[3], j=[int(rng.integers(0, n-1))], wj=input_w, dj=input_d)
+pop.run(t, save_post_model=True, show_process=False)
 pop.plot_topology()
 pop.plot_delays()
 pop.plot_raster()
 pop.plot_membrane_potential()
 
+l0 = {'10': {'17': {'23': {'50': ['Input_50']}, '37': {'52': ['Input_52']}}, '37': {'52': ['Input_52']}, '39': {'25': {'51': ['Input_51']}, '37': {'52': ['Input_52']}}}, '30': {'25': {'51': ['Input_51']}, '39': {'25': {'51': ['Input_51']}, '37': {'52': ['Input_52']}}}, '47': {'25': {'51': ['Input_51']}, '46': {'23': {'50': ['Input_50']}, '53': ['Input_53']}}}
+l1 = {'17': {'23': {'50': ['Input_50']}, '37': {'52': ['Input_52']}}, '37': {'52': ['Input_52']}, '39': {'25': {'51': ['Input_51']}, '37': {'52': ['Input_52']}}}

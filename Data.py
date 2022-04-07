@@ -693,12 +693,36 @@ def create_asynchronous_input(i, l):
         pattern.append(p)
     return pattern
 
-def create_repeating_input(i , l, interval=None):
+def create_repeating_input(i , l, interval=None, seed=None):
     pattern = []
-    if interval is None:
-        interval = np.random.randint(30, 61)
-    for input in range(i):
-        offset = np.random.randint(0, 10)
-        p = [offset + (interval * x) for x in range(1,int(np.ceil((l - offset) / interval))) if offset + (interval * x) < l]
-        pattern.append(p)
-    return pattern
+    if seed is not None:
+        rng = np.random.default_rng(seed)
+        if interval is None:
+            interval = rng.integers(30, 61)
+        for input in range(i):
+            offset = rng.integers(0, 10)
+            p = [offset + (interval * x) for x in range(1,int(np.ceil((l - offset) / interval))) if offset + (interval * x) < l]
+            pattern.append(p)
+        return pattern
+    else:
+        if interval is None:
+            interval = np.random.randint(30, 61)
+        for input in range(i):
+            offset = np.random.randint(0, 10)
+            p = [offset + (interval * x) for x in range(1,int(np.ceil((l - offset) / interval))) if offset + (interval * x) < l]
+            pattern.append(p)
+        return pattern
+
+
+def get_polygroup_depth(polygroup, level=1):
+    if not isinstance(polygroup, dict) or not polygroup:
+        return level
+    return max(get_polygroup_depth(polygroup[k], level + 1)
+               for k in polygroup.keys())
+
+def get_input_times(polygroup):
+    for v in polygroup.values():
+        if isinstance(v, dict):
+            yield from get_input_times(v)
+        else:
+            yield v
