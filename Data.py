@@ -666,9 +666,7 @@ def create_dataset(samples, input_length, seed):
             y.append()
 
 
-def create_alternating_input(i, l):
-    l_pattern = 500
-    l_interm = 500
+def create_alternating_input(i, l, l_pattern=500, l_interm=500):
     pattern = []
     period1 = np.random.randint(30, 61)
     period2 = np.random.randint(30, 61)
@@ -726,3 +724,22 @@ def get_input_times(polygroup):
             yield from get_input_times(v)
         else:
             yield v
+
+def compare_poly(l1, l2):
+    global match, unique
+    match = 0
+    unique = 0
+    def compare(l1, l2):
+        global match, unique
+        if isinstance(l1, dict) and isinstance(l2, dict):
+            intersect = set.intersection(set(l1.keys()), set(l2.keys()))
+            unique += len(set(list(l1.keys()) + list(l2.keys())))
+            match += len(set.intersection(set(l1.keys()), set(l2.keys())))
+            for k in intersect:
+                compare(l1[k], l2[k])
+    inputs_intersect = set.intersection(set(l1.keys()), set(l2.keys()))
+    for ii in inputs_intersect:
+        compare(l1[ii], l2[ii])
+    return match, unique
+
+

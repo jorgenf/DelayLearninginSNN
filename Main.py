@@ -509,30 +509,139 @@ pop.plot_membrane_potential()
 '''
 
 
-t = 250
-n = 50
+t = 10000
+n = 20
 internal_d = list(range(1,10))
 internal_w = 16
 input_d = 1
 input_w = 32
-rng = np.random.default_rng(1)
+rng = np.random.default_rng(3)
 
 
-input_spike_train = Data.create_repeating_input(4, 50000, 100, seed=1)
+#input_spike_train = Data.create_repeating_input(4, 50000, 100, seed=1)
+#input_spike_train = Data.create_alternating_input(4, 50000, l_pattern=30, l_interm=100)
+s1 = 2
+s2 = 5
+s3 = 8
+s4 = 12
+
+spike_train1 = []
+spike_train2 = []
+spike_train3 = []
+spike_train4 = []
+for pp in range(0, int(t/2), 200):
+    spike_train1.append(s1 + pp + rng.integers(-1,2))
+    spike_train2.append(s2 + pp + rng.integers(0,3))
+    spike_train3.append(s3 + pp + rng.integers(0,4))
+    spike_train4.append(s4 + pp + rng.integers(0,4))
+
+s1 = 12
+s2 = 9
+s3 = 4
+s4 = 0
+for pp in range(int(t / 2)+ 200, t, 200):
+    spike_train1.append(s1 + pp + rng.integers(0, 2))
+    spike_train2.append(s2 + pp + rng.integers(0, 3))
+    spike_train3.append(s3 + pp + rng.integers(0, 5))
+    spike_train4.append(s4 + pp + rng.integers(0, 4))
+
+    #s2 += 4
+    #s3 += 6
+    #s4 += 8
+
+#spike_train1 = [5,  204,406]
+#spike_train2 = [8, 209, 401]
+#spike_train3 = [3, 104, 209, 309, 402]
+#spike_train4 = [11, 112, 202, 310, 411]
 
 pop = Population((n, RS), path="./network_plots",
-                 name=f"reservoir_repeating")
-pop.create_random_connections(p=0.1, d=internal_d, w=internal_w, trainable=True, seed=1)
+                 name=f"xpolytest")
+pop.create_random_connections(p=0.2, d=internal_d, w=internal_w, trainable=True, seed=3)
 
-pop.create_input(input_spike_train[0], j=[int(rng.integers(0, n-1))], wj=input_w, dj=input_d)
-pop.create_input(input_spike_train[1], j=[int(rng.integers(0, n-1))], wj=input_w, dj=input_d)
-pop.create_input(input_spike_train[2], j=[int(rng.integers(0, n-1))], wj=input_w, dj=input_d)
-pop.create_input(input_spike_train[3], j=[int(rng.integers(0, n-1))], wj=input_w, dj=input_d)
-pop.run(t, save_post_model=True, show_process=False)
+pop.create_input(spike_train1, j=[int(rng.integers(0, n-1))], wj=input_w, dj=input_d)
+pop.create_input(spike_train2, j=[int(rng.integers(0, n-1))], wj=input_w, dj=input_d)
+pop.create_input(spike_train3, j=[int(rng.integers(0, n-1))], wj=input_w, dj=input_d)
+pop.create_input(spike_train4, j=[int(rng.integers(0, n-1))], wj=input_w, dj=input_d)
+
+pop.run(t, save_post_model=True, show_process=True)
 pop.plot_topology()
 pop.plot_delays()
 pop.plot_raster()
 pop.plot_membrane_potential()
 
-l0 = {'10': {'17': {'23': {'50': ['Input_50']}, '37': {'52': ['Input_52']}}, '37': {'52': ['Input_52']}, '39': {'25': {'51': ['Input_51']}, '37': {'52': ['Input_52']}}}, '30': {'25': {'51': ['Input_51']}, '39': {'25': {'51': ['Input_51']}, '37': {'52': ['Input_52']}}}, '47': {'25': {'51': ['Input_51']}, '46': {'23': {'50': ['Input_50']}, '53': ['Input_53']}}}
-l1 = {'17': {'23': {'50': ['Input_50']}, '37': {'52': ['Input_52']}}, '37': {'52': ['Input_52']}, '39': {'25': {'51': ['Input_51']}, '37': {'52': ['Input_52']}}}
+'''
+def findDiff(d1, d2, path=""):
+    for k in d1:
+        if k in d2:
+            if type(d1[k]) is dict:
+                findDiff(d1[k],d2[k], "%s -> %s" % (path, k) if path else k)
+            if d1[k] != d2[k]:
+                result = [ "%s: " % path, " - %s : %s" % (k, d1[k]) , " + %s : %s" % (k, d2[k])]
+                print("\n".join(result))
+        else:
+            print ("%s%s as key not in d2\n" % ("%s: " % path if path else "", k))
+
+
+def pretty(d, indent=0, s = ""):
+   for key, value in d.items():
+      s += '\n' + '-' * indent + str(key)
+      if isinstance(value, dict):
+         s += pretty(value, indent+1, s=s)
+      else:
+         s += '\n' + '-' * (indent+1) + str(value)
+   return s
+
+def check_similarity(l1, l2):
+    sim = 0
+    tot = 0
+    layer1 = l1
+    layer2 = l2
+    keys_intersect = set.intersection(set(l1.keys()), set(l2.keys()))
+    while True:
+        if keys_intersect:
+            for k in keys_intersect:
+
+            keys1 = layer1.keys()
+            keys2 = layer2.keys()
+
+            sim += len(keys_intersect)
+
+        else:
+            break
+'''
+
+
+
+
+'''
+
+inp1 = [model.neurons[n] for n in model.neurons if isinstance(model.neurons[n], Input)][0]
+inp2 = [model.neurons[n] for n in model.neurons if isinstance(model.neurons[n], Input)][1]
+#for k in inp.poly_group.keys():
+    #print(k)
+#findDiff(inp.poly_group[2.0], inp.poly_group[502.0])
+
+print(inp1.poly_group)
+print(inp2.poly_group)
+
+k1 = list(inp1.poly_group.keys())[0]
+k2 = list(inp2.poly_group.keys())[0]
+
+kk1 = list(inp1.poly_group.keys())[1]
+kk2 = list(inp2.poly_group.keys())[1]
+
+tittitotale = {"10": inp1.poly_group[k1], "11": inp2.poly_group[k2]}
+tittitotale2 = {"10": inp1.poly_group[kk1], "11": inp2.poly_group[kk2]}
+match, unique = Data.compare_poly(tittitotale, tittitotale2)
+print(match, unique)
+#print(inp1.poly_group[k1])
+#print(inp1.poly_group[k2])
+#check_similarity(inp.poly_group[2.0], inp.poly_group[502.0])
+
+#print(pretty(inp.poly_group[2.0]))
+#print(inp.poly_group[2.0])
+#print(model.poly_groups)
+#print(model.poly_groups[0])
+#print(len(model.poly_groups))
+'''
+

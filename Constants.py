@@ -1,9 +1,8 @@
 import numpy as np
 
 
-PRE_WINDOW = -12
+PRE_WINDOW = -10
 POST_WINDOW = 7
-
 W=16
 REPETITIVE_LENGTH = 20000
 CONVERGENT_LENGTH = 20000
@@ -28,3 +27,7 @@ CATEGORY_CONVERSION = {
     "decreasing": "diverging",
     "increasing": "diverging"
 }
+
+
+POLY_GROUP_DURATION = 100
+POLY_GROUP_MATCH_THRESHOLD = 0.7

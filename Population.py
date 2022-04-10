@@ -15,6 +15,7 @@ import Constants
 import Data
 import matplotlib.colors
 from scipy.stats import binned_statistic
+import PNG_detection
 sns.set()
 global T, DT, ID
 
@@ -52,14 +53,14 @@ class Input:
         if self.spike_times and T in self.spike_times:
             [syn.add_spike() for syn in self.down]
             self.spikes.append(T)
-            self.poly_group[T] = [f"t{T}"]
+            if T not in self.poly_group.keys():
+                self.poly_group[T] = {}
         elif self.rng.random() < self.p and not self.spike_times:
             [syn.add_spike() for syn in self.down]
             self.spikes.append(T)
 
-
 class Population:
-    def __init__(self, *populations, path, name=False, save_data=True):
+    def __init__(self, *populations, path, name=None, save_data=True):
         global T, ID
         T = 0.0
         ID = 0
@@ -76,11 +77,12 @@ class Population:
         self.duration = 0
         self.name = name
         self.structure = False
-        self.poly_groups = []
+        self.poly_groups = {}
+        self.poly_group_history = []
         self.save_data = save_data
         if save_data:
             date = datetime.now().strftime("%d-%B-%Y_%H-%M-%S")
-            if self.name:
+            if self.name is not None:
                 self.dir = os.path.join(path, self.name)
             else:
                 self.dir = os.path.join(path, date)
@@ -98,10 +100,10 @@ class Population:
         for neuron in reversed(self.neurons):
             self.neurons[neuron].update(self.neurons)
 
-    def create_input(self, spike_times=[], p=0.0, j=False, wj=False, dj=False, seed=False, trainable=False):
+    def create_input(self, spike_times=[], p=0.0, j=None, wj=None, dj=None, seed=None, trainable=False):
         inp = Input(spike_times, p, seed)
         self.add_neuron(inp)
-        if j:
+        if j is not None:
             j = list(j)
             for n,ij in enumerate(j):
                 if isinstance(wj, list):
@@ -140,13 +142,13 @@ class Population:
         [self.neurons[str(i)].down.remove(syn) for syn in self.neurons[str(i)].down if syn.i == str(i) and syn.j == str(j)]
         [self.neurons[str(j)].up.remove(syn) for syn in self.neurons[str(j)].up if syn.i == str(i) and syn.j == str(j)]
 
-    def create_grid(self, diagonals, d, w, trainable, seed=False):
+    def create_grid(self, diagonals, d, w, trainable, seed=None):
         dim = m.sqrt(len(self.neurons))
         if dim != int(dim):
             raise Exception("Error: population size must be a perfect square.")
         else:
             dim = int(dim)
-        if seed:
+        if seed is not None:
             rng = np.random.default_rng(seed)
         else:
             rng = np.random.default_rng()
@@ -167,9 +169,9 @@ class Population:
                         if exp(x, y, row, col) and 0 <= x < dim and 0 <= y < dim:
                             self.create_synapse(matrix[row][col],matrix[x][y], w=rng.choice(w), d=rng.choice(d), trainable=trainable)
 
-    def create_random_connections(self, p, d, w, trainable, seed=False):
+    def create_random_connections(self, p, d, w, trainable, seed=None):
         self.structure = "grid"
-        if seed:
+        if seed is not None:
             rng = np.random.default_rng(seed)
         else:
             rng = np.random.default_rng()
@@ -182,9 +184,9 @@ class Population:
                 if rng.random() < p and id != id_2:
                     self.create_synapse(id, id_2, d=rng.choice(d), w=rng.choice(w), trainable=trainable)
 
-    def create_random_distance_delayed_connections(self, p, w, trainable, seed=False):
+    def create_random_distance_delayed_connections(self, p, w, trainable, seed=None):
             self.structure = "grid"
-            if seed:
+            if seed is not None:
                 rng = np.random.default_rng(seed)
             else:
                 rng = np.random.default_rng()
@@ -201,9 +203,9 @@ class Population:
                         d = round(np.sqrt(((p1[0]-p2[0])**2)+((p1[1]-p2[1])**2)), 1)
                         self.create_synapse(neuron, neuron2, w=rng.choice(w), d=d, trainable=trainable)
 
-    def create_watts_strogatz_connections(self, k, p, d, w, trainable, seed=False):
+    def create_watts_strogatz_connections(self, k, p, d, w, trainable, seed=None):
         # Must be fixed
-        if seed:
+        if seed is not None:
             rng = np.random.default_rng(seed)
         else:
             rng = np.random.default_rng()
@@ -247,9 +249,9 @@ class Population:
                             break
                     syn.j = new_j
 
-    def create_barabasi_albert_connections(self, d, w, trainable, seed=False):
+    def create_barabasi_albert_connections(self, d, w, trainable, seed=None):
         # Must be fixed
-        if seed:
+        if seed is not None:
             rng = np.random.default_rng(seed)
         else:
             rng = np.random.default_rng()
@@ -273,9 +275,9 @@ class Population:
                     self.create_synapse(id, added_id, w=rng.choice(w), d=rng.choice(d), trainable=trainable)
             added_ids.append(id)
 
-    def create_ring_lattice_connections(self, k, d, w, trainable, seed=False):
+    def create_ring_lattice_connections(self, k, d, w, trainable, seed=None):
         self.structure = "ring"
-        if seed:
+        if seed is not None:
             rng = np.random.default_rng(seed)
         else:
             rng = np.random.default_rng()
@@ -290,9 +292,9 @@ class Population:
                 if neuron != j:
                     self.create_synapse(neuron, j, w=rng.choice(w), d=rng.choice(d), trainable=trainable)
 
-    def create_directional_ring_lattice_connections(self, k, d, w, trainable, seed=False):
+    def create_directional_ring_lattice_connections(self, k, d, w, trainable, seed=None):
         self.structure = "ring"
-        if seed:
+        if seed is not None:
             rng = np.random.default_rng(seed)
         if not isinstance(d, list):
             d = [d]
@@ -303,7 +305,7 @@ class Population:
             for i in range(1, k + 1):
                 j = (neuron + i) % len(self.neurons)
                 if neuron != j:
-                    if seed:
+                    if seed is not None:
                         self.create_synapse(neuron, j, w=rng.choice(w), d=rng.choice(d), trainable=trainable)
                     else:
                         if len(d) > 1:
@@ -420,9 +422,9 @@ class Population:
         fig.savefig(os.path.join(self.dir, "delays.png"))
         plt.close()
 
-    def plot_raster(self, duration=False):
+    def plot_raster(self, duration=None):
         fig, sub = plt.subplots()
-        if duration:
+        if duration is not None:
             spikes = []
             for n in self.neurons:
                 sp = [x for x in list(self.neurons[n].spikes) if duration[0] < x < duration[1]]
@@ -435,12 +437,27 @@ class Population:
         sub.set_ylim([-1, len(self.neurons)])
         sub.set_yticks(range(len(self.neurons)))
         sub.set_yticklabels([x if type(self.neurons[x]) != Input else f"{x} (Input)" for x in self.neurons])
+        print(len(self.poly_group_history))
+        unique_IDs = set([tpg["poly_index"] for tpg in self.poly_group_history])
+        ID_counts = {}
+        for tmpID in unique_IDs:
+            ID_counts[tmpID] = 0
+        for pg in self.poly_group_history:
+            pg_start = pg["pattern_start"]
+            pg_ID = pg["poly_index"]
+            ID_counts[pg_ID] += 1
+            sub.hlines(y=-0.5, xmin=pg_start, xmax=pg_start + Constants.POLY_GROUP_DURATION, linewidth=2, color=Constants.COLORS[pg_ID])
+
+        patches = []
+        for uid in ID_counts:
+            patches.append(mpatches.Patch(color=Constants.COLORS[uid], label=f'ID={uid} ({ID_counts[uid]})'))
+        plt.legend(handles=patches, ncol=1, loc="best", title="PG IDs")
         fig.tight_layout()
         fig.savefig(os.path.join(self.dir, "spikes.png"))
         plt.close()
 
-    def plot_membrane_potential(self, IDs=False):
-        if IDs:
+    def plot_membrane_potential(self, IDs=None):
+        if IDs is not None:
             IDs = list(IDs)
         else:
             IDs = self.neurons.copy()
@@ -486,20 +503,42 @@ class Population:
         tot_start = time.time()
         if self.save_data:
             Data.save_model(self, os.path.join(self.dir, "pre_sim_model.pkl"))
+        poly_index = 0
         while T < self.duration:
             start = time.time()
             self.update()
-            if show_process:
-                stop = time.time() - start
-                prog = (T / duration) * 100
-                print("\r |" + "#" * int(prog) + f"  {round(prog, 1) if T < duration - DT else 100}%| t={T}ms | Time per step: {round(stop,4)} sec", end="")
-            T = round(T + DT,3)
+            inputs = [self.neurons[neuron] for neuron in self.neurons if isinstance(self.neurons[neuron], Input)]
+            if all(inp.poly_group.keys() for inp in inputs):
+                max_keys = [max(inp.poly_group.keys()) for inp in inputs]
+                if all(T - mk >= Constants.POLY_GROUP_DURATION for mk in max_keys):
+                    poly = {}
+                    for inp in inputs:
+                        poly[inp.ID] = inp.poly_group[max(inp.poly_group.keys())]
+                    highest_match = 0
+                    highest_match_ID = None
+                    for poly_ID in self.poly_groups:
+                        match, unique = Data.compare_poly(poly, self.poly_groups[poly_ID])
+                        if match / unique > highest_match:
+                            highest_match = match / unique
+                            highest_match_ID = poly_ID
+                    if highest_match < Constants.POLY_GROUP_MATCH_THRESHOLD:
+                        self.poly_groups[poly_index] = poly
+                        if max(max_keys) not in [tmpx["pattern_start"] for tmpx in self.poly_group_history]:
+                            self.poly_group_history.append({"pattern_start": max(max_keys), "poly_index": poly_index})
+                        poly_index += 1
+                    elif max(max_keys) not in [tmpx["pattern_start"] for tmpx in self.poly_group_history]:
+                        self.poly_group_history.append({"pattern_start": max(max_keys), "poly_index": highest_match_ID})
             if record:
                 fig = self.plot_topology()
                 fig.title(f"Time={T}ms")
                 file_name = "t" + str(T).replace(".","").rjust(10,"0")
                 fig.savefig(os.path.join(self.dir, f"{file_name}.png"))
                 fig.close()
+            if show_process:
+                stop = time.time() - start
+                prog = (T / duration) * 100
+                print("\r |" + "#" * int(prog) + f"  {round(prog, 1) if T < duration - DT else 100}%| t={T}ms | Time per step: {round(stop,4)} sec", end="")
+            T = round(T + DT,3)
         if self.save_data:
             self.save_neuron_data()
             self.save_synapse_data()
@@ -509,6 +548,9 @@ class Population:
         if show_process:
             print(f"\nSimulation finished: {self.name}")
             print(f"\nElapsed time: {round((stop-tot_start)/60,1)}min")
+        print("DONE!")
+        print(self.poly_groups)
+
 
     def save_neuron_data(self):
         global T
@@ -623,28 +665,24 @@ class Neuron:
         self.u_hist["t"].append(T)
         self.u_hist["u"].append(self.u)
         if self.th <= self.v:
-            print(f"ID: {self.ID} spiked at t={T}!")
             self.spikes.append(T)
             self.v = self.c
             self.u += self.d
             self.refractory = self.ref_t
             [syn.add_spike() for syn in self.down]
             self.inputs.clear()
-            syn_list  = []
-            temp_poly_group = {}
+            syn_list = []
+            if T not in self.poly_group.keys():
+                self.poly_group[T] = {}
             for syn in self.up:
-                print(f"Syn: {syn.i}-{syn.j}")
                 spikes = neurons[str(syn.i)].spikes
-                print(f"Spikes: {spikes}")
                 if spikes:
                     pre_spikes = []
                     pre_spike_t = []
                     post_spikes = []
                     for spike in spikes:
-                        print(f"Spike: {spike}")
                         index = syn.d_hist["t"].index(spike)
                         delta_t = round((spike + syn.d_hist["d"][index]) - T, 1)
-                        print(f"Delta t: {delta_t}")
                         if syn.pre_window <= delta_t <= 0:
                             pre_spikes.append(delta_t)
                             pre_spike_t.append(spike)
@@ -655,18 +693,13 @@ class Neuron:
                         syn_list.append((syn,min_pre))
                         min_pre_index = pre_spikes.index(max(pre_spikes))
                         min_pre_t = pre_spike_t[min_pre_index]
-                        temp_poly_group[str(syn.i)] = neurons[str(syn.i)].poly_group[min_pre_t]
-                        print(f"T: {T} Temp poly. ID: {self.ID}. Polygroup: {temp_poly_group}")
+                        neurons[str(syn.i)].poly_group[min_pre_t][self.ID] = self.poly_group[T]
                     elif post_spikes:
                         min_post = min(post_spikes)
                         syn.G(min_post)
             if syn_list:
                 avg_delta_t = round(sum(x[1] for x in syn_list)/len(syn_list), 1 if DT == 0.1 else 0)
                 [syn[0].F(syn[1]-avg_delta_t) for syn in syn_list]
-            self.poly_group[T] = temp_poly_group
-            print(f"ID: {self.ID}, depth: {Data.get_polygroup_depth(self.poly_group[T])} polygroups: {self.poly_group[T]}")
-            print("Input times: ", list(Data.get_input_times(self.poly_group[T])))
-
         else:
             self.refractory = max(0, np.round(self.refractory - DT, 1))
 
