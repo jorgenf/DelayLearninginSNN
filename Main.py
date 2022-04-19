@@ -1,5 +1,6 @@
 import time
 import Data
+import Population
 import Simulations
 from Population import *
 import Simulations as sim
@@ -618,6 +619,7 @@ def run_reservoir(train, n, i, conn_inp_P, conn_res_p, internal_w):
     pop.plot_raster()
     pop.plot_membrane_potential()
 
+'''
 # Feed forward
 ff_train = [True, False]
 ff_n = [25]
@@ -654,8 +656,65 @@ if __name__ == "__main__":
         rl.starmap(run_ringlattice, rl_combos)
     with mp.Pool(os.cpu_count() - 16) as r:
         r.starmap(run_reservoir, r_combos)
+'''
+'''
+SEED = 1
 
+t = 5000
+d = list(range(1,11))
+w = 16
+pop = Population((20, RS),path='network_plots/', name="extended_pattern_plastic")
+pop.create_random_connections(p=0.3, d=d, w=w, trainable=True, seed=SEED)
+ST = [2,6,9,12]
+spike_train=[[], [], [], []]
+add1 = 1
+add2 = 2
+add3 = 3
+for tt in range(0,t, 200):
+    spike_train[0].append(ST[0] + tt)
+    spike_train[1].append(ST[1] + tt + add1)
+    spike_train[2].append(ST[2] + tt + add2)
+    spike_train[3].append(ST[3] + tt + add3)
+    add1 += 1
+    add2 += 2
+    add3 += 3
 
+pop.create_input(spike_times=spike_train[0],j=[0], wj=32,dj=1)
+pop.create_input(spike_times=spike_train[1],j=[1], wj=32,dj=1)
+pop.create_input(spike_times=spike_train[2],j=[2], wj=32,dj=1)
+pop.create_input(spike_times=spike_train[3],j=[3], wj=32,dj=1)
 
+pop.run(duration=5000,save_post_model=True, record_PG=False, show_process=True)
 
+t = 5000
+d = list(range(1,11))
+w = 16
+pop = Population((20, RS),path='network_plots/', name="extended_pattern_static")
+pop.create_random_connections(p=0.3, d=d, w=w, trainable=False, seed=SEED)
+ST = [2,6,9,12]
+spike_train=[[], [], [], []]
+add1 = 1
+add2 = 2
+add3 = 3
+for tt in range(0,t, 200):
+    spike_train[0].append(ST[0] + tt)
+    spike_train[1].append(ST[1] + tt + add1)
+    spike_train[2].append(ST[2] + tt + add2)
+    spike_train[3].append(ST[3] + tt + add3)
+    add1 += 1
+    add2 += 2
+    add3 += 3
 
+pop.create_input(spike_times=spike_train[0],j=[0], wj=32,dj=1)
+pop.create_input(spike_times=spike_train[1],j=[1], wj=32,dj=1)
+pop.create_input(spike_times=spike_train[2],j=[2], wj=32,dj=1)
+pop.create_input(spike_times=spike_train[3],j=[3], wj=32,dj=1)
+
+pop.run(duration=5000,save_post_model=True, record_PG=False, show_process=True)
+'''
+
+model1 = Data.load_model(r'C:\Users\J-Laptop\PycharmProjects\DelayLearninginSNN\network_plots\extended_pattern_static_1\post_sim_model.pkl')
+model1.plot_raster()
+
+model2 = Data.load_model(r'C:\Users\J-Laptop\PycharmProjects\DelayLearninginSNN\network_plots\extended_pattern_plastic_1\post_sim_model.pkl')
+model2.plot_raster()

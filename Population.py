@@ -14,7 +14,6 @@ import json
 import Constants
 import Data
 import matplotlib.colors
-from scipy.stats import binned_statistic
 sns.set()
 global T, DT, ID
 
@@ -451,13 +450,14 @@ class Population:
                 spikes.append(sp)
         else:
             spikes = [self.neurons[x].spikes for x in self.neurons]
-        sub.eventplot(spikes, colors='black', lineoffsets=1, linelengths=1, linewidths=0.5)
+        c = ["red" if isinstance(self.neurons[_],Input) else "black" for _ in self.neurons]
+        sub.eventplot(spikes, colors=c, lineoffsets=1, linelengths=1, linewidths=0.5)
         sub.set_xlabel("Time (ms)")
         sub.set_ylabel("Neuron ID")
         sub.set_ylim([-1, len(self.neurons)])
         sub.set_yticks(range(len(self.neurons)))
         sub.set_yticklabels([x if type(self.neurons[x]) != Input else f"{x} (Input)" for x in self.neurons])
-        sub.yaxis.set_major_locator(plt.MaxNLocator(40))
+        sub.yaxis.set_major_locator(plt.MaxNLocator(20))
         unique_IDs = set([tpg["poly_index"] for tpg in self.poly_group_history])
         for tmpID in unique_IDs:
             self.poly_ID_counts[tmpID] = 0
@@ -474,10 +474,11 @@ class Population:
             if len(Constants.COLORS) <= uid:
                 Constants.COLORS.append((np.random.random(), np.random.random(), np.random.random()))
             patches.append(mpatches.Patch(color=Constants.COLORS[uid], label=f'ID={uid} ({self.poly_ID_counts[uid]})'))
-        if len(patches) <= 12:
-            plt.legend(handles=patches, ncol=1, loc="best", title="PG IDs")
-        else:
-            plt.legend(handles=patches, ncol=6, loc="upper center", columnspacing=0.5, prop={"size": 8}, title="PG IDs")
+        if len(patches) > 0:
+            if len(patches) <= 12:
+                plt.legend(handles=patches, ncol=1, loc="best", title="PG IDs")
+            else:
+                plt.legend(handles=patches, ncol=6, loc="upper center", columnspacing=0.5, prop={"size": 8}, title="PG IDs")
         fig.tight_layout()
         fig.savefig(os.path.join(self.dir, "spikes.png"))
         plt.close()
@@ -548,7 +549,7 @@ class Population:
                     return 0
         return 0
 
-    def run(self, duration, dt=0.1, save_post_model=False, record=False, show_process=True):
+    def run(self, duration, dt=0.1, save_post_model=False, record_topology=False, record_PG=True, show_process=True, save_plots=True):
         self.duration = duration
         global T, DT
         DT = dt
@@ -559,8 +560,9 @@ class Population:
         while T < self.duration:
             start = time.time()
             self.update()
-            poly_index += self.build_poly_groups(poly_index)
-            if record:
+            if record_PG:
+                poly_index += self.build_poly_groups(poly_index)
+            if record_topology:
                 fig = self.plot_topology()
                 fig.title(f"Time={T}ms")
                 file_name = "t" + str(T).replace(".","").rjust(10,"0")
@@ -576,6 +578,11 @@ class Population:
             self.save_synapse_data()
         if save_post_model:
             Data.save_model(self, os.path.join(self.dir, "post_sim_model.pkl"))
+        if save_plots:
+            self.plot_raster()
+            self.plot_topology()
+            self.plot_delays()
+            self.plot_mean_delays()
         stop = time.time()
         if show_process:
             print(f"\nSimulation finished: {self.name}")
