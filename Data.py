@@ -274,7 +274,10 @@ def save_model(object, dir):
 
 def load_model(dir):
     with open(os.path.join(dir), 'rb') as file:
-        return (pickle.load(file))
+        model = pickle.load(file)
+        new_dir = os.path.split(dir)[0]
+        model.dir = new_dir
+        return model
 
 
 def plot_delay_categories(dir, file_title, identifier_title, identifiers, nd):
@@ -742,4 +745,12 @@ def compare_poly(l1, l2):
         compare(l1[ii], l2[ii])
     return match, unique
 
+def print_polygroup(d, indent=0, s = ""):
+   for key, value in d.items():
+      s += '\n' + '-' * indent + str(key)
+      if isinstance(value, dict):
+         s += print_polygroup(value, indent+1, s=s)
+      else:
+         s += '\n' + '-' * (indent+1) + str(value)
+   return s
 

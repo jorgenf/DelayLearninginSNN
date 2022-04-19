@@ -15,7 +15,6 @@ import Constants
 import Data
 import matplotlib.colors
 from scipy.stats import binned_statistic
-import PNG_detection
 sns.set()
 global T, DT, ID
 
@@ -34,7 +33,6 @@ mpl.use("Agg")
 
 class Input:
     global T
-
     def __init__(self, spike_times=False, p=0.0, seed=False):
         global ID
         self.ID = str(ID)
@@ -79,6 +77,7 @@ class Population:
         self.structure = False
         self.poly_groups = {}
         self.poly_group_history = []
+        self.poly_ID_counts = {}
         self.save_data = save_data
         if save_data:
             date = datetime.now().strftime("%d-%B-%Y_%H-%M-%S")
@@ -413,6 +412,7 @@ class Population:
         for i, syn in enumerate(self.synapses):
             sub.plot(syn.d_hist["t"], syn.d_hist["d"], linestyle=ls[int((i/10) % 4)], linewidth=0.8)
             handles.append((syn.i, syn.j))
+
         sub.set_xlabel("Time (ms)")
         sub.set_ylabel("Delay (ms)")
         sub.set_ylim(0, MAX_DELAY)
@@ -420,6 +420,26 @@ class Population:
         sub.legend(handles, bbox_to_anchor=(1, 1), prop={"size":8}, ncol=2)
         fig.tight_layout()
         fig.savefig(os.path.join(self.dir, "delays.png"))
+        plt.close()
+
+    def plot_mean_delays(self):
+        fig, sub = plt.subplots()
+        #handles = []
+        #ls = ["solid", "dashed", "dotted", "dashdot"]
+        mean = []
+        std = []
+        for i in range(0, round(self.duration / DT)):
+            d = [syn.d_hist["d"][i] for syn in self.synapses]
+            mean.append(np.mean(d))
+            std.append(np.std(d))
+        sub.plot(np.arange(0, self.duration, DT), mean)
+        sub.fill_between(np.arange(0, self.duration, DT), [m-s for m,s in zip(mean, std)], [m+s for m, s in zip(mean,std)], alpha=.3)
+        sub.set_xlabel("Time (ms)")
+        sub.set_ylabel("Delay (ms)")
+        sub.set_ylim(0, MAX_DELAY)
+        sub.set_yticks(np.arange(0, MAX_DELAY + 1, 2))
+        fig.tight_layout()
+        fig.savefig(os.path.join(self.dir, "mean_delays.png"))
         plt.close()
 
     def plot_raster(self, duration=None):
@@ -437,21 +457,27 @@ class Population:
         sub.set_ylim([-1, len(self.neurons)])
         sub.set_yticks(range(len(self.neurons)))
         sub.set_yticklabels([x if type(self.neurons[x]) != Input else f"{x} (Input)" for x in self.neurons])
-        print(len(self.poly_group_history))
+        sub.yaxis.set_major_locator(plt.MaxNLocator(40))
         unique_IDs = set([tpg["poly_index"] for tpg in self.poly_group_history])
-        ID_counts = {}
         for tmpID in unique_IDs:
-            ID_counts[tmpID] = 0
+            self.poly_ID_counts[tmpID] = 0
         for pg in self.poly_group_history:
             pg_start = pg["pattern_start"]
-            pg_ID = pg["poly_index"]
-            ID_counts[pg_ID] += 1
-            sub.hlines(y=-0.5, xmin=pg_start, xmax=pg_start + Constants.POLY_GROUP_DURATION, linewidth=2, color=Constants.COLORS[pg_ID])
-
+            if duration is None or (duration is not None and pg_start + Constants.POLY_GROUP_DURATION < duration[1]):
+                pg_ID = pg["poly_index"]
+                self.poly_ID_counts[pg_ID] += 1
+                if len(Constants.COLORS) <= pg_ID:
+                    Constants.COLORS.append((np.random.random(), np.random.random(), np.random.random()))
+                sub.hlines(y=-0.5, xmin=pg_start, xmax=pg_start + Constants.POLY_GROUP_DURATION, linewidth=2, color=Constants.COLORS[pg_ID])
         patches = []
-        for uid in ID_counts:
-            patches.append(mpatches.Patch(color=Constants.COLORS[uid], label=f'ID={uid} ({ID_counts[uid]})'))
-        plt.legend(handles=patches, ncol=1, loc="best", title="PG IDs")
+        for uid in self.poly_ID_counts:
+            if len(Constants.COLORS) <= uid:
+                Constants.COLORS.append((np.random.random(), np.random.random(), np.random.random()))
+            patches.append(mpatches.Patch(color=Constants.COLORS[uid], label=f'ID={uid} ({self.poly_ID_counts[uid]})'))
+        if len(patches) <= 12:
+            plt.legend(handles=patches, ncol=1, loc="best", title="PG IDs")
+        else:
+            plt.legend(handles=patches, ncol=6, loc="upper center", columnspacing=0.5, prop={"size": 8}, title="PG IDs")
         fig.tight_layout()
         fig.savefig(os.path.join(self.dir, "spikes.png"))
         plt.close()
@@ -496,6 +522,32 @@ class Population:
         os.system(f"ffmpeg -y -r {fps} -i {self.dir}/t%10d.png -vcodec libx264 {self.dir}/output.mp4")
         os.system(f"ffmpeg -y -r {fps} -i {self.dir}/t%10d.png -vcodec msmpeg4 {self.dir}/output.wmv")
 
+    def build_poly_groups(self, poly_index):
+        inputs = [self.neurons[neuron] for neuron in self.neurons if isinstance(self.neurons[neuron], Input)]
+        if all(inp.poly_group.keys() for inp in inputs):
+            max_keys = [max(inp.poly_group.keys()) for inp in inputs]
+            if all(T - mk >= Constants.POLY_GROUP_DURATION for mk in max_keys):
+                poly = {}
+                for inp in inputs:
+                    poly[inp.ID] = inp.poly_group[max(inp.poly_group.keys())]
+                highest_match = 0
+                highest_match_ID = None
+                for poly_ID in self.poly_groups:
+                    match, unique = Data.compare_poly(poly, self.poly_groups[poly_ID])
+                    if unique:
+                        if match / unique > highest_match:
+                            highest_match = match / unique
+                            highest_match_ID = poly_ID
+                if highest_match < Constants.POLY_GROUP_MATCH_THRESHOLD:
+                    if max(max_keys) not in [tmpx["pattern_start"] for tmpx in self.poly_group_history]:
+                        self.poly_groups[poly_index] = poly
+                        self.poly_group_history.append({"pattern_start": max(max_keys), "poly_index": poly_index})
+                        return 1
+                elif max(max_keys) not in [tmpx["pattern_start"] for tmpx in self.poly_group_history]:
+                    self.poly_group_history.append({"pattern_start": max(max_keys), "poly_index": highest_match_ID})
+                    return 0
+        return 0
+
     def run(self, duration, dt=0.1, save_post_model=False, record=False, show_process=True):
         self.duration = duration
         global T, DT
@@ -507,27 +559,7 @@ class Population:
         while T < self.duration:
             start = time.time()
             self.update()
-            inputs = [self.neurons[neuron] for neuron in self.neurons if isinstance(self.neurons[neuron], Input)]
-            if all(inp.poly_group.keys() for inp in inputs):
-                max_keys = [max(inp.poly_group.keys()) for inp in inputs]
-                if all(T - mk >= Constants.POLY_GROUP_DURATION for mk in max_keys):
-                    poly = {}
-                    for inp in inputs:
-                        poly[inp.ID] = inp.poly_group[max(inp.poly_group.keys())]
-                    highest_match = 0
-                    highest_match_ID = None
-                    for poly_ID in self.poly_groups:
-                        match, unique = Data.compare_poly(poly, self.poly_groups[poly_ID])
-                        if match / unique > highest_match:
-                            highest_match = match / unique
-                            highest_match_ID = poly_ID
-                    if highest_match < Constants.POLY_GROUP_MATCH_THRESHOLD:
-                        self.poly_groups[poly_index] = poly
-                        if max(max_keys) not in [tmpx["pattern_start"] for tmpx in self.poly_group_history]:
-                            self.poly_group_history.append({"pattern_start": max(max_keys), "poly_index": poly_index})
-                        poly_index += 1
-                    elif max(max_keys) not in [tmpx["pattern_start"] for tmpx in self.poly_group_history]:
-                        self.poly_group_history.append({"pattern_start": max(max_keys), "poly_index": highest_match_ID})
+            poly_index += self.build_poly_groups(poly_index)
             if record:
                 fig = self.plot_topology()
                 fig.title(f"Time={T}ms")
@@ -548,8 +580,6 @@ class Population:
         if show_process:
             print(f"\nSimulation finished: {self.name}")
             print(f"\nElapsed time: {round((stop-tot_start)/60,1)}min")
-        print("DONE!")
-        print(self.poly_groups)
 
 
     def save_neuron_data(self):

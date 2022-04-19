@@ -1,5 +1,6 @@
 import time
 import Data
+import Simulations
 from Population import *
 import Simulations as sim
 #import Population
@@ -509,139 +510,152 @@ pop.plot_membrane_potential()
 '''
 
 
-t = 10000
-n = 20
-internal_d = list(range(1,10))
-internal_w = 16
-input_d = 1
-input_w = 32
-rng = np.random.default_rng(3)
+def run_feedforward(train, n, internal_w):
+    t = 10000
+    n = n
+    internal_d = list(range(1,21))
+    internal_w = internal_w
+    input_d = 1
+    input_w = 32
+    input_interval = 400
+    i = m.sqrt(n)
+    if i % 1 != 0:
+        raise Exception("n not square")
+    else:
+        i = int(i)
+    s1 = np.cumsum(np.ones((i,), int) * 3 + np.random.randint(0, 5, (i,))) - 3
+    np.random.shuffle(s1)
+    s2 = np.cumsum(np.ones((i,), int) * 3 + np.random.randint(0, 5, (i,))) - 3
+    np.random.shuffle(s2)
+    pop = Population((n, RS), path="./network_plots/topologies",
+                     name=f"ringlattice_n-{n}_i-{i}_intrnW-{internal_w}_train-{train}_s1-{s1}_s2-{s2}")
+    pop.create_feed_forward_connections(d=internal_d, w=internal_w, trainable=train)
+    spike_trains = [[] for _ in range(i)]
+
+    for pp in range(0, int(t / 2), input_interval):
+        for temp_i in range(0,i):
+            spike_trains[temp_i].append(s1[temp_i] + pp + np.random.randint(-1, 2))
+
+    for pp in range(int(t / 2)+ input_interval, t, input_interval):
+        for temp_i in range(i):
+            spike_trains[temp_i].append(s2[temp_i] + pp + np.random.randint(-1, 2))
+
+    for temp_i in range(i):
+        pop.create_input(spike_trains[temp_i], j=[i], wj=input_w, dj=input_d, trainable=False)
+
+    pop.run(t, save_post_model=True, show_process=True)
+    pop.plot_topology()
+    pop.plot_delays()
+    pop.plot_raster()
+    pop.plot_membrane_potential()
+
+def run_ringlattice(train, n, i, conn_inp_P, k, internal_w):
+    t = 10000
+    n = n
+    internal_d = list(range(1,21))
+    internal_w = internal_w
+    input_d = 1
+    input_w = 32
+    input_interval = 400
+    s1 = np.cumsum(np.ones((i,), int) * 3 + np.random.randint(0, 5, (i,))) - 3
+    np.random.shuffle(s1)
+    s2 = np.cumsum(np.ones((i,), int) * 3 + np.random.randint(0, 5, (i,))) - 3
+    np.random.shuffle(s2)
+    pop = Population((n, RS), path="./network_plots/topologies",
+                     name=f"ringlattice_n-{n}_i-{i}_intrnW-{internal_w}_k-{k}_inpP-{conn_inp_P}_train-{train}_s1-{s1}_s2-{s2}")
+    pop.create_directional_ring_lattice_connections(k=k, w=internal_w, d=internal_d,trainable=train)
+    spike_trains = [[] for _ in range(i)]
+
+    for pp in range(0, int(t / 2), input_interval):
+        for temp_i in range(0,i):
+            spike_trains[temp_i].append(s1[temp_i] + pp + np.random.randint(-1, 2))
+
+    for pp in range(int(t / 2)+ input_interval, t, input_interval):
+        for temp_i in range(i):
+            spike_trains[temp_i].append(s2[temp_i] + pp + np.random.randint(-1, 2))
+
+    for temp_i in range(i):
+        pop.create_input(spike_trains[temp_i], j=[int(x) for x in range(0, n-1) if np.random.random() < conn_inp_P], wj=input_w, dj=input_d, trainable=False)
+
+    pop.run(t, save_post_model=True, show_process=True)
+    pop.plot_topology()
+    pop.plot_delays()
+    pop.plot_raster()
+    pop.plot_membrane_potential()
 
 
-#input_spike_train = Data.create_repeating_input(4, 50000, 100, seed=1)
-#input_spike_train = Data.create_alternating_input(4, 50000, l_pattern=30, l_interm=100)
-s1 = 2
-s2 = 5
-s3 = 8
-s4 = 12
+def run_reservoir(train, n, i, conn_inp_P, conn_res_p, internal_w):
+    t = 10000
+    n = n
+    internal_d = list(range(1,21))
+    internal_w = internal_w
+    input_d = 1
+    input_w = 32
+    input_interval = 400
+    s1 = np.cumsum(np.ones((i,), int) * 3 + np.random.randint(0, 5, (i,))) - 3
+    np.random.shuffle(s1)
+    s2 = np.cumsum(np.ones((i,), int) * 3 + np.random.randint(0, 5, (i,))) - 3
+    np.random.shuffle(s2)
+    pop = Population((n, RS), path="./network_plots/topologies",
+                     name=f"reservoir_n-{n}_i-{i}_intrnW-{internal_w}_resP-{conn_res_p}_inpP-{conn_inp_P}_train-{train}_s1-{s1}_s2-{s2}")
+    pop.create_random_connections(p=conn_res_p, d=internal_d, w=internal_w, trainable=train)
+    spike_trains = [[] for _ in range(i)]
 
-spike_train1 = []
-spike_train2 = []
-spike_train3 = []
-spike_train4 = []
-for pp in range(0, int(t/2), 200):
-    spike_train1.append(s1 + pp + rng.integers(-1,2))
-    spike_train2.append(s2 + pp + rng.integers(0,3))
-    spike_train3.append(s3 + pp + rng.integers(0,4))
-    spike_train4.append(s4 + pp + rng.integers(0,4))
+    for pp in range(0, int(t / 2), input_interval):
+        for temp_i in range(0,i):
+            spike_trains[temp_i].append(s1[temp_i] + pp + np.random.randint(-1, 2))
 
-s1 = 12
-s2 = 9
-s3 = 4
-s4 = 0
-for pp in range(int(t / 2)+ 200, t, 200):
-    spike_train1.append(s1 + pp + rng.integers(0, 2))
-    spike_train2.append(s2 + pp + rng.integers(0, 3))
-    spike_train3.append(s3 + pp + rng.integers(0, 5))
-    spike_train4.append(s4 + pp + rng.integers(0, 4))
+    for pp in range(int(t / 2)+ input_interval, t, input_interval):
+        for temp_i in range(i):
+            spike_trains[temp_i].append(s2[temp_i] + pp + np.random.randint(-1, 2))
 
-    #s2 += 4
-    #s3 += 6
-    #s4 += 8
+    for temp_i in range(i):
+        pop.create_input(spike_trains[temp_i], j=[int(x) for x in range(0, n-1) if np.random.random() < conn_inp_P], wj=input_w, dj=input_d, trainable=False)
 
-#spike_train1 = [5,  204,406]
-#spike_train2 = [8, 209, 401]
-#spike_train3 = [3, 104, 209, 309, 402]
-#spike_train4 = [11, 112, 202, 310, 411]
+    pop.run(t, save_post_model=True, show_process=True)
+    pop.plot_topology()
+    pop.plot_delays()
+    pop.plot_raster()
+    pop.plot_membrane_potential()
 
-pop = Population((n, RS), path="./network_plots",
-                 name=f"xpolytest")
-pop.create_random_connections(p=0.2, d=internal_d, w=internal_w, trainable=True, seed=3)
+# Feed forward
+ff_train = [True, False]
+ff_n = [25]
+ff_internal_w = [4, 8, 16]
+ff_params = [ff_train, ff_n, ff_internal_w]
+ff_combos = list(itertools.product(*ff_params))
 
-pop.create_input(spike_train1, j=[int(rng.integers(0, n-1))], wj=input_w, dj=input_d)
-pop.create_input(spike_train2, j=[int(rng.integers(0, n-1))], wj=input_w, dj=input_d)
-pop.create_input(spike_train3, j=[int(rng.integers(0, n-1))], wj=input_w, dj=input_d)
-pop.create_input(spike_train4, j=[int(rng.integers(0, n-1))], wj=input_w, dj=input_d)
-
-pop.run(t, save_post_model=True, show_process=True)
-pop.plot_topology()
-pop.plot_delays()
-pop.plot_raster()
-pop.plot_membrane_potential()
-
-'''
-def findDiff(d1, d2, path=""):
-    for k in d1:
-        if k in d2:
-            if type(d1[k]) is dict:
-                findDiff(d1[k],d2[k], "%s -> %s" % (path, k) if path else k)
-            if d1[k] != d2[k]:
-                result = [ "%s: " % path, " - %s : %s" % (k, d1[k]) , " + %s : %s" % (k, d2[k])]
-                print("\n".join(result))
-        else:
-            print ("%s%s as key not in d2\n" % ("%s: " % path if path else "", k))
+# Ring lattice
+rl_train = [True, False]
+rl_n = [25]
+rl_i = [5]
+rl_conn_inp_P = list(np.round(np.arange(0.1, 0.5, 0.1), 1))
+rl_k = [2,3,4]
+rl_internal_w = [8, 16]
+rl_params = [rl_train, rl_n, rl_i, rl_conn_inp_P, rl_k, rl_internal_w]
+rl_combos = list(itertools.product(*rl_params))
 
 
-def pretty(d, indent=0, s = ""):
-   for key, value in d.items():
-      s += '\n' + '-' * indent + str(key)
-      if isinstance(value, dict):
-         s += pretty(value, indent+1, s=s)
-      else:
-         s += '\n' + '-' * (indent+1) + str(value)
-   return s
+# Reservoir
+r_train = [True, False]
+r_n = [25]
+r_i = [5]
+r_conn_inp_P = list(np.round(np.arange(0.1, 0.5, 0.1), 1))
+r_conn_res_p = list(np.round(np.arange(0.1, 0.5, 0.1), 1))
+r_internal_w = [4, 8, 16]
+r_params = [r_train, r_n, r_i, r_conn_inp_P, r_conn_res_p, r_internal_w]
+r_combos = list(itertools.product(*r_params))
 
-def check_similarity(l1, l2):
-    sim = 0
-    tot = 0
-    layer1 = l1
-    layer2 = l2
-    keys_intersect = set.intersection(set(l1.keys()), set(l2.keys()))
-    while True:
-        if keys_intersect:
-            for k in keys_intersect:
 
-            keys1 = layer1.keys()
-            keys2 = layer2.keys()
-
-            sim += len(keys_intersect)
-
-        else:
-            break
-'''
+if __name__ == "__main__":
+    with mp.Pool(os.cpu_count() - 16) as ff:
+        ff.starmap(run_feedforward, ff_combos)
+    with mp.Pool(os.cpu_count() - 16) as rl:
+        rl.starmap(run_ringlattice, rl_combos)
+    with mp.Pool(os.cpu_count() - 16) as r:
+        r.starmap(run_reservoir, r_combos)
 
 
 
 
-'''
-
-inp1 = [model.neurons[n] for n in model.neurons if isinstance(model.neurons[n], Input)][0]
-inp2 = [model.neurons[n] for n in model.neurons if isinstance(model.neurons[n], Input)][1]
-#for k in inp.poly_group.keys():
-    #print(k)
-#findDiff(inp.poly_group[2.0], inp.poly_group[502.0])
-
-print(inp1.poly_group)
-print(inp2.poly_group)
-
-k1 = list(inp1.poly_group.keys())[0]
-k2 = list(inp2.poly_group.keys())[0]
-
-kk1 = list(inp1.poly_group.keys())[1]
-kk2 = list(inp2.poly_group.keys())[1]
-
-tittitotale = {"10": inp1.poly_group[k1], "11": inp2.poly_group[k2]}
-tittitotale2 = {"10": inp1.poly_group[kk1], "11": inp2.poly_group[kk2]}
-match, unique = Data.compare_poly(tittitotale, tittitotale2)
-print(match, unique)
-#print(inp1.poly_group[k1])
-#print(inp1.poly_group[k2])
-#check_similarity(inp.poly_group[2.0], inp.poly_group[502.0])
-
-#print(pretty(inp.poly_group[2.0]))
-#print(inp.poly_group[2.0])
-#print(model.poly_groups)
-#print(model.poly_groups[0])
-#print(len(model.poly_groups))
-'''
 
