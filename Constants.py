@@ -1,5 +1,5 @@
 import numpy as np
-
+from matplotlib import pyplot as plt
 
 PRE_WINDOW = -10
 POST_WINDOW = 7
@@ -13,8 +13,11 @@ CORRELATION_THRESHOLD = 0.95
 SLOPE_THRESHOLD = 0.001
 MAX_DELAY = 20
 MIN_DELAY = 0.1
-COLORS = ["r", "b", "g", "y", "royalblue", "peru", "palegreen", "indigo"]
-COLORS += [(np.random.random(), np.random.random(), np.random.random()) for x in range(10000)]
+COLORS = plt.rcParams['axes.prop_cycle'].by_key()['color']
+temp_c = COLORS[1]
+COLORS[1] = COLORS[2]
+COLORS[2] = temp_c
+COLORS += [(np.random.random(), np.random.random(), np.random.random()) for x in range(100)]
 DCAT_COLORS = ["green", "red", "blue","yellow"]
 DELAY_CATEGORIES = ["converging", "repeating", "uncategorized", "increasing", "decreasing", "min", "max"]
 DELAY_CATEGORIES_SHORTLIST = ["converging", "diverging", "repeating", "uncategorized", "dormant"]
@@ -28,6 +31,3 @@ CATEGORY_CONVERSION = {
     "increasing": "diverging"
 }
 
-
-POLY_GROUP_DURATION = 200
-POLY_GROUP_MATCH_THRESHOLD = 0.6

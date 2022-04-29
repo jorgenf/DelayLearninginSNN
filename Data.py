@@ -1,6 +1,7 @@
 import itertools
 import os
 import json
+import time
 import matplotlib.colors
 import Population as Pop
 import numpy as np
@@ -17,6 +18,9 @@ import matplotlib.patches as mpatches
 import shutil
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
+from keras.datasets import mnist
+from PIL import Image
+import cv2
 
 
 
@@ -63,7 +67,6 @@ def compile_simulation_data(dir):
                             l = data[k]["d_hist"]["d"]
                         except:
                             l = data[k]["d_hist"]
-
                         saturation = check_saturation(l, C.SATURATION_LENGTH)
                         if data_dict[f"n0_SR"] <= 0.1:
                             data_dict[k] = "dormant"
@@ -305,16 +308,12 @@ def plot_delay_categories(dir, file_title, identifier_title, identifiers, nd):
                     conn = list(df_rows[col])
                     for i, c in enumerate(conn):
                         data[i].append(c)
-
-
             data = sorted(data, key=lambda element: (np.mean([abs(x[0] - x[1]) for x in itertools.combinations([element[x] for x in
                                                                        range(len(identifiers))], 2)]),
             np.mean([abs(x[0] - x[1]) for x in
                      itertools.combinations([element[x] for x in
                                              range(len(identifiers), len(identifiers) + nd)], 2)]),
             element[0], element[len(identifiers)]))
-
-
             x = []
             y = []
             z = []
@@ -389,13 +388,6 @@ def plot_spike_rate_data(path, file_title, identifier_title, identifiers, nd):
         config = (f + d)
         config.append(sr)
         [data[i].append(x) for x in config]
-    '''
-    data_sort = sorted(data, key=lambda element: (np.mean([abs(x[0] - x[1]) for x in itertools.combinations([element[x] for x in
-                                                      range(len(identifiers))], 2)]),
-                                                  sum(element[x] for x in
-                                                      range(len(identifiers), len(identifiers) + nd)),
-                                                  element[0], element[len(identifiers)]))
-    '''
     data_sort = sorted(data, key=lambda element: (np.mean([abs(x[0] - x[1]) for x in itertools.combinations([element[x] for x in
                                                       range(len(identifiers))], 2)]),
                                                   np.mean([abs(x[0] - x[1]) for x in
@@ -636,22 +628,6 @@ def plot_SR_heatmap(path, file_title, identifier_title, identifiers, nd):
     plt.tight_layout()
     plt.savefig(file_title, bbox_inches='tight')
 
-    '''
-    norm = matplotlib.colors.Normalize(vmin=0, vmax=max(z))
-    ax.scatter(y, x, s=0.1, c=z, cmap=plt.cm.get_cmap("Reds"))
-    ax.set_ylabel("Delays (ms)")
-    ax.set_xlabel(identifier_title)
-    plt.xticks(rotation=90)
-    ax.xaxis.set_major_locator(plt.MaxNLocator(min(50, len(set(y)))))
-    ax.yaxis.set_major_locator(plt.MaxNLocator(min(30, len(set(x)))))
-    fig.colorbar(plt.cm.ScalarMappable(norm=norm, cmap=plt.cm.get_cmap("Reds")), ax=ax)
-    plt.tight_layout()
-    path = os.path.join(os.getcwd(), f"{file_title}.png")
-    print("Saving data to: ", path)
-    plt.savefig(path)
-    '''
-
-
 def create_dataset(samples, input_length, seed):
     rng = np.random.default_rng(seed)
     x = []
@@ -728,22 +704,39 @@ def get_input_times(polygroup):
         else:
             yield v
 
-def compare_poly(l1, l2):
-    global match, unique
+def compare_poly(new, old):
+    global match, old_unique
     match = 0
-    unique = 0
+    old_unique = sum([str(old[x]).count(':') for x in old.keys()])
+    def compare(new, old):
+        global match
+        if isinstance(new, dict) and isinstance(old, dict):
+            intersect = set.intersection(set(new.keys()), set(old.keys()))
+            match += len(intersect)
+            for k in intersect:
+                compare(new[k], old[k])
+    inputs_intersect = set.intersection(set(new.keys()), set(old.keys()))
+    for ii in inputs_intersect:
+        compare(new[ii], old[ii])
+    return match, old_unique
+
+
+def old_compare_poly(l1, l2):
+    global match, old_unique
+    match = 0
+    old_unique = 0
     def compare(l1, l2):
-        global match, unique
+        global match, old_unique
         if isinstance(l1, dict) and isinstance(l2, dict):
             intersect = set.intersection(set(l1.keys()), set(l2.keys()))
-            unique += len(set(list(l1.keys()) + list(l2.keys())))
+            old_unique += len(set(list(l1.keys()) + list(l2.keys())))
             match += len(set.intersection(set(l1.keys()), set(l2.keys())))
             for k in intersect:
                 compare(l1[k], l2[k])
     inputs_intersect = set.intersection(set(l1.keys()), set(l2.keys()))
     for ii in inputs_intersect:
         compare(l1[ii], l2[ii])
-    return match, unique
+    return match, old_unique
 
 def print_polygroup(d, indent=0, s = ""):
    for key, value in d.items():
@@ -754,3 +747,34 @@ def print_polygroup(d, indent=0, s = ""):
          s += '\n' + '-' * (indent+1) + str(value)
    return s
 
+def create_class_diagram(file=None, cls=None):
+    if file is not None:
+        os.system(f"pyreverse -o png -p MasterThesis {file}Population.py")
+    elif file is not None and cls is not None:
+        os.system(f"pyreverse -o png -p MasterThesis {file}Population.py -c {cls}")
+    elif file is None and cls is not None:
+        raise Exception("Must specify file.")
+    else:
+        os.system(f"pyreverse -o png -p MasterThesis .")
+
+
+def create_mnist_input(sample_size, numbers, interval, image_size=10):
+    (train_X, train_y), (test_X, test_y) = mnist.load_data()
+    img = []
+    for n in numbers:
+        img.append([np.round(cv2.resize(x, (image_size, image_size)) / 25.5, 1) for x, y in zip(train_X, train_y) if y == n][:sample_size])
+    i = img[0][0].size
+    input = [[] for _ in range(i)]
+    intv = 0
+    for num in img:
+        for samp in num:
+            flt = samp.flatten()
+            for inp in range(i):
+                input[inp].append(flt[inp] + intv)
+            intv += interval
+        intv += interval
+    return input
+
+def save_image(matrix, out_dir):
+    im = Image.fromarray(matrix)
+    im.save(os.path.join(out_dir, "image.jpeg"))

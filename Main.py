@@ -1,4 +1,7 @@
 import time
+
+import deepdiff
+
 import Data
 import Population
 import Simulations
@@ -511,7 +514,8 @@ pop.plot_membrane_potential()
 '''
 
 
-def run_feedforward(train, n, internal_w):
+def run_feedforward(train, n, internal_w, seed):
+    rng = np.random.default_rng(seed)
     t = 10000
     n = n
     internal_d = list(range(1,21))
@@ -524,33 +528,36 @@ def run_feedforward(train, n, internal_w):
         raise Exception("n not square")
     else:
         i = int(i)
-    s1 = np.cumsum(np.ones((i,), int) * 3 + np.random.randint(0, 5, (i,))) - 3
-    np.random.shuffle(s1)
-    s2 = np.cumsum(np.ones((i,), int) * 3 + np.random.randint(0, 5, (i,))) - 3
-    np.random.shuffle(s2)
-    pop = Population((n, RS), path="./network_plots/topologies",
-                     name=f"ringlattice_n-{n}_i-{i}_intrnW-{internal_w}_train-{train}_s1-{s1}_s2-{s2}")
-    pop.create_feed_forward_connections(d=internal_d, w=internal_w, trainable=train)
-    spike_trains = [[] for _ in range(i)]
+    s1 = np.cumsum(np.ones((i,), int) * 3 + rng.integers(0, 5, (i,))) - 3
+    rng.shuffle(s1)
+    s2 = np.cumsum(np.ones((i,), int) * 3 + rng.integers(0, 5, (i,))) - 3
+    rng.shuffle(s2)
+    name = f"feedforward_n-{n}_i-{i}_intrnW-{internal_w}_train-{train}_s1-{s1}_s2-{s2}"
+    if name not in os.listdir('./network_plots/topologies'):
+        pop = Population((n, RS), path="./network_plots/topologies",
+                         name=name)
+        pop.create_feed_forward_connections(d=internal_d, w=internal_w, trainable=train, seed=seed)
+        spike_trains = [[] for _ in range(i)]
 
-    for pp in range(0, int(t / 2), input_interval):
-        for temp_i in range(0,i):
-            spike_trains[temp_i].append(s1[temp_i] + pp + np.random.randint(-1, 2))
+        for pp in range(0, int(t / 2)-int(input_interval/2), input_interval):
+            for temp_i in range(0,i):
+                spike_trains[temp_i].append(s1[temp_i] + pp + rng.integers(-1, 2))
 
-    for pp in range(int(t / 2)+ input_interval, t, input_interval):
+        for pp in range(int(t / 2)+ int(input_interval/2), t, input_interval):
+            for temp_i in range(i):
+                spike_trains[temp_i].append(s2[temp_i] + pp + rng.integers(-1, 2))
+
         for temp_i in range(i):
-            spike_trains[temp_i].append(s2[temp_i] + pp + np.random.randint(-1, 2))
+            pop.create_input(spike_trains[temp_i], j=[temp_i], wj=input_w, dj=input_d, trainable=False)
 
-    for temp_i in range(i):
-        pop.create_input(spike_trains[temp_i], j=[i], wj=input_w, dj=input_d, trainable=False)
+        pop.run(t, save_post_model=True, show_process=True)
+        pop.plot_topology()
+        pop.plot_delays()
+        pop.plot_raster()
+        pop.plot_membrane_potential()
 
-    pop.run(t, save_post_model=True, show_process=True)
-    pop.plot_topology()
-    pop.plot_delays()
-    pop.plot_raster()
-    pop.plot_membrane_potential()
-
-def run_ringlattice(train, n, i, conn_inp_P, k, internal_w):
+def run_ringlattice(train, n, i, conn_inp_P, k, skip_n, internal_w, seed):
+    rng = np.random.default_rng(seed)
     t = 10000
     n = n
     internal_d = list(range(1,21))
@@ -558,34 +565,37 @@ def run_ringlattice(train, n, i, conn_inp_P, k, internal_w):
     input_d = 1
     input_w = 32
     input_interval = 400
-    s1 = np.cumsum(np.ones((i,), int) * 3 + np.random.randint(0, 5, (i,))) - 3
-    np.random.shuffle(s1)
-    s2 = np.cumsum(np.ones((i,), int) * 3 + np.random.randint(0, 5, (i,))) - 3
-    np.random.shuffle(s2)
-    pop = Population((n, RS), path="./network_plots/topologies",
-                     name=f"ringlattice_n-{n}_i-{i}_intrnW-{internal_w}_k-{k}_inpP-{conn_inp_P}_train-{train}_s1-{s1}_s2-{s2}")
-    pop.create_directional_ring_lattice_connections(k=k, w=internal_w, d=internal_d,trainable=train)
-    spike_trains = [[] for _ in range(i)]
+    s1 = np.cumsum(np.ones((i,), int) * 3 + rng.integers(0, 5, (i,))) - 3
+    rng.shuffle(s1)
+    s2 = np.cumsum(np.ones((i,), int) * 3 + rng.integers(0, 5, (i,))) - 3
+    rng.shuffle(s2)
+    name = f"ringlattice_n-{n}_i-{i}_intrnW-{internal_w}_k-{k}_inpP-{conn_inp_P}_train-{train}_s1-{s1}_s2-{s2}"
+    if name not in os.listdir('./network_plots/topologies'):
+        pop = Population((n, RS), path="./network_plots/topologies",
+                         name=name)
+        pop.create_directional_ring_lattice_connections(k=k, w=internal_w, d=internal_d,skip_n=skip_n, trainable=train, seed=seed)
+        spike_trains = [[] for _ in range(i)]
 
-    for pp in range(0, int(t / 2), input_interval):
-        for temp_i in range(0,i):
-            spike_trains[temp_i].append(s1[temp_i] + pp + np.random.randint(-1, 2))
+        for pp in range(0, int(t / 2) - int(input_interval/2), input_interval):
+            for temp_i in range(0,i):
+                spike_trains[temp_i].append(s1[temp_i] + pp + rng.integers(-1, 2))
 
-    for pp in range(int(t / 2)+ input_interval, t, input_interval):
+        for pp in range(int(t / 2) + int(input_interval/2), t, input_interval):
+            for temp_i in range(i):
+                spike_trains[temp_i].append(s2[temp_i] + pp + rng.integers(-1, 2))
+
         for temp_i in range(i):
-            spike_trains[temp_i].append(s2[temp_i] + pp + np.random.randint(-1, 2))
+            pop.create_input(spike_trains[temp_i], j=[int(x) for x in range(0, n-1) if rng.random() < conn_inp_P], wj=input_w, dj=input_d, trainable=False)
 
-    for temp_i in range(i):
-        pop.create_input(spike_trains[temp_i], j=[int(x) for x in range(0, n-1) if np.random.random() < conn_inp_P], wj=input_w, dj=input_d, trainable=False)
-
-    pop.run(t, save_post_model=True, show_process=True)
-    pop.plot_topology()
-    pop.plot_delays()
-    pop.plot_raster()
-    pop.plot_membrane_potential()
+        pop.run(t, save_post_model=True, show_process=True)
+        pop.plot_topology()
+        pop.plot_delays()
+        pop.plot_raster()
+        pop.plot_membrane_potential()
 
 
-def run_reservoir(train, n, i, conn_inp_P, conn_res_p, internal_w):
+def run_reservoir(train, n, i, conn_inp_P, conn_res_p, internal_w, seed):
+    rng = np.random.default_rng(seed)
     t = 10000
     n = n
     internal_d = list(range(1,21))
@@ -593,48 +603,55 @@ def run_reservoir(train, n, i, conn_inp_P, conn_res_p, internal_w):
     input_d = 1
     input_w = 32
     input_interval = 400
-    s1 = np.cumsum(np.ones((i,), int) * 3 + np.random.randint(0, 5, (i,))) - 3
-    np.random.shuffle(s1)
-    s2 = np.cumsum(np.ones((i,), int) * 3 + np.random.randint(0, 5, (i,))) - 3
-    np.random.shuffle(s2)
-    pop = Population((n, RS), path="./network_plots/topologies",
-                     name=f"reservoir_n-{n}_i-{i}_intrnW-{internal_w}_resP-{conn_res_p}_inpP-{conn_inp_P}_train-{train}_s1-{s1}_s2-{s2}")
-    pop.create_random_connections(p=conn_res_p, d=internal_d, w=internal_w, trainable=train)
-    spike_trains = [[] for _ in range(i)]
+    s1 = np.cumsum(np.ones((i,), int) * 3 + rng.integers(0, 5, (i,))) - 3
+    rng.shuffle(s1)
+    s2 = np.cumsum(np.ones((i,), int) * 3 + rng.integers(0, 5, (i,))) - 3
+    rng.shuffle(s2)
+    name = f"reservoir_n-{n}_i-{i}_intrnW-{internal_w}_resP-{conn_res_p}_inpP-{conn_inp_P}_train-{train}_s1-{s1}_s2-{s2}"
+    if name not in os.listdir('./network_plots/topologies'):
 
-    for pp in range(0, int(t / 2), input_interval):
-        for temp_i in range(0,i):
-            spike_trains[temp_i].append(s1[temp_i] + pp + np.random.randint(-1, 2))
+        pop = Population((n, RS), path="./network_plots/topologies",
+                         name=name)
+        pop.create_random_connections(p=conn_res_p, d=internal_d, w=internal_w, trainable=train, seed=seed)
+        spike_trains = [[] for _ in range(i)]
 
-    for pp in range(int(t / 2)+ input_interval, t, input_interval):
+        for pp in range(0, int(t / 2) - int(input_interval/2), input_interval):
+            for temp_i in range(0,i):
+                spike_trains[temp_i].append(s1[temp_i] + pp + rng.integers(-1, 2))
+
+        for pp in range(int(t / 2) + int(input_interval/2), t, input_interval):
+            for temp_i in range(i):
+                spike_trains[temp_i].append(s2[temp_i] + pp + rng.integers(-1, 2))
+
         for temp_i in range(i):
-            spike_trains[temp_i].append(s2[temp_i] + pp + np.random.randint(-1, 2))
+            pop.create_input(spike_trains[temp_i], j=[int(x) for x in range(0, n-1) if rng.random() < conn_inp_P], wj=input_w, dj=input_d, trainable=False)
 
-    for temp_i in range(i):
-        pop.create_input(spike_trains[temp_i], j=[int(x) for x in range(0, n-1) if np.random.random() < conn_inp_P], wj=input_w, dj=input_d, trainable=False)
+        pop.run(t, save_post_model=True, show_process=True, PG_match_th=0.6)
+        pop.plot_topology()
+        pop.plot_delays()
+        pop.plot_raster()
+        pop.plot_membrane_potential()
 
-    pop.run(t, save_post_model=True, show_process=True)
-    pop.plot_topology()
-    pop.plot_delays()
-    pop.plot_raster()
-    pop.plot_membrane_potential()
+SEED = [1]
+#SEED = list(range(26,25))
 
-'''
 # Feed forward
 ff_train = [True, False]
 ff_n = [25]
-ff_internal_w = [4, 8, 16]
-ff_params = [ff_train, ff_n, ff_internal_w]
+#ff_internal_w = [4, 8, 16]
+ff_internal_w = [16]
+ff_params = [ff_train, ff_n, ff_internal_w, SEED]
 ff_combos = list(itertools.product(*ff_params))
 
 # Ring lattice
 rl_train = [True, False]
-rl_n = [25]
+rl_n = [64]
 rl_i = [5]
 rl_conn_inp_P = list(np.round(np.arange(0.1, 0.5, 0.1), 1))
 rl_k = [2,3,4]
+rl_skip_n = [3]
 rl_internal_w = [8, 16]
-rl_params = [rl_train, rl_n, rl_i, rl_conn_inp_P, rl_k, rl_internal_w]
+rl_params = [rl_train, rl_n, rl_i, rl_conn_inp_P, rl_k, rl_skip_n, rl_internal_w, SEED]
 rl_combos = list(itertools.product(*rl_params))
 
 
@@ -645,18 +662,20 @@ r_i = [5]
 r_conn_inp_P = list(np.round(np.arange(0.1, 0.5, 0.1), 1))
 r_conn_res_p = list(np.round(np.arange(0.1, 0.5, 0.1), 1))
 r_internal_w = [4, 8, 16]
-r_params = [r_train, r_n, r_i, r_conn_inp_P, r_conn_res_p, r_internal_w]
+r_params = [r_train, r_n, r_i, r_conn_inp_P, r_conn_res_p, r_internal_w, SEED]
 r_combos = list(itertools.product(*r_params))
+print(len(r_combos))
 
 
 if __name__ == "__main__":
-    with mp.Pool(os.cpu_count() - 16) as ff:
-        ff.starmap(run_feedforward, ff_combos)
-    with mp.Pool(os.cpu_count() - 16) as rl:
-        rl.starmap(run_ringlattice, rl_combos)
-    with mp.Pool(os.cpu_count() - 16) as r:
-        r.starmap(run_reservoir, r_combos)
-'''
+    with mp.Pool(os.cpu_count() - 16) as p:
+        #p.starmap(run_feedforward, ff_combos)
+        #p.starmap(run_ringlattice, rl_combos)
+        p.starmap(run_reservoir, r_combos)
+
+
+
+
 '''
 SEED = 1
 
@@ -712,9 +731,59 @@ pop.create_input(spike_times=spike_train[3],j=[3], wj=32,dj=1)
 
 pop.run(duration=5000,save_post_model=True, record_PG=False, show_process=True)
 '''
+'''
+def doit_bebbbeeey(train):
+    t = 10500
+    d = list(range(5,16))
+    w = 8
+    seed = 1
+    n = 100
+    in_p = 0.05
+    res_p = 0.15
+    rng = np.random.default_rng(seed)
+    input_interval = 400
+    i = 4
 
-model1 = Data.load_model(r'C:\Users\J-Laptop\PycharmProjects\DelayLearninginSNN\network_plots\extended_pattern_static_1\post_sim_model.pkl')
-model1.plot_raster()
+    pop = Population((n, RS),path='network_plots/', name=f"large_network_n{n}_w{w}_inP{in_p}_resP{res_p}_train{train}")
+    pop.create_random_connections(p=res_p, d=d, w=w, trainable=train, seed=seed)
 
-model2 = Data.load_model(r'C:\Users\J-Laptop\PycharmProjects\DelayLearninginSNN\network_plots\extended_pattern_plastic_1\post_sim_model.pkl')
-model2.plot_raster()
+    s1 = np.cumsum(np.ones((i,), int) * 3 + rng.integers(0, 5, (i,))) - 3
+    rng.shuffle(s1)
+    s2 = np.cumsum(np.ones((i,), int) * 3 + rng.integers(0, 5, (i,))) - 3
+    rng.shuffle(s2)
+
+    spike_trains = [[] for _ in range(i)]
+
+    for pp in range(0, int(t / 2), input_interval):
+        for temp_i in range(0, i):
+            spike_trains[temp_i].append(s1[temp_i] + pp + rng.integers(-1, 2))
+
+    for pp in range(int(t / 2) + input_interval, t, input_interval):
+        for temp_i in range(i):
+            spike_trains[temp_i].append(s2[temp_i] + pp + rng.integers(-1, 2))
+
+    for ti in range(i):
+        pop.create_input(spike_times=spike_trains[ti],j=[x for x in range(n) if rng.random() < in_p], wj=32,dj=1)
+
+
+    pop.run(duration=t,save_post_model=True, record_PG=True, save_plots=True, show_process=True)
+
+'''
+#if __name__ == "__main__":
+#    with mp.Pool(mp.cpu_count()) as p:
+#        p.map(doit_bebbbeeey, [True, False])
+
+'''
+pop = Population((75, RS), path='network_plots/', name='MNIST')
+pop.create_feed_forward_connections(w=[8], d=list(range(5,16)), n_layers=3, trainable=True, seed=1)
+
+input = Data.create_mnist_input(40, [1, 5], 100, image_size=5)
+
+for i in range(25):
+    pop.create_input(spike_times=input[i], j=[i], wj=32, dj=1)
+
+pop.run(duration=np.max(input) + 100, PG_duration=50, PG_match_th=0.7)
+
+'''
+
+
