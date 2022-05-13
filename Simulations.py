@@ -755,3 +755,13 @@ def refractory_period_mt():
     plt.savefig("refractory_period", bbox_inches='tight')
 
 
+def run_MNIST_FF(path, n, image_size, n_layers, classes, class_instances, w, th, p, partial, train, seed):
+
+    pop = Population((n, RS), path=path,
+                     name=f'MNIST_FF_train-{train}_n-{n}_w-{w}_p-{p}_img-{image_size}_nlayers-{n_layers}_cls-{classes}_cinst-{class_instances}_th-{th}_partial-{partial}_pre-{C.PRE_WINDOW}_post-{C.POST_WINDOW}')
+    pop.create_feed_forward_connections(w=[w], d=list(range(5, 16)), n_layers=n_layers, p=p, trainable=train, seed=seed,
+                                        partial=partial)
+    input = Data.create_mnist_input(class_instances, classes, 100, image_size=image_size)
+    for i in range(image_size ** 2):
+        pop.create_input(spike_times=input[i], j=[i], wj=32, dj=1)
+    pop.run(duration=np.max(input) + 100, PG_duration=80, PG_match_th=th, save_post_model=True, n_classes=len(classes), raster_legend=False)

@@ -58,6 +58,8 @@ class Input:
 
 class Population:
     def __init__(self, *populations, path, name=None, save_data=True):
+        self.PG_duration = None
+        self.PG_match_th = None
         global T, ID
         T = 0.0
         ID = 0
@@ -123,8 +125,8 @@ class Population:
     def add_neuron(self, neuron):
         self.neurons[neuron.ID] = neuron
 
-    def create_synapse(self, i, j, w=10, d=1, trainable=True):
-        syn = Synapse(i, j, w, d, trainable)
+    def create_synapse(self, i, j, w=10, d=1, trainable=True, partial=False):
+        syn = Synapse(i, j, w, d, trainable, partial=partial)
         try:
             self.neurons[str(i)].down.append(syn)
         except:
@@ -330,7 +332,7 @@ class Population:
                     self.create_synapse(i, j, w=w[0], d=d[0], trainable=trainable)
 
 
-    def create_feed_forward_connections(self, d, w, trainable, n_layers=None, seed=False):
+    def create_feed_forward_connections(self, d, w, trainable, p=None, n_layers=None, partial=False, seed=False):
         self.structure = "grid"
         if seed:
             rng = np.random.default_rng(seed)
@@ -360,7 +362,12 @@ class Population:
             if layers.index(layer) < len(layers) - 1:
                 for neuron_i in layer:
                     for neuron_j in layers[layers.index(layer) + 1]:
-                        self.create_synapse(neuron_i, neuron_j, w=rng.choice(w), d=rng.choice(d), trainable=trainable)
+                        if p is None:
+                            self.create_synapse(neuron_i, neuron_j, w=rng.choice(w), d=rng.choice(d), trainable=trainable, partial=partial)
+                        else:
+                            if rng.random() < p:
+                                self.create_synapse(neuron_i, neuron_j, w=rng.choice(w), d=rng.choice(d),
+                                                    trainable=trainable, partial=partial)
 
     def plot_topology(self):
         global T
@@ -399,6 +406,8 @@ class Population:
             pos = nx.get_node_attributes(G, 'pos')
         elif self.structure == "ring":
             pos = nx.circular_layout(G)
+        elif self.structure == "reservoir":
+            pos = nx.kamada_kawai_layout(G)
         else:
             raise Exception("No valid network structure.")
         nx.draw_networkx_nodes(G, pos, node_color=colors, node_size=150, alpha=1, label=False)
@@ -468,7 +477,7 @@ class Population:
         fig.savefig(os.path.join(self.dir, "mean_delays.png"))
         plt.close()
 
-    def plot_raster(self, duration=None, classes=None):
+    def plot_raster(self, duration=None, classes=None, plot_pg=True, legend=True):
         fig, sub = plt.subplots()
         if duration is not None:
             spikes = []
@@ -487,25 +496,28 @@ class Population:
         sub.yaxis.set_major_locator(plt.MaxNLocator(20))
         count = Counter([tpg["poly_index"] for tpg in self.poly_group_history])
         sorted_count = dict(sorted(count.items(), key=lambda item: item[1], reverse=True))
-        for key, value in zip(sorted_count.keys(), sorted_count.values()):
-            self.poly_ID_counts[key] = value
-        sorted_poly_group_history = sorted(self.poly_group_history, key=lambda x: list(sorted_count.keys()).index(x['poly_index']))
-        for pg in sorted_poly_group_history:
-            pg_start = pg["pattern_start"]
-            if duration is None or (duration is not None and pg_start + self.PG_duration < duration[1]):
-                pg_ID = pg["poly_index"]
-                sub.hlines(y=-0.5, xmin=pg_start, xmax=pg_start + self.PG_duration, linewidth=2, color=Constants.COLORS[list(sorted_count.keys()).index(pg_ID)])
-        max_keys = list(sorted_count.keys())[0: classes if classes is not None else 2]
-        patches = []
-        for uid in max_keys:
-            patches.append(mpatches.Patch(color=Constants.COLORS[list(sorted_count.keys()).index(uid)], label=f'ID={uid} ({self.poly_ID_counts[uid]})'))
-        if len(list(self.poly_ID_counts.values())) > (classes if classes is not None else 2):
-            patches.append(mpatches.Patch(color='none', label=f'Others ({sum(list(self.poly_ID_counts.values())[2:])})'))
-        if len(patches) > 0:
-            if len(patches) <= 12:
-                plt.legend(handles=patches, ncol=1, loc="best", title="PG IDs")
-            else:
-                plt.legend(handles=patches, ncol=6, loc="upper center", columnspacing=0.5, prop={"size": 8}, title="PG IDs")
+        if plot_pg:
+            for key, value in zip(sorted_count.keys(), sorted_count.values()):
+                self.poly_ID_counts[key] = value
+            sorted_poly_group_history = sorted(self.poly_group_history, key=lambda x: list(sorted_count.keys()).index(x['poly_index']))
+            for pg in sorted_poly_group_history:
+                pg_start = pg["pattern_start"]
+                if duration is None or (duration is not None and pg_start + self.PG_duration < duration[1]):
+                    pg_ID = pg["poly_index"]
+                    linewidth = max(2, int(np.ceil(len(self.neurons) / 100) + 1))
+                    sub.hlines(y=-0.5, xmin=pg_start, xmax=pg_start + self.PG_duration, linewidth=linewidth, color=Constants.COLORS[list(sorted_count.keys()).index(pg_ID)])
+            if legend:
+                max_keys = list(sorted_count.keys())[0: classes if classes is not None else 2]
+                patches = []
+                for uid in max_keys:
+                    patches.append(mpatches.Patch(color=Constants.COLORS[list(sorted_count.keys()).index(uid)], label=f'ID={uid} ({self.poly_ID_counts[uid]})'))
+                if len(list(self.poly_ID_counts.values())) > (classes if classes is not None else 2):
+                    patches.append(mpatches.Patch(color='none', label=f'Others ({sum(list(self.poly_ID_counts.values())[classes if classes is not None else 2:])})'))
+                if len(patches) > 0:
+                    if len(patches) <= 12:
+                        plt.legend(handles=patches, ncol=1, loc="best", title="PG IDs")
+                    else:
+                        plt.legend(handles=patches, ncol=6, loc="upper center", columnspacing=0.5, prop={"size": 8}, title="PG IDs")
         fig.tight_layout()
         fig.savefig(os.path.join(self.dir, "spikes.png"))
         plt.close()
@@ -579,7 +591,7 @@ class Population:
                     return 0
         return 0
 
-    def run(self, duration, dt=0.1, save_post_model=False, record_topology=False, record_PG=True, PG_duration = 200, PG_match_th=0.6, show_process=True, save_plots=True):
+    def run(self, duration, dt=0.1, save_post_model=False, record_topology=False, record_PG=True, PG_duration = 200, PG_match_th=0.6, show_process=True, save_plots=True, n_classes=2, raster_legend=True):
         self.duration = duration
         self.PG_duration = PG_duration
         self.PG_match_th = PG_match_th
@@ -611,7 +623,7 @@ class Population:
         if save_post_model:
             Data.save_model(self, os.path.join(self.dir, "post_sim_model.pkl"))
         if save_plots:
-            self.plot_raster()
+            self.plot_raster(classes=n_classes, legend=raster_legend)
             self.plot_topology()
             self.plot_delays()
             self.plot_mean_delays()
@@ -651,7 +663,7 @@ class Population:
             json.dump(data, file)
 
 class Synapse:
-    def __init__(self, i, j, w, d, trainable):
+    def __init__(self, i, j, w, d, trainable, partial=False):
         self.i = i
         self.j = j
         self.w = w
@@ -661,6 +673,7 @@ class Synapse:
         self.post_window = Constants.POST_WINDOW
         self.spikes = []
         self.trainable = trainable
+        self.partial = partial
 
     def add_spike(self):
         self.spikes.append({"t": T, "d": self.d, "w": self.w})
@@ -683,8 +696,7 @@ class Synapse:
             self.d = min(self.d, MAX_DELAY)
 
     def G(self, delta_t):
-
-        if self.trainable:
+        if self.trainable and not self.partial:
             dd = (3/2)*m.tanh(2.5625-0.625*delta_t)+1.5
             self.d += dd
             self.d = round(self.d, 1 if DT == 0.1 else 0)

@@ -762,7 +762,7 @@ def create_mnist_input(sample_size, numbers, interval, image_size=10):
     (train_X, train_y), (test_X, test_y) = mnist.load_data()
     img = []
     for n in numbers:
-        img.append([np.round(cv2.resize(x, (image_size, image_size)) / 25.5, 1) for x, y in zip(train_X, train_y) if y == n][:sample_size])
+        img.append([np.round(cv2.resize(x, (image_size, image_size)) * 4 / 25.5, 1) for x, y in zip(train_X, train_y) if y == n][:sample_size])
     i = img[0][0].size
     input = [[] for _ in range(i)]
     intv = 0
@@ -777,4 +777,10 @@ def create_mnist_input(sample_size, numbers, interval, image_size=10):
 
 def save_image(matrix, out_dir):
     im = Image.fromarray(matrix)
-    im.save(os.path.join(out_dir, "image.jpeg"))
+    n = 0
+    pth = os.path.join(out_dir, "image.jpeg")
+    while os.path.exists(pth):
+        pth = os.path.join(out_dir, f"image{n}.jpeg")
+        n += 1
+    im.save(pth)
+

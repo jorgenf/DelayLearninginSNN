@@ -513,7 +513,7 @@ pop.plot_raster()
 pop.plot_membrane_potential()
 '''
 
-
+'''
 def run_feedforward(train, n, internal_w, seed):
     rng = np.random.default_rng(seed)
     t = 10000
@@ -570,7 +570,8 @@ def run_ringlattice(train, n, i, conn_inp_P, k, skip_n, internal_w, seed):
     s2 = np.cumsum(np.ones((i,), int) * 3 + rng.integers(0, 5, (i,))) - 3
     rng.shuffle(s2)
     name = f"ringlattice_n-{n}_i-{i}_intrnW-{internal_w}_k-{k}_inpP-{conn_inp_P}_train-{train}_s1-{s1}_s2-{s2}"
-    if name not in os.listdir('./network_plots/topologies'):
+    dr = r'./network_plots/topologies'
+    if name not in os.listdir(dr):
         pop = Population((n, RS), path="./network_plots/topologies",
                          name=name)
         pop.create_directional_ring_lattice_connections(k=k, w=internal_w, d=internal_d,skip_n=skip_n, trainable=train, seed=seed)
@@ -608,11 +609,14 @@ def run_reservoir(train, n, i, conn_inp_P, conn_res_p, internal_w, seed):
     s2 = np.cumsum(np.ones((i,), int) * 3 + rng.integers(0, 5, (i,))) - 3
     rng.shuffle(s2)
     name = f"reservoir_n-{n}_i-{i}_intrnW-{internal_w}_resP-{conn_res_p}_inpP-{conn_inp_P}_train-{train}_s1-{s1}_s2-{s2}"
-    if name not in os.listdir('./network_plots/topologies'):
+    dr = r'./network_plots/topologies/res'
+    if name not in os.listdir(dr):
 
-        pop = Population((n, RS), path="./network_plots/topologies",
+        pop = Population((n, RS), path="./network_plots/topologies/res",
                          name=name)
+
         pop.create_random_connections(p=conn_res_p, d=internal_d, w=internal_w, trainable=train, seed=seed)
+        pop.structure = "reservoir"
         spike_trains = [[] for _ in range(i)]
 
         for pp in range(0, int(t / 2) - int(input_interval/2), input_interval):
@@ -633,7 +637,7 @@ def run_reservoir(train, n, i, conn_inp_P, conn_res_p, internal_w, seed):
         pop.plot_membrane_potential()
 
 SEED = [1]
-#SEED = list(range(26,25))
+#SEED = list(range(0,24))
 
 # Feed forward
 ff_train = [True, False]
@@ -645,36 +649,42 @@ ff_combos = list(itertools.product(*ff_params))
 
 # Ring lattice
 rl_train = [True, False]
-rl_n = [64]
+rl_n = [25]
 rl_i = [5]
 rl_conn_inp_P = list(np.round(np.arange(0.1, 0.5, 0.1), 1))
+#rl_conn_inp_P = [0.3]
 rl_k = [2,3,4]
+#rl_k = [3]
 rl_skip_n = [3]
 rl_internal_w = [8, 16]
+#rl_internal_w = [8]
 rl_params = [rl_train, rl_n, rl_i, rl_conn_inp_P, rl_k, rl_skip_n, rl_internal_w, SEED]
 rl_combos = list(itertools.product(*rl_params))
-
+print("RL: ", len(rl_combos))
 
 # Reservoir
 r_train = [True, False]
 r_n = [25]
 r_i = [5]
 r_conn_inp_P = list(np.round(np.arange(0.1, 0.5, 0.1), 1))
+#r_conn_inp_P = [0.3]
 r_conn_res_p = list(np.round(np.arange(0.1, 0.5, 0.1), 1))
+#r_conn_res_p = [0.2]
 r_internal_w = [4, 8, 16]
+#r_internal_w = [8]
 r_params = [r_train, r_n, r_i, r_conn_inp_P, r_conn_res_p, r_internal_w, SEED]
 r_combos = list(itertools.product(*r_params))
 print(len(r_combos))
 
 
 if __name__ == "__main__":
-    with mp.Pool(os.cpu_count() - 16) as p:
+    with mp.Pool(1) as p:
         #p.starmap(run_feedforward, ff_combos)
         #p.starmap(run_ringlattice, rl_combos)
         p.starmap(run_reservoir, r_combos)
 
 
-
+'''
 
 '''
 SEED = 1
@@ -773,17 +783,86 @@ def doit_bebbbeeey(train):
 #    with mp.Pool(mp.cpu_count()) as p:
 #        p.map(doit_bebbbeeey, [True, False])
 
-'''
-pop = Population((75, RS), path='network_plots/', name='MNIST')
-pop.create_feed_forward_connections(w=[8], d=list(range(5,16)), n_layers=3, trainable=True, seed=1)
 
-input = Data.create_mnist_input(40, [1, 5], 100, image_size=5)
-
-for i in range(25):
-    pop.create_input(spike_times=input[i], j=[i], wj=32, dj=1)
-
-pop.run(duration=np.max(input) + 100, PG_duration=50, PG_match_th=0.7)
 
 '''
+n = 150
+image_size = 8
+k = 3
+skip_n = 10
+classes = [1, 3, 6]
+class_instances = 10
+w = [8]
+th = 0.9
+partial = True
+
+pop = Population((n, RS), path='network_plots/', name=f'MNIST_RL_plastic_n-{n}_w-{w}_img-{image_size}_k-{k}_skipn-{skip_n}_cls-{classes}_cinst-{class_instances}_th-{th}_partial-{partial}')
+
+pop.create_directional_ring_lattice_connections(k=k,w=[w], skip_n=skip_n, d=list(range(5,16)), trainable=True, seed=1, partial=partial)
+input = Data.create_mnist_input(class_instances, classes, 200, image_size=image_size)
+rng = np.random.default_rng(1)
+for i in range(image_size**2):
+    pop.create_input(spike_times=input[i], j=[int(rng.integers(0,n))], wj=32, dj=1)
+pop.run(duration=np.max(input) + 200, PG_duration=180, PG_match_th=th, save_post_model=True, n_classes=len(classes))
 
 
+pop = Population((n, RS), path='network_plots/', name=f'MNIST_RL_static_n-{n}_w-{w}_img-{image_size}_k-{k}_skipn-{skip_n}_cls-{classes}_cinst-{class_instances}_th-{th}_partial-{partial}')
+
+pop.create_directional_ring_lattice_connections(k=k,w=[w], skip_n=skip_n, d=list(range(5,16)), trainable=False, seed=1, partial=partial)
+rng = np.random.default_rng(1)
+input = Data.create_mnist_input(class_instances, classes, 200, image_size=image_size)
+for i in range(image_size**2):
+    pop.create_input(spike_times=input[i], j=[int(rng.integers(0,n))], wj=32, dj=1)
+pop.run(duration=np.max(input) + 200, PG_duration=180, PG_match_th=th, save_post_model=True, n_classes=len(classes))
+
+'''
+
+
+'''
+path = ['network_plots/FF_MNIST']
+n = [192]
+image_size = [8]
+n_layers = [3]
+classes = [[1, 3, 6]]
+class_instances = [10]
+w = [4, 8, 16]
+th = [0.8]
+p = [0.3, 0.6]
+partial = [True, False]
+train = [True, False]
+seed = [1]
+
+params = [path, n, image_size, n_layers, classes, class_instances, w, th, p, partial, train, seed]
+combos = list(itertools.product(*params))
+
+
+if __name__ == '__main__':
+    with mp.Pool(2) as p:
+        pass
+        p.starmap(Simulations.run_MNIST_FF, combos)
+
+'''
+path = ['network_plots/FF_MNIST_CONFIG_TEST']
+n = [500]
+img = [10]
+layers = [5]
+num = [[0, 7]]
+inst = [10]
+w = [4]
+th = [0.7]
+p = [0.2]
+par = [True]
+train = [True, False]
+seed = [1]
+
+params = [path, n, img, layers, num, inst, w, th, p, par, train, seed]
+combos = list(itertools.product(*params))
+
+
+
+if __name__ == '__main__':
+    with mp.Pool(2) as p:
+        p.starmap(Simulations.run_MNIST_FF, combos)
+
+#model = Data.load_model(r'C:\Users\jorge\OneDrive - OsloMet\Master thesis - Jørgen Farner\Simulation results\MNIST for thesis\MNIST_FF_train-True_n-500_w-4_p-0.3_img-10_nlayers-5_cls-[0]_cinst-20_th-0.65_partial-True\post_sim_model.pkl')
+#model.plot_raster(duration=[1860, 2000], legend=False, plot_pg=False)
