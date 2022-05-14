@@ -846,11 +846,11 @@ path = ['network_plots/FF_MNIST_CONFIG_TEST']
 n = [500]
 img = [10]
 layers = [5]
-num = [[0, 7]]
-inst = [10]
+num = [[0, 7, 6]]
+inst = [20]
 w = [4]
-th = [0.7]
-p = [0.2]
+th = [0.75]
+p = [0.3]
 par = [True]
 train = [True, False]
 seed = [1]
@@ -864,5 +864,3 @@ if __name__ == '__main__':
     with mp.Pool(2) as p:
         p.starmap(Simulations.run_MNIST_FF, combos)
 
-#model = Data.load_model(r'C:\Users\jorge\OneDrive - OsloMet\Master thesis - Jørgen Farner\Simulation results\MNIST for thesis\MNIST_FF_train-True_n-500_w-4_p-0.3_img-10_nlayers-5_cls-[0]_cinst-20_th-0.65_partial-True\post_sim_model.pkl')
-#model.plot_raster(duration=[1860, 2000], legend=False, plot_pg=False)
