@@ -7,7 +7,7 @@ import Population
 import Simulations
 from Population import *
 import Simulations as sim
-#import Population
+# import Population
 import numpy as np
 import multiprocessing as mp
 import itertools
@@ -17,13 +17,10 @@ import pandas as pd
 import shutil
 import json
 
+# dir = "Z:/MASTER THESIS - SIMULATION RESULTS/feed forward\delayVSoff/1n3i/t10000"
+# dir = "Z:\\MASTER THESIS - SIMULATION RESULTS\\feed forward\\delayVSoff\\1n3i\\t10000"
 
-
-
-#dir = "Z:/MASTER THESIS - SIMULATION RESULTS/feed forward\delayVSoff/1n3i/t10000"
-#dir = "Z:\\MASTER THESIS - SIMULATION RESULTS\\feed forward\\delayVSoff\\1n3i\\t10000"
-
-#dirs = ["Z:\\MASTER THESIS - SIMULATION RESULTS\\feed forward\\delayVSoff\\1n3i\\t10000",
+# dirs = ["Z:\\MASTER THESIS - SIMULATION RESULTS\\feed forward\\delayVSoff\\1n3i\\t10000",
 #        "Z:\\MASTER THESIS - SIMULATION RESULTS\\feed forward\\delayVSoff\\1n2i\\t10000",
 #        "Z:\\MASTER THESIS - SIMULATION RESULTS\\feed forward\\delayVSoff\\1n3i w8\\t10000",
 #        "Z:\\MASTER THESIS - SIMULATION RESULTS\\feed forward\\delayVSfrequency\\1n2i\\t10000",
@@ -31,18 +28,16 @@ import json
 #        "Z:\\MASTER THESIS - SIMULATION RESULTS\\feed forward\\async rep alt"]
 
 
-#dirs = ["Z:\\MASTER THESIS - SIMULATION RESULTS\\feed forward\\delayVSfrequency\\1n2i\\t10000",
+# dirs = ["Z:\\MASTER THESIS - SIMULATION RESULTS\\feed forward\\delayVSfrequency\\1n2i\\t10000",
 #        "Z:\\MASTER THESIS - SIMULATION RESULTS\\feed forward\\delayVSfrequency\\1n3i\\t10000",
 #        "Z:\\MASTER THESIS - SIMULATION RESULTS\\feed forward\\async rep alt"]
 
-#for d in dirs:
+# for d in dirs:
 #    Data.reduce_sim_file_size(d)
 
-#if __name__ == "__main__":
+# if __name__ == "__main__":
 #    with mp.Pool(mp.cpu_count()-1) as p:
 #        p.map(Data.reduce_sim_file_size, dirs)
-
-
 
 
 '''
@@ -112,9 +107,6 @@ if __name__ == "__main__":
     print(stop)
 '''
 
-
-
-
 '''
     # OK
     # DelayVSoff 1n3i
@@ -150,7 +142,6 @@ if __name__ == "__main__":
     stop = round((time.time()-start)/60,1)
     print(stop)
 '''
-
 
 '''
     # OK
@@ -216,7 +207,6 @@ if __name__ == "__main__":
     print(stop)
 '''
 
-
 '''
     # OK
     # DelayVSfreq 1n2i
@@ -247,8 +237,6 @@ if __name__ == "__main__":
     print(stop)
 '''
 
-
-
 '''
 comp_dirs = ["Z:/MASTER THESIS - SIMULATION RESULTS/feed forward\delayVSoff/1n2i/t10000",
              "Z:/MASTER THESIS - SIMULATION RESULTS/feed forward\delayVSoff/1n3i/t10000",
@@ -269,7 +257,6 @@ for dr in os.listdir("Z:/MASTER THESIS - SIMULATION RESULTS/feed forward\delayVS
                 print(dr)
 '''
 
-
 '''
 def do_stuff(dr):
     for f in os.listdir(dr):
@@ -289,11 +276,6 @@ if __name__ == "__main__":
 
 '''
 
-
-
-
-
-
 '''
 
 if __name__ == "__main__":
@@ -307,36 +289,35 @@ if __name__ == "__main__":
 
 '''
 
-#Data.compile_simulation_data(dir="Z:/MASTER THESIS - SIMULATION RESULTS/feed forward\delayVSoff/1n2i/t10000")
-#Data.compile_simulation_data(dir="Z:/MASTER THESIS - SIMULATION RESULTS/feed forward\delayVSoff/1n3i/t10000")
-#Data.compile_simulation_data(dir="Z:/MASTER THESIS - SIMULATION RESULTS/feed forward\delayVSoff/1n3i w8/t10000")
-#Data.compile_simulation_data(dir="Z:/MASTER THESIS - SIMULATION RESULTS/feed forward\delayVSfrequency/1n2i/t10000")
-#Data.compile_simulation_data(dir="Z:/MASTER THESIS - SIMULATION RESULTS/feed forward\delayVSfrequency/1n3i/t10000")
-#Data.compile_simulation_data(dir="Z:/MASTER THESIS - SIMULATION RESULTS/feed forward\delayVSfrequency/1n3i w8/t10000")
+# Data.compile_simulation_data(dir="Z:/MASTER THESIS - SIMULATION RESULTS/feed forward\delayVSoff/1n2i/t10000")
+# Data.compile_simulation_data(dir="Z:/MASTER THESIS - SIMULATION RESULTS/feed forward\delayVSoff/1n3i/t10000")
+# Data.compile_simulation_data(dir="Z:/MASTER THESIS - SIMULATION RESULTS/feed forward\delayVSoff/1n3i w8/t10000")
+# Data.compile_simulation_data(dir="Z:/MASTER THESIS - SIMULATION RESULTS/feed forward\delayVSfrequency/1n2i/t10000")
+# Data.compile_simulation_data(dir="Z:/MASTER THESIS - SIMULATION RESULTS/feed forward\delayVSfrequency/1n3i/t10000")
+# Data.compile_simulation_data(dir="Z:/MASTER THESIS - SIMULATION RESULTS/feed forward\delayVSfrequency/1n3i w8/t10000")
 
-#Data.sum_simulation_data(dir="Z:/MASTER THESIS - SIMULATION RESULTS/feed forward/delayVSoff/1n2i/t10000")
-#Data.sum_simulation_data(dir="Z:/MASTER THESIS - SIMULATION RESULTS/feed forward/delayVSoff/1n3i/t10000")
-#Data.sum_simulation_data(dir="Z:/MASTER THESIS - SIMULATION RESULTS/feed forward/delayVSoff/1n3i w8/t10000")
-#Data.sum_simulation_data(dir="Z:/MASTER THESIS - SIMULATION RESULTS/feed forward/delayVSfrequency/1n2i/t10000")
-#Data.sum_simulation_data(dir="Z:/MASTER THESIS - SIMULATION RESULTS/feed forward/delayVSfrequency/1n3i/t10000")
-#Data.sum_simulation_data(dir="Z:/MASTER THESIS - SIMULATION RESULTS/feed forward/delayVSfrequency/1n3i w8/t10000")
-
-
-
-#Data.plot_delay_catetgories_heatmap("Z:/MASTER THESIS - SIMULATION RESULTS/feed forward/delayVSfrequency/1n2i/t10000", file_title="delayVSfreq1n2i_delayplot", identifier_title="Spike intervals (ms)", identifiers=["f1", "f2"], nd=2)
-#Data.plot_delay_catetgories_heatmap("Z:/MASTER THESIS - SIMULATION RESULTS/feed forward/delayVSfrequency/1n3i/t10000", file_title="delayVSfreq1n3i_delayplot",identifier_title="Spike intervals (ms)", identifiers=["f1", "f2", "f3"], nd=3)
-#Data.plot_delay_catetgories_heatmap("Z:/MASTER THESIS - SIMULATION RESULTS/feed forward/delayVSfrequency/1n3i w8/t10000", file_title="delayVSfreq1n3i_w8_delayplot",identifier_title="Spike intervals (ms)", identifiers=["f1", "f2", "f3"], nd=3)
-#Data.plot_delay_catetgories_heatmap("Z:/MASTER THESIS - SIMULATION RESULTS/feed forward/delayVSoff/1n2i/t10000", file_title="delayVSoff1n2i_delayplot",identifier_title="Spike offsets (ms)", identifiers=["off11", "off12", "off21", "off22"], nd=2)
-#Data.plot_delay_catetgories_heatmap("Z:/MASTER THESIS - SIMULATION RESULTS/feed forward/delayVSoff/1n3i/t10000", file_title="delayVSoff1n3i_delayplot",identifier_title="Spike offsets (ms)", identifiers=["off11", "off12", "off21", "off22", "off31", "off32"], nd=3)
-#Data.plot_delay_catetgories_heatmap("Z:/MASTER THESIS - SIMULATION RESULTS/feed forward/delayVSoff/1n3i w8/t10000", file_title="delayVSoff1n3i_w8_delayplot",identifier_title="Spike offsets (ms)", identifiers=["off11", "off12", "off21", "off22", "off31", "off32"], nd=3)
+# Data.sum_simulation_data(dir="Z:/MASTER THESIS - SIMULATION RESULTS/feed forward/delayVSoff/1n2i/t10000")
+# Data.sum_simulation_data(dir="Z:/MASTER THESIS - SIMULATION RESULTS/feed forward/delayVSoff/1n3i/t10000")
+# Data.sum_simulation_data(dir="Z:/MASTER THESIS - SIMULATION RESULTS/feed forward/delayVSoff/1n3i w8/t10000")
+# Data.sum_simulation_data(dir="Z:/MASTER THESIS - SIMULATION RESULTS/feed forward/delayVSfrequency/1n2i/t10000")
+# Data.sum_simulation_data(dir="Z:/MASTER THESIS - SIMULATION RESULTS/feed forward/delayVSfrequency/1n3i/t10000")
+# Data.sum_simulation_data(dir="Z:/MASTER THESIS - SIMULATION RESULTS/feed forward/delayVSfrequency/1n3i w8/t10000")
 
 
-#Data.plot_SR_heatmap("Z:/MASTER THESIS - SIMULATION RESULTS/feed forward\delayVSoff/1n2i/t10000", file_title="delayVSoff1n2i_spikeplot", identifier_title="Spike offsets (ms)",identifiers=["off11", "off12", "off21", "off22"], nd=2)
-#Data.plot_SR_heatmap("Z:/MASTER THESIS - SIMULATION RESULTS/feed forward\delayVSoff/1n3i/t10000", file_title="delayVSoff1n3i_spikeplot", identifier_title="Spike offsets (ms)",identifiers=["off11", "off12", "off21", "off22", "off31", "off32"], nd=3)
-#Data.plot_SR_heatmap("Z:/MASTER THESIS - SIMULATION RESULTS/feed forward\delayVSoff/1n3i w8/t10000", file_title="delayVSoff1n3i_w8_spikeplot", identifier_title="Spike offsets (ms)",identifiers=["off11", "off12", "off21", "off22", "off31", "off32"], nd=3)
-#Data.plot_SR_heatmap("Z:/MASTER THESIS - SIMULATION RESULTS/feed forward/delayVSfrequency/1n2i/t10000", file_title="delayVSfreq1n2i_spikeplot", identifier_title="Spike intervals (ms)",identifiers=["f1", "f2"], nd=2)
-#Data.plot_SR_heatmap("Z:/MASTER THESIS - SIMULATION RESULTS/feed forward/delayVSfrequency/1n3i/t10000", file_title="delayVSfreq1n3i_spikeplot", identifier_title="Spike intervals (ms)",identifiers=["f1", "f2", "f3"], nd=3)
-#Data.plot_SR_heatmap("Z:/MASTER THESIS - SIMULATION RESULTS/feed forward/delayVSfrequency/1n3i w8/t10000", file_title="delayVSfreq1n3i_w8_spikeplot", identifier_title="Spike intervals (ms)",identifiers=["f1", "f2", "f3"], nd=3)
+# Data.plot_delay_catetgories_heatmap("Z:/MASTER THESIS - SIMULATION RESULTS/feed forward/delayVSfrequency/1n2i/t10000", file_title="delayVSfreq1n2i_delayplot", identifier_title="Spike intervals (ms)", identifiers=["f1", "f2"], nd=2)
+# Data.plot_delay_catetgories_heatmap("Z:/MASTER THESIS - SIMULATION RESULTS/feed forward/delayVSfrequency/1n3i/t10000", file_title="delayVSfreq1n3i_delayplot",identifier_title="Spike intervals (ms)", identifiers=["f1", "f2", "f3"], nd=3)
+# Data.plot_delay_catetgories_heatmap("Z:/MASTER THESIS - SIMULATION RESULTS/feed forward/delayVSfrequency/1n3i w8/t10000", file_title="delayVSfreq1n3i_w8_delayplot",identifier_title="Spike intervals (ms)", identifiers=["f1", "f2", "f3"], nd=3)
+# Data.plot_delay_catetgories_heatmap("Z:/MASTER THESIS - SIMULATION RESULTS/feed forward/delayVSoff/1n2i/t10000", file_title="delayVSoff1n2i_delayplot",identifier_title="Spike offsets (ms)", identifiers=["off11", "off12", "off21", "off22"], nd=2)
+# Data.plot_delay_catetgories_heatmap("Z:/MASTER THESIS - SIMULATION RESULTS/feed forward/delayVSoff/1n3i/t10000", file_title="delayVSoff1n3i_delayplot",identifier_title="Spike offsets (ms)", identifiers=["off11", "off12", "off21", "off22", "off31", "off32"], nd=3)
+# Data.plot_delay_catetgories_heatmap("Z:/MASTER THESIS - SIMULATION RESULTS/feed forward/delayVSoff/1n3i w8/t10000", file_title="delayVSoff1n3i_w8_delayplot",identifier_title="Spike offsets (ms)", identifiers=["off11", "off12", "off21", "off22", "off31", "off32"], nd=3)
+
+
+# Data.plot_SR_heatmap("Z:/MASTER THESIS - SIMULATION RESULTS/feed forward\delayVSoff/1n2i/t10000", file_title="delayVSoff1n2i_spikeplot", identifier_title="Spike offsets (ms)",identifiers=["off11", "off12", "off21", "off22"], nd=2)
+# Data.plot_SR_heatmap("Z:/MASTER THESIS - SIMULATION RESULTS/feed forward\delayVSoff/1n3i/t10000", file_title="delayVSoff1n3i_spikeplot", identifier_title="Spike offsets (ms)",identifiers=["off11", "off12", "off21", "off22", "off31", "off32"], nd=3)
+# Data.plot_SR_heatmap("Z:/MASTER THESIS - SIMULATION RESULTS/feed forward\delayVSoff/1n3i w8/t10000", file_title="delayVSoff1n3i_w8_spikeplot", identifier_title="Spike offsets (ms)",identifiers=["off11", "off12", "off21", "off22", "off31", "off32"], nd=3)
+# Data.plot_SR_heatmap("Z:/MASTER THESIS - SIMULATION RESULTS/feed forward/delayVSfrequency/1n2i/t10000", file_title="delayVSfreq1n2i_spikeplot", identifier_title="Spike intervals (ms)",identifiers=["f1", "f2"], nd=2)
+# Data.plot_SR_heatmap("Z:/MASTER THESIS - SIMULATION RESULTS/feed forward/delayVSfrequency/1n3i/t10000", file_title="delayVSfreq1n3i_spikeplot", identifier_title="Spike intervals (ms)",identifiers=["f1", "f2", "f3"], nd=3)
+# Data.plot_SR_heatmap("Z:/MASTER THESIS - SIMULATION RESULTS/feed forward/delayVSfrequency/1n3i w8/t10000", file_title="delayVSfreq1n3i_w8_spikeplot", identifier_title="Spike intervals (ms)",identifiers=["f1", "f2", "f3"], nd=3)
 
 '''
 pop = Population.Population((10, Population.RS), name="ring_n10i1_k1_1conn_lowsr")
@@ -350,9 +331,6 @@ pop.plot_raster()
 pop.plot_membrane_potential()
 pop.show_network(save=True)
 '''
-
-
-
 
 '''
 #def just_do_it(i,j):
@@ -385,7 +363,6 @@ pop.plot_membrane_potential()
 #    with mp.Pool(os.cpu_count() - 1) as p:
 #        p.map(just_do_it, i)
 '''
-
 
 '''
 
@@ -440,7 +417,6 @@ for i, v in zip(pop.neurons["0"].v_hist["t"], pop.neurons["0"].v_hist["v"]):
         break
 '''
 
-
 '''
 if __name__ == "__main__":
     sim.refractory_period_mt()
@@ -458,9 +434,8 @@ pop.plot_delays()
 pop.plot_membrane_potential()
 '''
 
-#if __name__ == "__main__":
+# if __name__ == "__main__":
 #    sim.weight_shift_response_mt()
-
 
 
 '''
@@ -779,10 +754,9 @@ def doit_bebbbeeey(train):
     pop.run(duration=t,save_post_model=True, record_PG=True, save_plots=True, show_process=True)
 
 '''
-#if __name__ == "__main__":
+# if __name__ == "__main__":
 #    with mp.Pool(mp.cpu_count()) as p:
 #        p.map(doit_bebbbeeey, [True, False])
-
 
 
 '''
@@ -817,7 +791,6 @@ pop.run(duration=np.max(input) + 200, PG_duration=180, PG_match_th=th, save_post
 
 '''
 
-
 '''
 path = ['network_plots/FF_MNIST']
 n = [192]
@@ -842,14 +815,15 @@ if __name__ == '__main__':
         p.starmap(Simulations.run_MNIST_FF, combos)
 
 '''
-path = ['network_plots/FF_MNIST_CONFIG_TEST']
+'''
+path = ['network_plots/MNIST_THESIS/']
 n = [500]
 img = [10]
 layers = [5]
-num = [[0, 7, 6]]
+num = [[0, 7]]
 inst = [20]
 w = [4]
-th = [0.75]
+th = [0.6]
 p = [0.3]
 par = [True]
 train = [True, False]
@@ -858,9 +832,29 @@ seed = [1]
 params = [path, n, img, layers, num, inst, w, th, p, par, train, seed]
 combos = list(itertools.product(*params))
 
-
-
 if __name__ == '__main__':
-    with mp.Pool(2) as p:
+    with mp.Pool(4) as p:
         p.starmap(Simulations.run_MNIST_FF, combos)
+'''
+# model = Data.load_model(r'C:\Users\jorge\PycharmProjects\MasterThesis\network_plots\MNIST_THESIS\MNIST_FF_train-False_n-500_w-4_p-0.3_img-10_nlayers-5_cls-[7]_cinst-10_th-0.6_partial-True_pre--10_post-7\post_sim_model.pkl')
+# model.plot_raster(legend=False)
+'''
+for fil, folder, dir in os.walk(r'Z:\MASTER THESIS - SIMULATION RESULTS'):
+    if len(fil) > 250:
+        print(fil)
+'''
+'''
+pop = Population((25, RS), path='.', name="videoexmpl")
+#pop.create_random_connections(p=0.2, d=list(range(8, 13)), w=[16], trainable=True)
+pop.create_feed_forward_connections(d=list(range(8, 13)), w=[16], trainable=True)
+#pop.create_directional_ring_lattice_connections(k=2, d=list(range(8, 13)), w=[16], trainable=True, skip_n=5)
+pop.structure = "ring"
+for i in range(5):
+    pop.create_input(p=0.05, j=[np.random.randint(0,25) for x in range(5)], wj=[32 for y in range(5)])
 
+pop.run(100, record_topology=False, record_PG=False, save_post_model=True)
+'''
+
+
+model = Data.load_model(r'C:\Users\jorge\PycharmProjects\MasterThesis\videoexmpl_16\post_sim_model.pkl')
+model.plot_topology()

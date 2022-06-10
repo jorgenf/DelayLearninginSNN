@@ -46,7 +46,7 @@ class Input:
         else:
             self.rng = np.random.default_rng()
 
-    def update(self, neurons=None):
+    def update(self, neurons=None, record_PG=None):
         if self.spike_times and T in self.spike_times:
             [syn.add_spike() for syn in self.down]
             self.spikes.append(T)
@@ -437,7 +437,7 @@ class Population:
         plt.colorbar(plt.cm.ScalarMappable(norm=norm, cmap=plt.cm.get_cmap("brg")), ax=ax)
         plt.tight_layout()
         plt.savefig(os.path.join(self.dir, "network.png"))
-        plt.close()
+        return plt
 
 
     def plot_delays(self):
@@ -725,7 +725,7 @@ class Neuron:
         self.inputs = []
         self.poly_group = {}
 
-    def update(self, neurons):
+    def update(self, neurons, record_pg=False):
         for syn in self.up:
             i = syn.get_spikes()
             if not self.refractory:
@@ -775,7 +775,8 @@ class Neuron:
                         syn_list.append((syn,min_pre))
                         min_pre_index = pre_spikes.index(max(pre_spikes))
                         min_pre_t = pre_spike_t[min_pre_index]
-                        neurons[str(syn.i)].poly_group[min_pre_t][self.ID] = self.poly_group[T]
+                        if record_pg:
+                            neurons[str(syn.i)].poly_group[min_pre_t][self.ID] = self.poly_group[T]
                     elif post_spikes:
                         min_post = min(post_spikes)
                         syn.G(min_post)
