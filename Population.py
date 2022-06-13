@@ -74,9 +74,9 @@ class Population:
             os.makedirs(self.dir, exist_ok=True)
 
 
-    def update(self):
+    def update(self, record_PG):
         for neuron in reversed(self.neurons):
-            self.neurons[neuron].update(self.neurons)
+            self.neurons[neuron].update(self.neurons, record_PG)
 
     def create_input(self, spike_times=[], p=0.0, j=None, wj=None, dj=None, seed=None, trainable=False):
         inp = self.Input(spike_times, p, seed)
@@ -585,7 +585,7 @@ class Population:
         poly_index = 0
         while T < self.duration:
             start = time.time()
-            self.update()
+            self.update(record_PG)
             if record_PG:
                 poly_index += self.build_poly_groups(poly_index)
             if record_topology:
@@ -612,8 +612,6 @@ class Population:
         if show_process:
             print(f"\nSimulation finished: {self.name}")
             print(f"\nElapsed time: {round((stop-tot_start)/60,1)}min")
-
-
 
 
     def save_neuron_data(self):
@@ -733,7 +731,7 @@ class Population:
             self.inputs = []
             self.poly_group = {}
 
-        def update(self, neurons, record_pg=False):
+        def update(self, neurons, record_pg):
             for syn in self.up:
                 i = syn.get_spikes()
                 if not self.refractory:
