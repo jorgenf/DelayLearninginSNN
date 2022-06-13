@@ -844,7 +844,7 @@ for fil, folder, dir in os.walk(r'Z:\MASTER THESIS - SIMULATION RESULTS'):
         print(fil)
 '''
 '''
-pop = Population((25, RS), path='.', name="videoexmpl")
+pop = Population((25, Population.RS), path='.', name="videoexmpl")
 #pop.create_random_connections(p=0.2, d=list(range(8, 13)), w=[16], trainable=True)
 pop.create_feed_forward_connections(d=list(range(8, 13)), w=[16], trainable=True)
 #pop.create_directional_ring_lattice_connections(k=2, d=list(range(8, 13)), w=[16], trainable=True, skip_n=5)
@@ -856,5 +856,12 @@ pop.run(100, record_topology=False, record_PG=False, save_post_model=True)
 '''
 
 
-model = Data.load_model(r'C:\Users\jorge\PycharmProjects\MasterThesis\videoexmpl_16\post_sim_model.pkl')
-model.plot_topology()
+input = Data.create_mnist_input(30, [0], 200, image_size=10)
+pop = Population((300, Population.RS), path='network_plots/', name="MNIST_adapting")
+pop.create_feed_forward_connections(d=list(range(8,13)), n_layers=3, w=8, p=0.05, partial=True, trainable=True)
+for id, i in enumerate(input):
+    ij = [ij for ij in range(100) if np.random.random() < 0.05]
+    pop.create_input(i, j=ij, wj=16, dj=[np.random.randint(8,13) for x in range(len(ij))], trainable=False)
+
+
+pop.run(np.max(input) - 3000, record_PG=True, save_post_model=True, PG_duration=50, PG_match_th=0.9)

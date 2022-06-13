@@ -15,7 +15,7 @@ import Constants
 import Data
 import matplotlib.colors
 sns.set()
-global T, DT, ID
+
 
 COLORS = Constants.COLORS
 cm = 1/2.54
@@ -30,39 +30,16 @@ MIN_DELAY = Constants.MIN_DELAY
 mpl.use("Agg")
 
 
-class Input:
-    global T
-    def __init__(self, spike_times=False, p=0.0, seed=False):
-        global ID
-        self.ID = str(ID)
-        ID += 1
-        self.spikes = deque()
-        self.spike_times = spike_times
-        self.p = p
-        self.down = []
-        self.poly_group = {}
-        if seed:
-            self.rng = np.random.default_rng(seed)
-        else:
-            self.rng = np.random.default_rng()
 
-    def update(self, neurons=None, record_PG=None):
-        if self.spike_times and T in self.spike_times:
-            [syn.add_spike() for syn in self.down]
-            self.spikes.append(T)
-            if T not in self.poly_group.keys():
-                self.poly_group[T] = {}
-        elif self.rng.random() < self.p and not self.spike_times:
-            [syn.add_spike() for syn in self.down]
-            self.spikes.append(T)
 
 class Population:
+
     def __init__(self, *populations, path, name=None, save_data=True):
+        global T, ID, DT
+        ID = 0
+        self.t = None
         self.PG_duration = None
         self.PG_match_th = None
-        global T, ID
-        T = 0.0
-        ID = 0
         self.neurons = {}
         self.synapses = []
         for population in populations:
@@ -102,7 +79,7 @@ class Population:
             self.neurons[neuron].update(self.neurons)
 
     def create_input(self, spike_times=[], p=0.0, j=None, wj=None, dj=None, seed=None, trainable=False):
-        inp = Input(spike_times, p, seed)
+        inp = self.Input(spike_times, p, seed)
         self.add_neuron(inp)
         if j is not None:
             j = list(j)
@@ -126,7 +103,7 @@ class Population:
         self.neurons[neuron.ID] = neuron
 
     def create_synapse(self, i, j, w=10, d=1, trainable=True, partial=False):
-        syn = Synapse(i, j, w, d, trainable, partial=partial)
+        syn = self.Synapse(i, j, w, d, trainable, partial=partial)
         try:
             self.neurons[str(i)].down.append(syn)
         except:
@@ -200,7 +177,7 @@ class Population:
             pos = prod[:n]
             for neuron, p1 in zip(self.neurons, pos):
                 for neuron2, p2 in zip(self.neurons, pos):
-                    if rng.random() < p and type(self.neurons[neuron2]) != Input and neuron != neuron2:
+                    if rng.random() < p and type(self.neurons[neuron2]) != self.Input and neuron != neuron2:
                         d = round(np.sqrt(((p1[0]-p2[0])**2)+((p1[1]-p2[1])**2)), 1)
                         self.create_synapse(neuron, neuron2, w=rng.choice(w), d=d, trainable=trainable)
 
@@ -375,10 +352,10 @@ class Population:
         G = nx.DiGraph()
         colors = []
         for n in self.neurons:
-            G.add_node(self.neurons[n].ID, type="input" if isinstance(self.neurons[n], Input) else "neuron")
+            G.add_node(self.neurons[n].ID, type="input" if isinstance(self.neurons[n], self.Input) else "neuron")
             if round(T-DT,1) in self.neurons[n].spikes:
                 colors.append("r")
-            elif isinstance(self.neurons[n], Input):
+            elif isinstance(self.neurons[n], self.Input):
                 colors.append("g")
             else:
                 colors.append("b")
@@ -459,8 +436,6 @@ class Population:
 
     def plot_mean_delays(self):
         fig, sub = plt.subplots()
-        #handles = []
-        #ls = ["solid", "dashed", "dotted", "dashdot"]
         mean = []
         std = []
         for i in range(0, round(self.duration / DT)):
@@ -486,13 +461,13 @@ class Population:
                 spikes.append(sp)
         else:
             spikes = [self.neurons[x].spikes for x in self.neurons]
-        c = ["red" if isinstance(self.neurons[_],Input) else "black" for _ in self.neurons]
+        c = ["red" if isinstance(self.neurons[_],self.Input) else "black" for _ in self.neurons]
         sub.eventplot(spikes, colors=c, lineoffsets=1, linelengths=1, linewidths=0.5)
         sub.set_xlabel("Time (ms)")
         sub.set_ylabel("Neuron ID")
         sub.set_ylim([-1, len(self.neurons)])
         sub.set_yticks(range(len(self.neurons)))
-        sub.set_yticklabels([x if type(self.neurons[x]) != Input else f"{x} (Input)" for x in self.neurons])
+        sub.set_yticklabels([x if type(self.neurons[x]) != self.Input else f"{x} (Input)" for x in self.neurons])
         sub.yaxis.set_major_locator(plt.MaxNLocator(20))
         count = Counter([tpg["poly_index"] for tpg in self.poly_group_history])
         sorted_count = dict(sorted(count.items(), key=lambda item: item[1], reverse=True))
@@ -531,7 +506,7 @@ class Population:
         handles = []
         ls = ["solid", "dashed", "dotted", "dashdot"]
         for i, id in enumerate(IDs):
-            if type(self.neurons[str(id)]) != Input:
+            if type(self.neurons[str(id)]) != self.Input:
                 sub.plot(self.neurons[str(id)].v_hist["t"], self.neurons[str(id)].v_hist["v"], linestyle=ls[int((i/10) % 4)], linewidth=0.8)
                 handles.append(id)
         sub.set_xlabel("Time (ms)")
@@ -563,7 +538,7 @@ class Population:
         os.system(f"ffmpeg -y -r {fps} -i {self.dir}/t%10d.png -vcodec msmpeg4 {self.dir}/output.wmv")
 
     def build_poly_groups(self, poly_index):
-        inputs = [self.neurons[neuron] for neuron in self.neurons if isinstance(self.neurons[neuron], Input)]
+        inputs = [self.neurons[neuron] for neuron in self.neurons if isinstance(self.neurons[neuron], self.Input)]
         if all(len(inputs[x].poly_group.keys()) == len(inputs[x - 1].poly_group.keys()) and all([inputs[x].poly_group.keys(),inputs[x - 1].poly_group.keys()]) for x in
                range(1, len(inputs))):
             max_keys = [max(inp.poly_group.keys()) for inp in inputs]
@@ -592,11 +567,18 @@ class Population:
         return 0
 
     def run(self, duration, dt=0.1, save_post_model=False, record_topology=False, record_PG=True, PG_duration = 200, PG_match_th=0.6, show_process=True, save_plots=True, n_classes=2, raster_legend=True):
+        global T, DT
+        if self.t is not None:
+            T = self.t
+            self.t += duration
+            duration += T
+        else:
+            self.t = duration
+            T = 0.0
+        DT = dt
         self.duration = duration
         self.PG_duration = PG_duration
         self.PG_match_th = PG_match_th
-        global T, DT
-        DT = dt
         tot_start = time.time()
         if self.save_data:
             Data.save_model(self, os.path.join(self.dir, "pre_sim_model.pkl"))
@@ -626,11 +608,12 @@ class Population:
             self.plot_raster(classes=n_classes, legend=raster_legend)
             self.plot_topology()
             self.plot_delays()
-            self.plot_mean_delays()
         stop = time.time()
         if show_process:
             print(f"\nSimulation finished: {self.name}")
             print(f"\nElapsed time: {round((stop-tot_start)/60,1)}min")
+
+
 
 
     def save_neuron_data(self):
@@ -639,11 +622,11 @@ class Population:
         for id in self.neurons:
             neuron = self.neurons[id]
             type_ = str(type(neuron))
-            n_up = None if isinstance(neuron, Input) else len(neuron.up)
+            n_up = None if isinstance(neuron, self.Input) else len(neuron.up)
             n_down = len(neuron.down)
-            up = None if isinstance(neuron, Input) else [syn.i for syn in neuron.up]
+            up = None if isinstance(neuron, self.Input) else [syn.i for syn in neuron.up]
             down = [syn.j for syn in neuron.down]
-            ref_t = None if isinstance(neuron, Input) else neuron.ref_t
+            ref_t = None if isinstance(neuron, self.Input) else neuron.ref_t
             spikes = list(neuron.spikes)
             data[id] = {"duration" : T, "type" : type_, "n_up" : n_up, "n_down" : n_down, "up" : up, "down" : down, "ref_t" : ref_t, "spikes": spikes}
         with open(os.path.join(self.dir, "neuron_data.json"), "w") as file:
@@ -662,176 +645,201 @@ class Population:
         with open(os.path.join(self.dir, "synapse_data.json"), "w") as file:
             json.dump(data, file)
 
-class Synapse:
-    def __init__(self, i, j, w, d, trainable, partial=False):
-        self.i = i
-        self.j = j
-        self.w = w
-        self.d = float(d)
-        self.d_hist = {"t":[], "d":[]}
-        self.pre_window = Constants.PRE_WINDOW
-        self.post_window = Constants.POST_WINDOW
-        self.spikes = []
-        self.trainable = trainable
-        self.partial = partial
+    class Synapse:
+        def __init__(self, i, j, w, d, trainable, partial=False):
+            self.i = i
+            self.j = j
+            self.w = w
+            self.d = float(d)
+            self.d_hist = {"t":[], "d":[]}
+            self.pre_window = Constants.PRE_WINDOW
+            self.post_window = Constants.POST_WINDOW
+            self.spikes = []
+            self.trainable = trainable
+            self.partial = partial
 
-    def add_spike(self):
-        self.spikes.append({"t": T, "d": self.d, "w": self.w})
+        def add_spike(self):
+            self.spikes.append({"t": T, "d": self.d, "w": self.w})
 
-    def get_spikes(self):
-        self.d_hist["t"].append(T)
-        self.d_hist["d"].append(self.d)
-        count = 0
-        for spike in self.spikes:
-            if round(spike["t"] + spike["d"], 1) == T:
-                count += spike["w"]
-                self.spikes.remove(spike)
-        return count
+        def get_spikes(self):
+            self.d_hist["t"].append(T)
+            self.d_hist["d"].append(self.d)
+            count = 0
+            for spike in self.spikes:
+                if round(spike["t"] + spike["d"], 1) == T:
+                    count += spike["w"]
+                    self.spikes.remove(spike)
+            return count
 
-    def F(self, delta_tdist):
-        if self.trainable:
-            dd = -3*m.tanh(delta_tdist/3)
-            self.d += dd
-            self.d = round(max(self.d, DT), 1 if DT==0.1 else 0)
-            self.d = min(self.d, MAX_DELAY)
+        def F(self, delta_tdist):
+            if self.trainable:
+                dd = -3*m.tanh(delta_tdist/3)
+                self.d += dd
+                self.d = round(max(self.d, DT), 1 if DT==0.1 else 0)
+                self.d = min(self.d, MAX_DELAY)
 
-    def G(self, delta_t):
-        if self.trainable and not self.partial:
-            dd = (3/2)*m.tanh(2.5625-0.625*delta_t)+1.5
-            self.d += dd
-            self.d = round(self.d, 1 if DT == 0.1 else 0)
-            self.d = min(self.d, MAX_DELAY)
+        def G(self, delta_t):
+            if self.trainable and not self.partial:
+                dd = (3/2)*m.tanh(2.5625-0.625*delta_t)+1.5
+                self.d += dd
+                self.d = round(self.d, 1 if DT == 0.1 else 0)
+                self.d = min(self.d, MAX_DELAY)
 
+    class Input:
+        global T
+        def __init__(self, spike_times=False, p=0.0, seed=False):
+            global ID
+            self.ID = str(ID)
+            ID += 1
+            self.spikes = deque()
+            self.spike_times = spike_times
+            self.p = p
+            self.down = []
+            self.poly_group = {}
+            if seed:
+                self.rng = np.random.default_rng(seed)
+            else:
+                self.rng = np.random.default_rng()
 
-class Neuron:
-    def __init__(self, a, b, c, d, u, ref_t=0, v_init=False):
-        global ID, DT
-        self.ID = str(ID)
-        ID += 1
-        self.a = a
-        self.b = b
-        self.c = c
-        self.d = d
-        self.v = c if not v_init else v_init
-        self.u = u
-        self.th = 30
-        self.ref_t = ref_t
-        self.refractory = 0
-        self.v_hist = {"t":[], "v": []}
-        self.u_hist = {"t":[], "u": []}
-        self.spikes = deque()
-        self.up = []
-        self.down = []
-        self.inputs = []
-        self.poly_group = {}
+        def update(self, neurons=None, record_PG=None):
+            if self.spike_times and T in self.spike_times:
+                [syn.add_spike() for syn in self.down]
+                self.spikes.append(T)
+                if T not in self.poly_group.keys():
+                    self.poly_group[T] = {}
+            elif self.rng.random() < self.p and not self.spike_times:
+                [syn.add_spike() for syn in self.down]
+                self.spikes.append(T)
 
-    def update(self, neurons, record_pg=False):
-        for syn in self.up:
-            i = syn.get_spikes()
-            if not self.refractory:
-                self.inputs.append({"I": i, "counter": 1})
-        if self.inputs and not self.refractory:
-            I = 0
-            for inp in range(len(self.inputs)):
-                I += self.inputs[inp]["I"]
-                self.inputs[inp]["counter"] = round(self.inputs[inp]["counter"] - DT,3)
-            self.inputs = [x for x in self.inputs if x["counter"] > 0]
-        else:
-            I = 0
-        self.v += 0.5 * (0.04*self.v**2+5*self.v+140-self.u + I) * DT
-        self.v += 0.5 * (0.04*self.v**2+5*self.v+140-self.u + I) * DT
-        self.u += self.a*(self.b*self.v-self.u) * DT
-        self.v = min(self.th, self.v)
-        self.v_hist["t"].append(T)
-        self.v_hist["v"].append(self.v)
-        self.u_hist["t"].append(T)
-        self.u_hist["u"].append(self.u)
-        if self.th <= self.v:
-            self.spikes.append(T)
-            self.v = self.c
-            self.u += self.d
-            self.refractory = self.ref_t
-            [syn.add_spike() for syn in self.down]
-            self.inputs.clear()
-            syn_list = []
-            if T not in self.poly_group.keys():
-                self.poly_group[T] = {}
+    class Neuron:
+        def __init__(self, a, b, c, d, u, ref_t=0, v_init=False):
+            global ID, DT
+            self.ID = str(ID)
+            ID += 1
+            self.a = a
+            self.b = b
+            self.c = c
+            self.d = d
+            self.v = c if not v_init else v_init
+            self.u = u
+            self.th = 30
+            self.ref_t = ref_t
+            self.refractory = 0
+            self.v_hist = {"t":[], "v": []}
+            self.u_hist = {"t":[], "u": []}
+            self.spikes = deque()
+            self.up = []
+            self.down = []
+            self.inputs = []
+            self.poly_group = {}
+
+        def update(self, neurons, record_pg=False):
             for syn in self.up:
-                spikes = neurons[str(syn.i)].spikes
-                if spikes:
-                    pre_spikes = []
-                    pre_spike_t = []
-                    post_spikes = []
-                    for spike in spikes:
-                        index = syn.d_hist["t"].index(spike)
-                        delta_t = round((spike + syn.d_hist["d"][index]) - T, 1)
-                        if syn.pre_window <= delta_t <= 0:
-                            pre_spikes.append(delta_t)
-                            pre_spike_t.append(spike)
-                        elif syn.post_window >= delta_t > 0:
-                            post_spikes.append(delta_t)
-                    if pre_spikes:
-                        min_pre = max(pre_spikes)
-                        syn_list.append((syn,min_pre))
-                        min_pre_index = pre_spikes.index(max(pre_spikes))
-                        min_pre_t = pre_spike_t[min_pre_index]
-                        if record_pg:
-                            neurons[str(syn.i)].poly_group[min_pre_t][self.ID] = self.poly_group[T]
-                    elif post_spikes:
-                        min_post = min(post_spikes)
-                        syn.G(min_post)
-            if syn_list:
-                avg_delta_t = round(sum(x[1] for x in syn_list)/len(syn_list), 1 if DT == 0.1 else 0)
-                [syn[0].F(syn[1]-avg_delta_t) for syn in syn_list]
-        else:
-            self.refractory = max(0, np.round(self.refractory - DT, 1))
+                i = syn.get_spikes()
+                if not self.refractory:
+                    self.inputs.append({"I": i, "counter": 1})
+            if self.inputs and not self.refractory:
+                I = 0
+                for inp in range(len(self.inputs)):
+                    I += self.inputs[inp]["I"]
+                    self.inputs[inp]["counter"] = round(self.inputs[inp]["counter"] - DT,3)
+                self.inputs = [x for x in self.inputs if x["counter"] > 0]
+            else:
+                I = 0
+            self.v += 0.5 * (0.04*self.v**2+5*self.v+140-self.u + I) * DT
+            self.v += 0.5 * (0.04*self.v**2+5*self.v+140-self.u + I) * DT
+            self.u += self.a*(self.b*self.v-self.u) * DT
+            self.v = min(self.th, self.v)
+            self.v_hist["t"].append(T)
+            self.v_hist["v"].append(self.v)
+            self.u_hist["t"].append(T)
+            self.u_hist["u"].append(self.u)
+            if self.th <= self.v:
+                self.spikes.append(T)
+                self.v = self.c
+                self.u += self.d
+                self.refractory = self.ref_t
+                [syn.add_spike() for syn in self.down]
+                self.inputs.clear()
+                syn_list = []
+                if T not in self.poly_group.keys():
+                    self.poly_group[T] = {}
+                for syn in self.up:
+                    spikes = neurons[str(syn.i)].spikes
+                    if spikes:
+                        pre_spikes = []
+                        pre_spike_t = []
+                        post_spikes = []
+                        for spike in spikes:
+                            index = syn.d_hist["t"].index(spike)
+                            delta_t = round((spike + syn.d_hist["d"][index]) - T, 1)
+                            if syn.pre_window <= delta_t <= 0:
+                                pre_spikes.append(delta_t)
+                                pre_spike_t.append(spike)
+                            elif syn.post_window >= delta_t > 0:
+                                post_spikes.append(delta_t)
+                        if pre_spikes:
+                            min_pre = max(pre_spikes)
+                            syn_list.append((syn,min_pre))
+                            min_pre_index = pre_spikes.index(max(pre_spikes))
+                            min_pre_t = pre_spike_t[min_pre_index]
+                            if record_pg:
+                                neurons[str(syn.i)].poly_group[min_pre_t][self.ID] = self.poly_group[T]
+                        elif post_spikes:
+                            min_post = min(post_spikes)
+                            syn.G(min_post)
+                if syn_list:
+                    avg_delta_t = round(sum(x[1] for x in syn_list)/len(syn_list), 1 if DT == 0.1 else 0)
+                    [syn[0].F(syn[1]-avg_delta_t) for syn in syn_list]
+            else:
+                self.refractory = max(0, np.round(self.refractory - DT, 1))
 
 
-class FS(Neuron):
-    def __init__(self, ref_t):
-        super().__init__(a=0.1, b=0.2, c=-65, d=2, u=-14, ref_t=ref_t)
+    class FS(Neuron):
+        def __init__(self, ref_t):
+            super().__init__(a=0.1, b=0.2, c=-65, d=2, u=-14, ref_t=ref_t)
 
 
-class RS(Neuron):
-    def __init__(self, ref_t):
-        super().__init__(a=0.02, b=0.2, c=-65, d=8, u=-14, ref_t=ref_t, v_init=-70)
+    class RS(Neuron):
+        def __init__(self, ref_t):
+            super().__init__(a=0.02, b=0.2, c=-65, d=8, u=-14, ref_t=ref_t, v_init=-70)
 
 
-class RZ(Neuron):
-    def __init__(self, ref_t):
-        super().__init__(a=0.1, b=0.26, c=-65, d=2, u=-16, ref_t=ref_t)
+    class RZ(Neuron):
+        def __init__(self, ref_t):
+            super().__init__(a=0.1, b=0.26, c=-65, d=2, u=-16, ref_t=ref_t)
 
 
-class LTS(Neuron):
-    def __init__(self, ref_t):
-        super().__init__(a=0.02, b=0.25, c=-65, d=2, u=-16, ref_t=ref_t)
+    class LTS(Neuron):
+        def __init__(self, ref_t):
+            super().__init__(a=0.02, b=0.25, c=-65, d=2, u=-16, ref_t=ref_t)
 
 
-class TC(Neuron):
-    def __init__(self, ref_t):
-        super().__init__(a=0.02, b=0.25, c=-65, d=0.05, u=-16, ref_t=ref_t)
+    class TC(Neuron):
+        def __init__(self, ref_t):
+            super().__init__(a=0.02, b=0.25, c=-65, d=0.05, u=-16, ref_t=ref_t)
 
 
-class IB(Neuron):
-    def __init__(self, ref_t):
-        super().__init__(a=0.02, b=0.2, c=-55, d=4, u=-14, ref_t=ref_t)
+    class IB(Neuron):
+        def __init__(self, ref_t):
+            super().__init__(a=0.02, b=0.2, c=-55, d=4, u=-14, ref_t=ref_t)
 
 
-class CH(Neuron):
-    def __init__(self, ref_t):
-        super().__init__(a=0.02, b=0.2, c=-50, d=2, u=-14, ref_t=ref_t)
+    class CH(Neuron):
+        def __init__(self, ref_t):
+            super().__init__(a=0.02, b=0.2, c=-50, d=2, u=-14, ref_t=ref_t)
 
-class POLY(Neuron):
-    def __init__(self, ref_t):
-        super().__init__(a=0.02, b=0.2, c=-65, d=2, u=-14, ref_t=ref_t)
+    class POLY(Neuron):
+        def __init__(self, ref_t):
+            super().__init__(a=0.02, b=0.2, c=-65, d=2, u=-14, ref_t=ref_t)
 
 
 
-def save_fig(i):
-    fig = plt.figure(i)
-    file_name = "t" + str(i).replace(".", "").rjust(10, "0")
-    fig.savefig(f"network_plots/{file_name}.png")
-    fig.clf()
-    plt.close(fig)
+    def save_fig(i):
+        fig = plt.figure(i)
+        file_name = "t" + str(i).replace(".", "").rjust(10, "0")
+        fig.savefig(f"network_plots/{file_name}.png")
+        fig.clf()
+        plt.close(fig)
 
 
