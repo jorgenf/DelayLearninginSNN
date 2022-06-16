@@ -855,17 +855,15 @@ for i in range(5):
 pop.run(100, record_topology=False, record_PG=False, save_post_model=True)
 '''
 
-'''
-input = Data.create_mnist_input(10, [0, 7, 8, 0], 200, image_size=10)
-pop = Population((300, Population.RS), path='network_plots/', name="MNIST_adapting")
-pop.create_feed_forward_connections(d=list(range(8,13)), n_layers=3, w=8, p=0.05, partial=True, trainable=True)
+
+input = Data.create_mnist_input(20, [0, 8, 0], 200, image_size=10)
+pop = Population((400, Population.RS), path='network_plots/', name="MNIST_adapting")
+pop.create_feed_forward_connections(d=list(range(8,13)), n_layers=4, w=4, p=0.05, partial=True, trainable=True)
 for id, i in enumerate(input):
-    ij = [ij for ij in range(100) if np.random.random() < 0.05]
-    pop.create_input(i, j=ij, wj=16, dj=[np.random.randint(8,13) for x in range(len(ij))], trainable=False)
+    ij = [ij for ij in range(100) if np.random.random() < 0.1]
+    pop.create_input(i, j=ij, wj=4, dj=[np.random.randint(8,13) for x in range(len(ij))], trainable=True)
 
 print(np.max(input))
 pop.run(np.max(input) + 200, record_PG=True, save_post_model=True, PG_duration=50, PG_match_th=0.7)
-'''
 
-model = Data.load_model(r'C:\Users\J-Laptop\PycharmProjects\DelayLearninginSNN\network_plots\MNIST_adapting_6\post_sim_model.pkl')
-model.plot_raster()
+
