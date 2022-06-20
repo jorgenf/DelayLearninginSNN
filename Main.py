@@ -855,15 +855,35 @@ for i in range(5):
 pop.run(100, record_topology=False, record_PG=False, save_post_model=True)
 '''
 
+img = [5, 10, 15]
+layers = [3]
+#n = [imgf*imgf*layers[0] for imgf in img]
+num = [[0, 8, 0]]
+inst = [20]
+w = [4, 8]
+#i_w = [4, 8]
+th = [0.7]
+p = [0.05, 0.1]
+#i_p = [0.05, 0.1]
+par = [True, False]
+train = [True]
+seed = [1]
 
-input = Data.create_mnist_input(20, [0, 8, 0], 200, image_size=10)
-pop = Population((400, Population.RS), path='network_plots/', name="MNIST_adapting")
-pop.create_feed_forward_connections(d=list(range(8,13)), n_layers=4, w=4, p=0.05, partial=True, trainable=True)
-for id, i in enumerate(input):
-    ij = [ij for ij in range(100) if np.random.random() < 0.1]
-    pop.create_input(i, j=ij, wj=4, dj=[np.random.randint(8,13) for x in range(len(ij))], trainable=True)
+params = [img, layers, num, inst, w, th, p, par, train, seed]
+combos = list(itertools.product(*params))
+print(len(combos))
 
-print(np.max(input))
-pop.run(np.max(input) + 200, record_PG=True, save_post_model=True, PG_duration=50, PG_match_th=0.7)
+def do_it(img, layers, num, inst, w, th, p, par, train, seed):
+    input = Data.create_mnist_input(inst, num, 200, image_size=img)
+    pop = Population((img**2*layers, Population.RS), path='network_plots/', name=f"MNIST_img-{img}_layers-{layers}_num-{num}_inst-{inst}_w-{w}_th-{th}_p-{p}_par-{par}_train-{train}")
+    pop.create_feed_forward_connections(d=list(range(1,40)), n_layers=layers, w=w, p=p, partial=par, trainable=True)
+    for id, i in enumerate(input):
+        ij = [ij for ij in range(img**2) if np.random.random() < p]
+        pop.create_input(i, j=ij, wj=w, dj=[np.random.randint(1,40) for x in range(len(ij))], trainable=train)
+
+    pop.run(np.max(input) + 200, record_PG=True, save_post_model=False, PG_duration=50, PG_match_th=th)
 
 
+if __name__ == '__main__':
+    with mp.Pool(1) as p:
+        p.starmap(do_it, combos)
