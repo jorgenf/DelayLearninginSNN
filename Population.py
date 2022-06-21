@@ -14,27 +14,25 @@ import json
 import Constants
 import Data
 import matplotlib.colors
+
 sns.set()
 
-
 COLORS = Constants.COLORS
-cm = 1/2.54
+cm = 1 / 2.54
 plt.rc('axes', titlesize=10)
 plt.rc('axes', labelsize=10)
 plt.rc('xtick', labelsize=8)
 plt.rc('ytick', labelsize=8)
 plt.rc('figure', titlesize=14)
-plt.rcParams['figure.figsize'] = (15*cm, 15*cm)
+plt.rcParams['figure.figsize'] = (15 * cm, 15 * cm)
 MAX_DELAY = Constants.MAX_DELAY
 MIN_DELAY = Constants.MIN_DELAY
 mpl.use("Agg")
 
 
-
-
 class Population:
 
-    def __init__(self, *populations, path, name=None, save_data=True):
+    def __init__(self, *populations):
         global T, ID, DT
         ID = 0
         self.t = None
@@ -51,39 +49,22 @@ class Population:
                 neuron = population[1](ref_t=ref_t)
                 self.neurons[neuron.ID] = neuron
         self.duration = 0
-        self.name = name
         self.structure = False
         self.poly_groups = {}
         self.poly_group_history = []
         self.poly_ID_counts = {}
-        self.save_data = save_data
         self.registered_inputs = []
-        if save_data:
-            date = datetime.now().strftime("%d-%B-%Y_%H-%M-%S")
-            if self.name is not None:
-                self.dir = os.path.join(path, self.name)
-            else:
-                self.dir = os.path.join(path, date)
-            cnt = 1
-            while os.path.exists(self.dir):
-                if self.name:
-                    self.dir = os.path.join(path, f"{self.name}_{cnt}")
-                else:
-                    self.dir = os.path.join(path, f"{date}_{cnt}")
-                cnt += 1
-            os.makedirs(self.dir, exist_ok=True)
-
 
     def update(self, record_PG):
-        for neuron in reversed(self.neurons):
+        for neuron in self.neurons:
             self.neurons[neuron].update(self.neurons, record_PG)
 
-    def create_input(self, spike_times=[], p=0.0, j=None, wj=None, dj=None, seed=None, trainable=False):
+    def create_input(self, spike_times=None, p=0.0, j=None, wj=None, dj=None, seed=None, trainable=False):
         inp = self.Input(spike_times, p, seed)
         self.add_neuron(inp)
         if j is not None:
             j = list(j)
-            for n,ij in enumerate(j):
+            for n, ij in enumerate(j):
                 if isinstance(wj, list):
                     w = wj[n]
                 elif wj:
@@ -117,7 +98,8 @@ class Population:
 
     def delete_synapse(self, i, j):
         [self.synapses.remove(syn) for syn in self.synapses if syn.i == str(i) and syn.j == str(j)]
-        [self.neurons[str(i)].down.remove(syn) for syn in self.neurons[str(i)].down if syn.i == str(i) and syn.j == str(j)]
+        [self.neurons[str(i)].down.remove(syn) for syn in self.neurons[str(i)].down if
+         syn.i == str(i) and syn.j == str(j)]
         [self.neurons[str(j)].up.remove(syn) for syn in self.neurons[str(j)].up if syn.i == str(i) and syn.j == str(j)]
 
     def create_grid(self, diagonals, d, w, trainable, seed=None):
@@ -134,7 +116,7 @@ class Population:
             d = [d]
         if not isinstance(w, list):
             w = [w]
-        matrix = np.reshape(list(self.neurons.keys()), (dim,dim))
+        matrix = np.reshape(list(self.neurons.keys()), (dim, dim))
         for row in range(dim):
             for col in range(dim):
                 for i in range(-1, 2):
@@ -143,9 +125,10 @@ class Population:
                         if i == 0 and j == 0:
                             continue
                         y = j + col
-                        exp = (lambda x,y,row,col: (row == x or col == y) if not diagonals else True)
+                        exp = (lambda x, y, row, col: (row == x or col == y) if not diagonals else True)
                         if exp(x, y, row, col) and 0 <= x < dim and 0 <= y < dim:
-                            self.create_synapse(matrix[row][col],matrix[x][y], w=rng.choice(w), d=rng.choice(d), trainable=trainable)
+                            self.create_synapse(matrix[row][col], matrix[x][y], w=rng.choice(w), d=rng.choice(d),
+                                                trainable=trainable)
 
     def create_random_connections(self, p, d, w, trainable, seed=None):
         self.structure = "grid"
@@ -163,23 +146,23 @@ class Population:
                     self.create_synapse(id, id_2, d=rng.choice(d), w=rng.choice(w), trainable=trainable)
 
     def create_random_distance_delayed_connections(self, p, w, trainable, seed=None):
-            self.structure = "grid"
-            if seed is not None:
-                rng = np.random.default_rng(seed)
-            else:
-                rng = np.random.default_rng()
-            if not isinstance(w, list):
-                w = [w]
-            n = len(self.neurons)
-            side = m.ceil(m.sqrt(n))
-            steps = range(int(side))
-            prod = list(itertools.product(steps, steps))
-            pos = prod[:n]
-            for neuron, p1 in zip(self.neurons, pos):
-                for neuron2, p2 in zip(self.neurons, pos):
-                    if rng.random() < p and type(self.neurons[neuron2]) != self.Input and neuron != neuron2:
-                        d = round(np.sqrt(((p1[0]-p2[0])**2)+((p1[1]-p2[1])**2)), 1)
-                        self.create_synapse(neuron, neuron2, w=rng.choice(w), d=d, trainable=trainable)
+        self.structure = "grid"
+        if seed is not None:
+            rng = np.random.default_rng(seed)
+        else:
+            rng = np.random.default_rng()
+        if not isinstance(w, list):
+            w = [w]
+        n = len(self.neurons)
+        side = m.ceil(m.sqrt(n))
+        steps = range(int(side))
+        prod = list(itertools.product(steps, steps))
+        pos = prod[:n]
+        for neuron, p1 in zip(self.neurons, pos):
+            for neuron2, p2 in zip(self.neurons, pos):
+                if rng.random() < p and type(self.neurons[neuron2]) != self.Input and neuron != neuron2:
+                    d = round(np.sqrt(((p1[0] - p2[0]) ** 2) + ((p1[1] - p2[1]) ** 2)), 1)
+                    self.create_synapse(neuron, neuron2, w=rng.choice(w), d=d, trainable=trainable)
 
     def create_watts_strogatz_connections(self, k, p, d, w, trainable, seed=None):
         # Must be fixed
@@ -208,9 +191,9 @@ class Population:
                 temp = []
                 for x in range(ps[0] - diff, ps[0] + diff + 1):
                     for y in range(ps[1] - diff, ps[1] + diff + 1):
-                        if ps != (x,y) and (x,y) not in neighbors and (x,y) in pos:
-                            temp.append((x,y))
-                choice = rng.choice(range(len(temp)), min(k-len(neighbors), len(temp)), replace=False)
+                        if ps != (x, y) and (x, y) not in neighbors and (x, y) in pos:
+                            temp.append((x, y))
+                choice = rng.choice(range(len(temp)), min(k - len(neighbors), len(temp)), replace=False)
                 [neighbors.append(temp[x]) for x in choice]
                 diff += 1
             for ngb in neighbors:
@@ -220,7 +203,7 @@ class Population:
                 if rng.random() < p:
                     neurons = self.neurons.copy()
                     neurons.pop(syn.i)
-                    pairs = [(syn.i,syn.j) for syn in self.synapses]
+                    pairs = [(syn.i, syn.j) for syn in self.synapses]
                     while True:
                         new_j = rng.choice(list(neurons.keys()))
                         if (syn.i, new_j) not in pairs:
@@ -249,7 +232,7 @@ class Population:
             n_syn = len(self.synapses)
             for added_id in added_ids:
                 c = len(self.neurons[added_id].down)
-                if rng.random() < c/n_syn:
+                if rng.random() < c / n_syn:
                     self.create_synapse(id, added_id, w=rng.choice(w), d=rng.choice(d), trainable=trainable)
             added_ids.append(id)
 
@@ -308,7 +291,6 @@ class Population:
                 else:
                     self.create_synapse(i, j, w=w[0], d=d[0], trainable=trainable)
 
-
     def create_feed_forward_connections(self, d, w, trainable, p=None, n_layers=None, partial=False, seed=False):
         self.structure = "grid"
         if seed:
@@ -340,7 +322,8 @@ class Population:
                 for neuron_i in layer:
                     for neuron_j in layers[layers.index(layer) + 1]:
                         if p is None:
-                            self.create_synapse(neuron_i, neuron_j, w=rng.choice(w), d=rng.choice(d), trainable=trainable, partial=partial)
+                            self.create_synapse(neuron_i, neuron_j, w=rng.choice(w), d=rng.choice(d),
+                                                trainable=trainable, partial=partial)
                         else:
                             if rng.random() < p:
                                 self.create_synapse(neuron_i, neuron_j, w=rng.choice(w), d=rng.choice(d),
@@ -353,7 +336,7 @@ class Population:
         colors = []
         for n in self.neurons:
             G.add_node(self.neurons[n].ID, type="input" if isinstance(self.neurons[n], self.Input) else "neuron")
-            if round(T-DT,1) in self.neurons[n].spikes:
+            if round(T - DT, 1) in self.neurons[n].spikes:
                 colors.append("r")
             elif isinstance(self.neurons[n], self.Input):
                 colors.append("g")
@@ -370,13 +353,13 @@ class Population:
                 for input, p in zip(inputs, v_pos):
                     G.nodes[input]["pos"] = (0, p)
             side = m.ceil(m.sqrt(len(neurons)))
-            v_steps = np.linspace(0,1,side)
+            v_steps = np.linspace(0, 1, side)
             if inputs:
-                h_steps = np.linspace(0,1, side + 1)
+                h_steps = np.linspace(0, 1, side + 1)
                 h_steps = h_steps[1:]
             else:
                 h_steps = v_steps
-            prod=list(itertools.product(h_steps, v_steps))
+            prod = list(itertools.product(h_steps, v_steps))
             pos = prod[:len(neurons)]
             for node, p in zip(G.nodes, pos):
                 G.nodes[node]["pos"] = p
@@ -396,12 +379,12 @@ class Population:
         colors = plt.cm.brg(np.linspace(0, 1, int(MAX_DELAY / DT)))
         color_id = {}
         for d, c in enumerate(colors):
-            color_id[round(d*DT + DT,1)] = c
+            color_id[round(d * DT + DT, 1)] = c
         for e in G.edges(data=True):
             ax.annotate("",
                         xy=pos[e[0]], xycoords='data',
                         xytext=pos[e[1]], textcoords='data',
-                        arrowprops=dict(arrowstyle="->", color=color_id[round(e[2]["d"],1)],
+                        arrowprops=dict(arrowstyle="->", color=color_id[round(e[2]["d"], 1)],
                                         shrinkA=5, shrinkB=5,
                                         patchA=None, patchB=None,
                                         connectionstyle=f"arc3,rad=0.2"), zorder=0)
@@ -409,27 +392,24 @@ class Population:
         patches = []
         for i in range(1, MAX_DELAY + 1):
             patches.append(mpatches.Patch(color=color_id[i], label=f'd={i}'))
-        #plt.legend(loc="lower left", fancybox=True, bbox_to_anchor=(1.06, 0), handles=patches, prop={'size': 8})
         norm = matplotlib.colors.Normalize(vmin=0, vmax=MAX_DELAY + 1)
         plt.colorbar(plt.cm.ScalarMappable(norm=norm, cmap=plt.cm.get_cmap("brg")), ax=ax)
         plt.tight_layout()
         plt.savefig(os.path.join(self.dir, "network.png"))
         return plt
 
-
     def plot_delays(self):
         fig, sub = plt.subplots()
         handles = []
         ls = ["solid", "dashed", "dotted", "dashdot"]
         for i, syn in enumerate(self.synapses):
-            sub.plot(syn.d_hist["t"], syn.d_hist["d"], linestyle=ls[int((i/10) % 4)], linewidth=0.8)
+            sub.plot(syn.d_hist["t"], syn.d_hist["d"], linestyle=ls[int((i / 10) % 4)], linewidth=0.8)
             handles.append((syn.i, syn.j))
-
         sub.set_xlabel("Time (ms)")
         sub.set_ylabel("Delay (ms)")
         sub.set_ylim(0, MAX_DELAY)
         sub.set_yticks(np.arange(0, MAX_DELAY + 1, 2))
-        sub.legend(handles, bbox_to_anchor=(1, 1), prop={"size":8}, ncol=2)
+        sub.legend(handles, bbox_to_anchor=(1, 1), prop={"size": 8}, ncol=2)
         fig.tight_layout()
         fig.savefig(os.path.join(self.dir, "delays.png"))
         plt.close()
@@ -443,7 +423,8 @@ class Population:
             mean.append(np.mean(d))
             std.append(np.std(d))
         sub.plot(np.arange(0, self.duration, DT), mean)
-        sub.fill_between(np.arange(0, self.duration, DT), [m-s for m,s in zip(mean, std)], [m+s for m, s in zip(mean,std)], alpha=.3)
+        sub.fill_between(np.arange(0, self.duration, DT), [m - s for m, s in zip(mean, std)],
+                         [m + s for m, s in zip(mean, std)], alpha=.3)
         sub.set_xlabel("Time (ms)")
         sub.set_ylabel("Delay (ms)")
         sub.set_ylim(0, MAX_DELAY)
@@ -461,7 +442,7 @@ class Population:
                 spikes.append(sp)
         else:
             spikes = [self.neurons[x].spikes for x in self.neurons]
-        c = ["red" if isinstance(self.neurons[_],self.Input) else "black" for _ in self.neurons]
+        c = ["red" if isinstance(self.neurons[_], self.Input) else "black" for _ in self.neurons]
         sub.eventplot(spikes, colors=c, lineoffsets=1, linelengths=1, linewidths=0.5)
         sub.set_xlabel("Time (ms)")
         sub.set_ylabel("Neuron ID")
@@ -474,25 +455,30 @@ class Population:
         if plot_pg:
             for key, value in zip(sorted_count.keys(), sorted_count.values()):
                 self.poly_ID_counts[key] = value
-            sorted_poly_group_history = sorted(self.poly_group_history, key=lambda x: list(sorted_count.keys()).index(x['poly_index']))
+            sorted_poly_group_history = sorted(self.poly_group_history,
+                                               key=lambda x: list(sorted_count.keys()).index(x['poly_index']))
             for pg in sorted_poly_group_history:
                 pg_start = pg["pattern_start"]
                 if duration is None or (duration is not None and pg_start + self.PG_duration < duration[1]):
                     pg_ID = pg["poly_index"]
                     linewidth = max(2, int(np.ceil(len(self.neurons) / 100) + 1))
-                    sub.hlines(y=-0.5, xmin=pg_start, xmax=pg_start + self.PG_duration, linewidth=linewidth, color=Constants.COLORS[list(sorted_count.keys()).index(pg_ID)])
+                    sub.hlines(y=-0.5, xmin=pg_start, xmax=pg_start + self.PG_duration, linewidth=linewidth,
+                               color=Constants.COLORS[list(sorted_count.keys()).index(pg_ID)])
             if legend:
                 max_keys = list(sorted_count.keys())[0: classes if classes is not None else 2]
                 patches = []
                 for uid in max_keys:
-                    patches.append(mpatches.Patch(color=Constants.COLORS[list(sorted_count.keys()).index(uid)], label=f'ID={uid} ({self.poly_ID_counts[uid]})'))
+                    patches.append(mpatches.Patch(color=Constants.COLORS[list(sorted_count.keys()).index(uid)],
+                                                  label=f'ID={uid} ({self.poly_ID_counts[uid]})'))
                 if len(list(self.poly_ID_counts.values())) > (classes if classes is not None else 2):
-                    patches.append(mpatches.Patch(color='none', label=f'Others ({sum(list(self.poly_ID_counts.values())[classes if classes is not None else 2:])})'))
+                    patches.append(mpatches.Patch(color='none',
+                                                  label=f'Others ({sum(list(self.poly_ID_counts.values())[classes if classes is not None else 2:])})'))
                 if len(patches) > 0:
                     if len(patches) <= 12:
                         plt.legend(handles=patches, ncol=1, loc="best", title="PG IDs")
                     else:
-                        plt.legend(handles=patches, ncol=6, loc="upper center", columnspacing=0.5, prop={"size": 8}, title="PG IDs")
+                        plt.legend(handles=patches, ncol=6, loc="upper center", columnspacing=0.5, prop={"size": 8},
+                                   title="PG IDs")
         fig.tight_layout()
         fig.savefig(os.path.join(self.dir, "spikes.png"))
         plt.close()
@@ -507,7 +493,8 @@ class Population:
         ls = ["solid", "dashed", "dotted", "dashdot"]
         for i, id in enumerate(IDs):
             if type(self.neurons[str(id)]) != self.Input:
-                sub.plot(self.neurons[str(id)].v_hist["t"], self.neurons[str(id)].v_hist["v"], linestyle=ls[int((i/10) % 4)], linewidth=0.8)
+                sub.plot(self.neurons[str(id)].v_hist["t"], self.neurons[str(id)].v_hist["v"],
+                         linestyle=ls[int((i / 10) % 4)], linewidth=0.8)
                 handles.append(id)
         sub.set_xlabel("Time (ms)")
         sub.set_ylabel("Potential (mV)")
@@ -519,16 +506,10 @@ class Population:
 
     def plot_spike_rate(self):
         fig, subs = plt.subplots(len(self.neurons))
-        spikes = [np.histogram(self.neurons[x].spikes, bins=round(self.duration/10), range=[0, self.duration])[0] for x in self.neurons]
+        spikes = [np.histogram(self.neurons[x].spikes, bins=round(self.duration / 10), range=[0, self.duration])[0] for
+                  x in self.neurons]
         for sub, sr in zip(subs, spikes):
             sub.plot(sr)
-        '''
-        sub.set_xlabel("Time (ms)")
-        sub.set_ylabel("Neuron ID")
-        sub.set_ylim([-1, len(self.neurons)])
-        sub.set_yticks(range(len(self.neurons)))
-        sub.set_yticklabels([x if type(self.neurons[x]) != Input else f"{x} (Input)" for x in self.neurons])
-        '''
         fig.tight_layout()
         fig.savefig(os.path.join(self.dir, "SR.png"))
         plt.close()
@@ -539,11 +520,13 @@ class Population:
 
     def build_poly_groups(self, poly_index):
         inputs = [self.neurons[neuron] for neuron in self.neurons if isinstance(self.neurons[neuron], self.Input)]
-        if all(len(inputs[x].poly_group.keys()) == len(inputs[x - 1].poly_group.keys()) and all([inputs[x].poly_group.keys(),inputs[x - 1].poly_group.keys()]) for x in
+        if all(len(inputs[x].poly_group.keys()) == len(inputs[x - 1].poly_group.keys()) and all(
+                [inputs[x].poly_group.keys(), inputs[x - 1].poly_group.keys()]) for x in
                range(1, len(inputs))):
             max_keys = [max(inp.poly_group.keys()) for inp in inputs]
             poly_id_t = [(inp.ID, max(inp.poly_group.keys())) for inp in inputs]
-            if all(T - mk >= self.PG_duration for mk in max_keys) and all(pkv not in self.registered_inputs for pkv in poly_id_t):
+            if all(T - mk >= self.PG_duration for mk in max_keys) and all(
+                    pkv not in self.registered_inputs for pkv in poly_id_t):
                 [self.registered_inputs.append(pkv) for pkv in poly_id_t]
                 poly = {}
                 for inp in inputs:
@@ -566,8 +549,24 @@ class Population:
                     return 0
         return 0
 
-    def run(self, duration, dt=0.1, save_post_model=False, record_topology=False, record_PG=True, PG_duration = 200, PG_match_th=0.6, show_process=True, save_plots=True, n_classes=2, raster_legend=True):
+    def run(self, duration, dt=0.1, path="./network_plots", name=None, save_data=True, save_pre_model=True,
+            save_post_model=False, record_topology=False, record_PG=True, PG_duration=200, PG_match_th=0.6,
+            show_process=True, save_plots=True, n_classes=2, raster_legend=True):
         global T, DT
+        date = datetime.now().strftime("%d-%B-%Y_%H-%M-%S")
+        if name is not None:
+            self.dir = os.path.join(path, name)
+        else:
+            self.dir = os.path.join(path, date)
+        cnt = 1
+        while os.path.exists(self.dir):
+            if name:
+                self.dir = os.path.join(path, name)
+            else:
+                self.dir = os.path.join(path, name)
+            name = f"{name}_{cnt}"
+            cnt += 1
+        os.makedirs(self.dir, exist_ok=True)
         if self.t is not None:
             T = self.t
             self.t += duration
@@ -580,7 +579,7 @@ class Population:
         self.PG_duration = PG_duration
         self.PG_match_th = PG_match_th
         tot_start = time.time()
-        if self.save_data:
+        if save_pre_model:
             Data.save_model(self, os.path.join(self.dir, "pre_sim_model.pkl"))
         poly_index = 0
         while T < self.duration:
@@ -591,15 +590,17 @@ class Population:
             if record_topology:
                 fig = self.plot_topology()
                 fig.title(f"Time={T}ms")
-                file_name = "t" + str(T).replace(".","").rjust(10,"0")
+                file_name = "t" + str(T).replace(".", "").rjust(10, "0")
                 fig.savefig(os.path.join(self.dir, f"{file_name}.png"))
                 fig.close()
             if show_process:
                 stop = time.time() - start
                 prog = (T / duration) * 100
-                print("\r |" + "#" * int(prog) + f"  {round(prog, 1) if T < duration - DT else 100}%| t={T}ms | Time per step: {round(stop,4)} sec", end="")
-            T = round(T + DT,3)
-        if self.save_data:
+                print("\r |" + "#" * int(
+                    prog) + f"  {round(prog, 1) if T < duration - DT else 100}%| t={T}ms | Time per step: {round(stop, 4)} sec",
+                      end="")
+            T = round(T + DT, 3)
+        if save_data:
             self.save_neuron_data()
             self.save_synapse_data()
         if save_post_model:
@@ -610,9 +611,8 @@ class Population:
             self.plot_delays()
         stop = time.time()
         if show_process:
-            print(f"\nSimulation finished: {self.name}")
-            print(f"\nElapsed time: {round((stop-tot_start)/60,1)}min")
-
+            print(f"\nSimulation finished: {name}")
+            print(f"\nElapsed time: {round((stop - tot_start) / 60, 1)}min")
 
     def save_neuron_data(self):
         global T
@@ -626,7 +626,8 @@ class Population:
             down = [syn.j for syn in neuron.down]
             ref_t = None if isinstance(neuron, self.Input) else neuron.ref_t
             spikes = list(neuron.spikes)
-            data[id] = {"duration" : T, "type" : type_, "n_up" : n_up, "n_down" : n_down, "up" : up, "down" : down, "ref_t" : ref_t, "spikes": spikes}
+            data[id] = {"duration": T, "type": type_, "n_up": n_up, "n_down": n_down, "up": up, "down": down,
+                        "ref_t": ref_t, "spikes": spikes}
         with open(os.path.join(self.dir, "neuron_data.json"), "w") as file:
             json.dump(data, file)
 
@@ -639,7 +640,8 @@ class Population:
             post = synapse.post_window
             trainable = synapse.trainable
             d_hist = synapse.d_hist
-            data[f"{synapse.i}_{synapse.j}"] = {"duration" : T, "w" : w, "pre_window" : pre, "post_window" : post, "trainable" : trainable, "d_hist" : d_hist["d"]}
+            data[f"{synapse.i}_{synapse.j}"] = {"duration": T, "w": w, "pre_window": pre, "post_window": post,
+                                                "trainable": trainable, "d_hist": d_hist["d"]}
         with open(os.path.join(self.dir, "synapse_data.json"), "w") as file:
             json.dump(data, file)
 
@@ -649,7 +651,7 @@ class Population:
             self.j = j
             self.w = w
             self.d = float(d)
-            self.d_hist = {"t":[], "d":[]}
+            self.d_hist = {"t": [], "d": []}
             self.pre_window = Constants.PRE_WINDOW
             self.post_window = Constants.POST_WINDOW
             self.spikes = []
@@ -671,20 +673,21 @@ class Population:
 
         def F(self, delta_tdist):
             if self.trainable:
-                dd = -3*m.tanh(delta_tdist/3)
+                dd = -3 * m.tanh(delta_tdist / 3)
                 self.d += dd
-                self.d = round(max(self.d, DT), 1 if DT==0.1 else 0)
+                self.d = round(max(self.d, DT), 1 if DT == 0.1 else 0)
                 self.d = min(self.d, MAX_DELAY)
 
         def G(self, delta_t):
             if self.trainable and not self.partial:
-                dd = (3/2)*m.tanh(2.5625-0.625*delta_t)+1.5
+                dd = (3 / 2) * m.tanh(2.5625 - 0.625 * delta_t) + 1.5
                 self.d += dd
                 self.d = round(self.d, 1 if DT == 0.1 else 0)
                 self.d = min(self.d, MAX_DELAY)
 
     class Input:
         global T
+
         def __init__(self, spike_times=False, p=0.0, seed=False):
             global ID
             self.ID = str(ID)
@@ -710,7 +713,7 @@ class Population:
                 self.spikes.append(T)
 
     class Neuron:
-        def __init__(self, a, b, c, d, u, ref_t=0, v_init=False):
+        def __init__(self, a, b, c, d, u, ref_t=0, v_init=None):
             global ID, DT
             self.ID = str(ID)
             ID += 1
@@ -718,13 +721,13 @@ class Population:
             self.b = b
             self.c = c
             self.d = d
-            self.v = c if not v_init else v_init
+            self.v = c if v_init is None else v_init
             self.u = u
             self.th = 30
             self.ref_t = ref_t
             self.refractory = 0
-            self.v_hist = {"t":[], "v": []}
-            self.u_hist = {"t":[], "u": []}
+            self.v_hist = {"t": [], "v": []}
+            self.u_hist = {"t": [], "u": []}
             self.spikes = deque()
             self.up = []
             self.down = []
@@ -740,13 +743,13 @@ class Population:
                 I = 0
                 for inp in range(len(self.inputs)):
                     I += self.inputs[inp]["I"]
-                    self.inputs[inp]["counter"] = round(self.inputs[inp]["counter"] - DT,3)
+                    self.inputs[inp]["counter"] = round(self.inputs[inp]["counter"] - DT, 3)
                 self.inputs = [x for x in self.inputs if x["counter"] > 0]
             else:
                 I = 0
-            self.v += 0.5 * (0.04*self.v**2+5*self.v+140-self.u + I) * DT
-            self.v += 0.5 * (0.04*self.v**2+5*self.v+140-self.u + I) * DT
-            self.u += self.a*(self.b*self.v-self.u) * DT
+            self.v += 0.5 * (0.04 * self.v ** 2 + 5 * self.v + 140 - self.u + I) * DT
+            self.v += 0.5 * (0.04 * self.v ** 2 + 5 * self.v + 140 - self.u + I) * DT
+            self.u += self.a * (self.b * self.v - self.u) * DT
             self.v = min(self.th, self.v)
             self.v_hist["t"].append(T)
             self.v_hist["v"].append(self.v)
@@ -778,7 +781,7 @@ class Population:
                                 post_spikes.append(delta_t)
                         if pre_spikes:
                             min_pre = max(pre_spikes)
-                            syn_list.append((syn,min_pre))
+                            syn_list.append((syn, min_pre))
                             min_pre_index = pre_spikes.index(max(pre_spikes))
                             min_pre_t = pre_spike_t[min_pre_index]
                             if record_pg:
@@ -787,41 +790,34 @@ class Population:
                             min_post = min(post_spikes)
                             syn.G(min_post)
                 if syn_list:
-                    avg_delta_t = round(sum(x[1] for x in syn_list)/len(syn_list), 1 if DT == 0.1 else 0)
-                    [syn[0].F(syn[1]-avg_delta_t) for syn in syn_list]
+                    avg_delta_t = round(sum(x[1] for x in syn_list) / len(syn_list), 1 if DT == 0.1 else 0)
+                    [syn[0].F(syn[1] - avg_delta_t) for syn in syn_list]
             else:
                 self.refractory = max(0, np.round(self.refractory - DT, 1))
-
 
     class FS(Neuron):
         def __init__(self, ref_t):
             super().__init__(a=0.1, b=0.2, c=-65, d=2, u=-14, ref_t=ref_t)
 
-
     class RS(Neuron):
         def __init__(self, ref_t):
             super().__init__(a=0.02, b=0.2, c=-65, d=8, u=-14, ref_t=ref_t, v_init=-70)
-
 
     class RZ(Neuron):
         def __init__(self, ref_t):
             super().__init__(a=0.1, b=0.26, c=-65, d=2, u=-16, ref_t=ref_t)
 
-
     class LTS(Neuron):
         def __init__(self, ref_t):
             super().__init__(a=0.02, b=0.25, c=-65, d=2, u=-16, ref_t=ref_t)
-
 
     class TC(Neuron):
         def __init__(self, ref_t):
             super().__init__(a=0.02, b=0.25, c=-65, d=0.05, u=-16, ref_t=ref_t)
 
-
     class IB(Neuron):
         def __init__(self, ref_t):
             super().__init__(a=0.02, b=0.2, c=-55, d=4, u=-14, ref_t=ref_t)
-
 
     class CH(Neuron):
         def __init__(self, ref_t):
@@ -831,13 +827,9 @@ class Population:
         def __init__(self, ref_t):
             super().__init__(a=0.02, b=0.2, c=-65, d=2, u=-14, ref_t=ref_t)
 
-
-
     def save_fig(i):
         fig = plt.figure(i)
         file_name = "t" + str(i).replace(".", "").rjust(10, "0")
         fig.savefig(f"network_plots/{file_name}.png")
         fig.clf()
         plt.close(fig)
-
-
