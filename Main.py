@@ -1,21 +1,10 @@
-import time
 
-
-
-import Data
 import Population
-import Simulations
 from Population import *
-import Simulations as sim
-# import Population
 import numpy as np
 import multiprocessing as mp
 import itertools
-import os
-import re
-import pandas as pd
-import shutil
-import json
+
 
 # dir = "Z:/MASTER THESIS - SIMULATION RESULTS/feed forward\delayVSoff/1n3i/t10000"
 # dir = "Z:\\MASTER THESIS - SIMULATION RESULTS\\feed forward\\delayVSoff\\1n3i\\t10000"

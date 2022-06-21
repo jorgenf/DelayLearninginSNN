@@ -1,7 +1,6 @@
 import itertools
 import os
 import json
-import time
 import matplotlib.colors
 import Population as Pop
 import numpy as np
@@ -15,9 +14,6 @@ import matplotlib.pyplot as plt
 import re
 import Constants as C
 import matplotlib.patches as mpatches
-import shutil
-from sklearn.preprocessing import StandardScaler
-from sklearn.decomposition import PCA
 from keras.datasets import mnist
 from PIL import Image
 import cv2
