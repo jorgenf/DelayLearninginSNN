@@ -14,10 +14,10 @@ import matplotlib.pyplot as plt
 import re
 import Constants as C
 import matplotlib.patches as mpatches
-from keras.datasets import mnist
 from PIL import Image
 import cv2
-
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 
 def compile_simulation_data(dir):
@@ -755,6 +755,7 @@ def create_class_diagram(file=None, cls=None):
 
 
 def create_mnist_input(sample_size, numbers, interval, image_size=10):
+    from keras.datasets import mnist
     (train_X, train_y), (test_X, test_y) = mnist.load_data()
     img = []
     for n in numbers:
@@ -771,12 +772,38 @@ def create_mnist_input(sample_size, numbers, interval, image_size=10):
         intv += interval
     return input
 
+def create_mnist_input_from_file(sample_size, numbers, interval, image_size=10):
+    from mlxtend.data import loadlocal_mnist
+    import platform
+    if not platform.system() == 'Windows':
+        train_X, train_y = loadlocal_mnist('Data/train-images-idx3-ubyte', 'Data/train-labels-idx1-ubyte')
+    else:
+        train_X, train_y = loadlocal_mnist('Data/train-images.idx3-ubyte', 'Data/train-labels.idx1-ubyte')
+    img = []
+    for n in numbers:
+        img.append([np.round(cv2.resize(np.reshape(x, (28, 28)), (image_size, image_size)) * 4 / 25.5, 1) for x, y in zip(train_X, train_y) if
+                    y == n][:sample_size])
+    i = img[0][0].size
+    input = [[] for _ in range(i)]
+    intv = 0
+    for num in img:
+        for samp in num:
+            flt = samp.flatten()
+            for inp in range(i):
+                input[inp].append(flt[inp] + intv)
+            intv += interval
+        intv += interval
+    return input
+
 def save_image(matrix, out_dir):
+    if not isinstance(matrix ,np.ndarray):
+        matrix = np.asarray(matrix)
     im = Image.fromarray(matrix)
     n = 0
     pth = os.path.join(out_dir, "image.jpeg")
     while os.path.exists(pth):
         pth = os.path.join(out_dir, f"image{n}.jpeg")
         n += 1
+    im = im.convert("L")
     im.save(pth)
 

@@ -1,9 +1,12 @@
+import gzip
 
 import Population
 from Population import *
 import numpy as np
 import multiprocessing as mp
 import itertools
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 
 # dir = "Z:/MASTER THESIS - SIMULATION RESULTS/feed forward\delayVSoff/1n3i/t10000"
@@ -844,6 +847,7 @@ for i in range(5):
 pop.run(100, record_topology=False, record_PG=False, save_post_model=True)
 '''
 
+'''
 img = [5, 10, 15]
 layers = [3]
 #n = [imgf*imgf*layers[0] for imgf in img]
@@ -873,6 +877,18 @@ def do_it(img, layers, num, inst, w, th, p, par, train, seed):
     pop.run(np.max(input) + 200, record_PG=True, save_post_model=False, PG_duration=50, PG_match_th=th)
 
 
-if __name__ == '__main__':
-    with mp.Pool(1) as p:
-        p.starmap(do_it, combos)
+#if __name__ == '__main__':
+ #   with mp.Pool(1) as p:
+  #      p.starmap(do_it, combos)
+'''
+
+
+'''
+
+
+contents = a_file.read()
+
+
+print(contents[0])
+'''
+input = Data.create_mnist_input_from_file(10, [8, 9, 1], 200, image_size=28)
