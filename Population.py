@@ -14,7 +14,7 @@ import json
 import Constants
 import Data
 import matplotlib.colors
-
+import multiprocessing as mp
 sns.set()
 
 COLORS = Constants.COLORS
@@ -35,7 +35,8 @@ class Population:
     def __init__(self, *populations):
         global T, ID, DT
         ID = 0
-        self.t = None
+        self.T = None
+        self.progress = None
         self.PG_duration = None
         self.PG_match_th = None
         self.neurons = {}
@@ -46,7 +47,7 @@ class Population:
                     ref_t = population[2]
                 else:
                     ref_t = 0
-                neuron = population[1](ref_t=ref_t)
+                neuron = population[1](self, ref_t=ref_t)
                 self.neurons[neuron.ID] = neuron
         self.duration = 0
         self.structure = False
@@ -54,10 +55,14 @@ class Population:
         self.poly_group_history = []
         self.poly_ID_counts = {}
         self.registered_inputs = []
+    def update_neuron(self, ID, record_PG):
+        print("MY ID IS: ", {ID})
+        self.neurons[ID].update(self.neurons, record_PG)
 
     def update(self, record_PG):
-        for neuron in self.neurons:
-            self.neurons[neuron].update(self.neurons, record_PG)
+        with mp.Pool(mp.cpu_count() - 2) as p:
+            p.starmap(self.update_neuron, [(ID, record_PG) for ID in self.neurons])
+
 
     def create_input(self, spike_times=None, p=0.0, j=None, wj=None, dj=None, seed=None, trainable=False):
         inp = self.Input(spike_times, p, seed)
@@ -552,7 +557,7 @@ class Population:
     def run(self, duration, dt=0.1, path="./network_plots", name=None, save_data=True, save_pre_model=True,
             save_post_model=False, record_topology=False, record_PG=True, PG_duration=200, PG_match_th=0.6,
             show_process=True, save_plots=True, n_classes=2, raster_legend=True):
-        global T, DT
+        global DT
         date = datetime.now().strftime("%d-%B-%Y_%H-%M-%S")
         if name is not None:
             self.dir = os.path.join(path, name)
@@ -567,13 +572,13 @@ class Population:
             name = f"{name}_{cnt}"
             cnt += 1
         os.makedirs(self.dir, exist_ok=True)
-        if self.t is not None:
-            T = self.t
-            self.t += duration
-            duration += T
+        if self.progress is not None:
+            self.T = self.progress
+            self.progress += duration
+            duration += self.T
         else:
-            self.t = duration
-            T = 0.0
+            self.progress = duration
+            self.T = 0.0
         DT = dt
         self.duration = duration
         self.PG_duration = PG_duration
@@ -582,24 +587,24 @@ class Population:
         if save_pre_model:
             Data.save_model(self, os.path.join(self.dir, "pre_sim_model.pkl"))
         poly_index = 0
-        while T < self.duration:
+        while self.T < self.duration:
             start = time.time()
             self.update(record_PG)
             if record_PG:
                 poly_index += self.build_poly_groups(poly_index)
             if record_topology:
                 fig = self.plot_topology()
-                fig.title(f"Time={T}ms")
-                file_name = "t" + str(T).replace(".", "").rjust(10, "0")
+                fig.title(f"Time={self.T}ms")
+                file_name = "t" + str(self.T).replace(".", "").rjust(10, "0")
                 fig.savefig(os.path.join(self.dir, f"{file_name}.png"))
                 fig.close()
             if show_process:
                 stop = time.time() - start
-                prog = (T / duration) * 100
+                prog = (self.T / duration) * 100
                 print("\r |" + "#" * int(
-                    prog) + f"  {round(prog, 1) if T < duration - DT else 100}%| t={T}ms | Time per step: {round(stop, 4)} sec",
+                    prog) + f"  {round(prog, 1) if self.T < duration - DT else 100}%| t={self.T}ms | Time per step: {round(stop, 4)} sec",
                       end="")
-            T = round(T + DT, 3)
+            self.T = round(self.T + DT, 3)
         if save_data:
             self.save_neuron_data()
             self.save_synapse_data()
@@ -646,7 +651,8 @@ class Population:
             json.dump(data, file)
 
     class Synapse:
-        def __init__(self, i, j, w, d, trainable, partial=False):
+        def __init__(self, pop, i, j, w, d, trainable, partial=False):
+            self.pop = pop
             self.i = i
             self.j = j
             self.w = w
@@ -662,11 +668,11 @@ class Population:
             self.spikes.append({"t": T, "d": self.d, "w": self.w})
 
         def get_spikes(self):
-            self.d_hist["t"].append(T)
+            self.d_hist["t"].append(self.pop.T)
             self.d_hist["d"].append(self.d)
             count = 0
             for spike in self.spikes:
-                if round(spike["t"] + spike["d"], 1) == T:
+                if round(spike["t"] + spike["d"], 1) == self.pop.T:
                     count += spike["w"]
                     self.spikes.remove(spike)
             return count
@@ -686,12 +692,12 @@ class Population:
                 self.d = min(self.d, MAX_DELAY)
 
     class Input:
-        global T
 
-        def __init__(self, spike_times=False, p=0.0, seed=False):
+        def __init__(self, pop, spike_times=False, p=0.0, seed=False):
             global ID
             self.ID = str(ID)
             ID += 1
+            self.pop = pop
             self.spikes = deque()
             self.spike_times = spike_times
             self.p = p
@@ -703,20 +709,21 @@ class Population:
                 self.rng = np.random.default_rng()
 
         def update(self, neurons=None, record_PG=None):
-            if self.spike_times and T in self.spike_times:
+            if self.spike_times and self.pop.T in self.spike_times:
                 [syn.add_spike() for syn in self.down]
-                self.spikes.append(T)
-                if T not in self.poly_group.keys():
-                    self.poly_group[T] = {}
+                self.spikes.append(self.pop.T)
+                if self.pop.T not in self.poly_group.keys():
+                    self.poly_group[self.pop.T] = {}
             elif self.rng.random() < self.p and not self.spike_times:
                 [syn.add_spike() for syn in self.down]
-                self.spikes.append(T)
+                self.spikes.append(self.pop.T)
 
     class Neuron:
-        def __init__(self, a, b, c, d, u, ref_t=0, v_init=None):
+        def __init__(self, pop, a, b, c, d, u, ref_t=0, v_init=None):
             global ID, DT
             self.ID = str(ID)
             ID += 1
+            self.pop = pop
             self.a = a
             self.b = b
             self.c = c
@@ -736,6 +743,7 @@ class Population:
 
         def update(self, neurons, record_pg):
             for syn in self.up:
+                print(f"ID: {self.ID}, synapse: {syn.i}")
                 i = syn.get_spikes()
                 if not self.refractory:
                     self.inputs.append({"I": i, "counter": 1})
@@ -796,36 +804,36 @@ class Population:
                 self.refractory = max(0, np.round(self.refractory - DT, 1))
 
     class FS(Neuron):
-        def __init__(self, ref_t):
-            super().__init__(a=0.1, b=0.2, c=-65, d=2, u=-14, ref_t=ref_t)
+        def __init__(self, pop, ref_t):
+            super().__init__(pop=pop, a=0.1, b=0.2, c=-65, d=2, u=-14, ref_t=ref_t)
 
     class RS(Neuron):
-        def __init__(self, ref_t):
-            super().__init__(a=0.02, b=0.2, c=-65, d=8, u=-14, ref_t=ref_t, v_init=-70)
+        def __init__(self, pop, ref_t):
+            super().__init__(pop=pop, a=0.02, b=0.2, c=-65, d=8, u=-14, ref_t=ref_t, v_init=-70)
 
     class RZ(Neuron):
-        def __init__(self, ref_t):
-            super().__init__(a=0.1, b=0.26, c=-65, d=2, u=-16, ref_t=ref_t)
+        def __init__(self, pop, ref_t):
+            super().__init__(pop=pop, a=0.1, b=0.26, c=-65, d=2, u=-16, ref_t=ref_t)
 
     class LTS(Neuron):
-        def __init__(self, ref_t):
-            super().__init__(a=0.02, b=0.25, c=-65, d=2, u=-16, ref_t=ref_t)
+        def __init__(self, pop, ref_t):
+            super().__init__(pop=pop, a=0.02, b=0.25, c=-65, d=2, u=-16, ref_t=ref_t)
 
     class TC(Neuron):
-        def __init__(self, ref_t):
-            super().__init__(a=0.02, b=0.25, c=-65, d=0.05, u=-16, ref_t=ref_t)
+        def __init__(self, pop, ref_t):
+            super().__init__(pop=pop, a=0.02, b=0.25, c=-65, d=0.05, u=-16, ref_t=ref_t)
 
     class IB(Neuron):
-        def __init__(self, ref_t):
-            super().__init__(a=0.02, b=0.2, c=-55, d=4, u=-14, ref_t=ref_t)
+        def __init__(self, pop, ref_t):
+            super().__init__(pop=pop, a=0.02, b=0.2, c=-55, d=4, u=-14, ref_t=ref_t)
 
     class CH(Neuron):
-        def __init__(self, ref_t):
-            super().__init__(a=0.02, b=0.2, c=-50, d=2, u=-14, ref_t=ref_t)
+        def __init__(self, pop, ref_t):
+            super().__init__(pop=pop, a=0.02, b=0.2, c=-50, d=2, u=-14, ref_t=ref_t)
 
     class POLY(Neuron):
-        def __init__(self, ref_t):
-            super().__init__(a=0.02, b=0.2, c=-65, d=2, u=-14, ref_t=ref_t)
+        def __init__(self, pop, ref_t):
+            super().__init__(pop=pop, a=0.02, b=0.2, c=-65, d=2, u=-14, ref_t=ref_t)
 
     def save_fig(i):
         fig = plt.figure(i)
@@ -833,3 +841,5 @@ class Population:
         fig.savefig(f"network_plots/{file_name}.png")
         fig.clf()
         plt.close(fig)
+
+
