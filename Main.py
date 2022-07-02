@@ -34,7 +34,7 @@ if __name__ == '__main__':
 
         pop.run(np.max(input) + 200, path='network_plots/', name=f"MT-TEST_img-{img}_layers-{layers}_num-{num}_inst-{inst}_w-{w}_th-{th}_p-{p}_par-{par}_train-{train}", record_PG=True, save_post_model=False, PG_duration=50, PG_match_th=th)
 
-    do_it(10, 2, [8], 10, 4, 0.7, 0.1, True, True, 1)
+    do_it(20, 5, [8], 10, 4, 0.7, 0.1, True, True, 1)
 #if __name__ == '__main__':
 #    with mp.Pool(1) as p:
 #        p.starmap(do_it, combos)
