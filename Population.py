@@ -14,6 +14,7 @@ import json
 import Constants
 import Data
 import matplotlib.colors
+import psutil
 
 sns.set()
 
@@ -40,6 +41,7 @@ class Population:
         self.progress = None
         self.PG_duration = None
         self.PG_match_th = None
+        self.save_delays = None
         self.neurons = {}
         self.synapses = []
         for population in populations:
@@ -552,7 +554,7 @@ class Population:
 
     def run(self, duration, dt=0.1, path="./network_plots", name=None, save_data=True, save_pre_model=True,
             save_post_model=False, record_topology=False, record_PG=True, PG_duration=200, PG_match_th=0.6,
-            show_process=True, save_plots=True, n_classes=2, raster_legend=True):
+            show_process=True, save_raster=True, save_topology=True, save_delays=True, n_classes=2, raster_legend=True):
         date = datetime.now().strftime("%d-%B-%Y_%H-%M-%S")
         if self.dir is None:
             if name is not None:
@@ -579,10 +581,12 @@ class Population:
         self.duration = duration
         self.PG_duration = PG_duration
         self.PG_match_th = PG_match_th
+        self.save_delays = save_delays
         tot_start = time.time()
         if save_pre_model:
             Data.save_model(self, os.path.join(self.dir, "pre_sim_model.pkl"))
         poly_index = 0
+        max_mem = 0
         while self.T < self.duration:
             start = time.time()
             self.update(record_PG)
@@ -601,16 +605,25 @@ class Population:
                     prog) + f"  {round(prog, 1) if self.T < duration - self.DT else 100}%| t={self.T}ms | Time per step: {round(stop, 4)} sec",
                       end="")
             self.T = round(self.T + self.DT, 3)
+            mem = psutil.Process(os.getpid()).memory_info().rss / 1024 ** 2
+            if mem > max_mem:
+                max_mem = mem
+        print(f"\nMaximum memory usage: {np.round(max_mem,1)}MB")
         if save_data:
             self.save_neuron_data()
             self.save_synapse_data()
         if save_post_model:
             Data.save_model(self, os.path.join(self.dir, "post_sim_model.pkl"))
-        if save_plots:
+        if save_raster:
             self.plot_raster(classes=n_classes, legend=raster_legend)
+        if save_topology:
             self.plot_topology()
+        if save_delays:
             self.plot_delays()
         stop = time.time()
+        with open(os.path.join(self.dir, "SimStats.txt"), 'w') as f:
+            f.writelines(f"Maximum memory usage: {np.round(max_mem,1)}MB")
+            f.writelines(f"\nElapsed time: {round((stop - tot_start) / 60, 1)}min")
         if show_process:
             print(f"\nSimulation finished: {name}")
             print(f"\nElapsed time: {round((stop - tot_start) / 60, 1)}min")
@@ -664,6 +677,9 @@ class Population:
         def get_spikes(self):
             self.d_hist["t"].append(self.pop.T)
             self.d_hist["d"].append(self.d)
+            if not self.pop.save_delays:
+                self.d_hist["t"] = self.d_hist["t"][int(-Constants.MAX_DELAY/self.pop.DT)-1:]
+                self.d_hist["d"] = self.d_hist["d"][int(-Constants.MAX_DELAY/self.pop.DT)-1:]
             count = 0
             for spike in self.spikes:
                 if round(spike["t"] + spike["d"], 1) == self.pop.T:
@@ -749,10 +765,11 @@ class Population:
             self.v += 0.5 * (0.04 * self.v ** 2 + 5 * self.v + 140 - self.u + I) * self.pop.DT
             self.u += self.a * (self.b * self.v - self.u) * self.pop.DT
             self.v = min(self.th, self.v)
-            self.v_hist["t"].append(self.pop.T)
-            self.v_hist["v"].append(self.v)
-            self.u_hist["t"].append(self.pop.T)
-            self.u_hist["u"].append(self.u)
+            if self.pop.save_delays:
+                self.v_hist["t"].append(self.pop.T)
+                self.v_hist["v"].append(self.v)
+                self.u_hist["t"].append(self.pop.T)
+                self.u_hist["u"].append(self.u)
             if self.th <= self.v:
                 self.spikes.append(self.pop.T)
                 self.v = self.c
@@ -764,7 +781,7 @@ class Population:
                 if self.pop.T not in self.poly_group.keys():
                     self.poly_group[self.pop.T] = {}
                 for syn in self.up:
-                    spikes = neurons[str(syn.i)].spikes
+                    spikes = [s for s in neurons[str(syn.i)].spikes if s + Constants.MAX_DELAY > self.pop.T]
                     if spikes:
                         pre_spikes = []
                         pre_spike_t = []
