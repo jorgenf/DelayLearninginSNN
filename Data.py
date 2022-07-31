@@ -17,6 +17,7 @@ import matplotlib.patches as mpatches
 from PIL import Image
 import cv2
 import os
+import xlsxwriter
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 
@@ -807,3 +808,34 @@ def save_image(matrix, out_dir):
     im = im.convert("L")
     im.save(pth)
 
+def compile_results(dir):
+    workbook_name = "CompiledResults.xlsx"
+    #if workbook_name not in os.listdir(os.path.join(dir, "..")):
+    wb = xlsxwriter.Workbook(workbook_name)
+    ws = wb.add_worksheet()
+    title_f = wb.add_format()
+    title_f.set_bold()
+    title_f.set_align('center')
+    title_f.set_align('vcenter')
+    f = wb.add_format()
+    f.set_align('right')
+    f.set_align('vcenter')
+    ws.write_row(0, 0, ["Image size", "Layers", "Digits", "Instances", "Weight", "Threshold", "P", "Partial", "Trainable", "Result", "Memory (MB)", "Sim time (min)"], title_f)
+    for row, sim in enumerate(os.listdir(dir)):
+        img = re.findall("img-(\d+)", sim)[0]
+        layers = re.findall("layers-(\d+)", sim)[0]
+        num = re.findall("num-(\[.+\])", sim)[0]
+        inst = re.findall("inst-(\d+)", sim)[0]
+        w = re.findall("w-(\d+)", sim)[0]
+        th = re.findall("th-(\d+\.\d+)", sim)[0]
+        p = re.findall("p-(\d+\.\d+)", sim)[0]
+        par = re.findall("par-([a-z,A-Z]+)_", sim)[0]
+        train = re.findall("train-([a-z,A-Z]+)", sim)[0]
+        ws.write_row(row + 1, 0, [img, layers, num, inst, w, th, p, par, train], f)
+        ws.insert_image(row + 1, 9, os.path.join(dir, sim, "spikes.png"), {'x_scale': 0.7, 'y_scale': 0.7})
+        ws.set_column(9, 9, 20)
+        ws.set_row(row + 1, 200)
+
+    wb.close()
+
+compile_results("./network_plots")
