@@ -835,7 +835,5 @@ def compile_results(dir):
         ws.insert_image(row + 1, 9, os.path.join(dir, sim, "spikes.png"), {'x_scale': 0.7, 'y_scale': 0.7})
         ws.set_column(9, 9, 20)
         ws.set_row(row + 1, 200)
-
     wb.close()
 
-compile_results("./network_plots")

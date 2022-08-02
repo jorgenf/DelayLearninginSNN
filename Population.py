@@ -552,7 +552,7 @@ class Population:
                     return 0
         return 0
 
-    def run(self, duration, dt=0.1, path="./network_plots", name=None, save_data=True, save_pre_model=True,
+    def run(self, duration, dt=0.1, path="./network_plots", name=None, save_neuron_data=True, save_synapse_data=True, save_pre_model=True,
             save_post_model=False, record_topology=False, record_PG=True, PG_duration=200, PG_match_th=0.6,
             show_process=True, save_raster=True, save_topology=True, save_delays=True, n_classes=2, raster_legend=True):
         date = datetime.now().strftime("%d-%B-%Y_%H-%M-%S")
@@ -609,8 +609,9 @@ class Population:
             if mem > max_mem:
                 max_mem = mem
         print(f"\nMaximum memory usage: {np.round(max_mem,1)}MB")
-        if save_data:
+        if save_neuron_data:
             self.save_neuron_data()
+        if save_synapse_data:
             self.save_synapse_data()
         if save_post_model:
             Data.save_model(self, os.path.join(self.dir, "post_sim_model.pkl"))
