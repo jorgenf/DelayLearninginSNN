@@ -36,7 +36,7 @@ def do_it(img, layers, num, inst, w, th, p, par, train, seed):
 
 
 if __name__ == '__main__':
-    with mp.Pool(30) as p:
+    with mp.Pool(1) as p:
         p.starmap(do_it, combos)
 
 
