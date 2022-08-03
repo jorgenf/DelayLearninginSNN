@@ -32,7 +32,7 @@ def do_it(img, layers, num, inst, w, th, p, par, train, seed):
     for id, i in enumerate(input):
         ij = [ij for ij in range(img**2) if np.random.random() < p]
         pop.create_input(i, j=ij, wj=w, dj=[np.random.randint(1,40) for x in range(len(ij))], trainable=train)
-    pop.run(max([max(inp) for inp in input]) + 100, path='network_plots/', name=name, record_PG=True, save_post_model=False, PG_duration=100, PG_match_th=th, save_synapse_data=False, save_neuron_data=True)
+    pop.run(max([max(inp) for inp in input]) + 100, path='network_plots/', name=name, record_PG=True, save_post_model=False, PG_duration=100, PG_match_th=th,  save_delays=False, save_synapse_data=False, save_neuron_data=True)
 
 
 if __name__ == '__main__':
