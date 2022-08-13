@@ -769,8 +769,53 @@ def create_mnist_input(sample_size, numbers, interval, image_size=10):
             flt = samp.flatten()
             for inp in range(i):
                 input[inp].append(flt[inp] + intv)
-            intv += interval
         intv += interval
+    return input
+
+def create_random_mnist_input(sample_size, numbers, interval, image_size=10):
+    from keras.datasets import mnist
+    (train_X, train_y), (test_X, test_y) = mnist.load_data()
+    img = []
+    for x, y in zip(train_X, train_y):
+        if len(img) >= sample_size:
+            break
+        elif y in numbers:
+            img.append([np.round(cv2.resize(x, (image_size, image_size)) * 4 / 25.5, 1)])
+    i = img[0][0].size
+    input = [[] for _ in range(i)]
+    intv = 0
+    for inst in img:
+        for samp in inst:
+            flt = samp.flatten()
+            for inp in range(i):
+                input[inp].append(flt[inp] + intv)
+        intv += interval
+    return input
+
+
+def create_mnist_sequence_input(sequence, interval, breaks, image_size=10):
+    from keras.datasets import mnist
+    (train_X, train_y), (test_X, test_y) = mnist.load_data()
+    img = []
+    seq = sequence.copy()
+    for x, y in zip(train_X, train_y):
+        if not seq:
+            break
+        elif seq[0] == y:
+            img.append([np.round(cv2.resize(x, (image_size, image_size)) * 4 / 25.5, 1)])
+            seq.pop(0)
+    i = img[0][0].size
+    input = [[] for _ in range(i)]
+    intv = 0
+    for j, inst in enumerate(img):
+        for samp in inst:
+            flt = samp.flatten()
+            for inp in range(i):
+                input[inp].append(flt[inp] + intv)
+        if j + 1 in breaks:
+            intv += 2*interval
+        else:
+            intv += interval
     return input
 
 def create_mnist_input_from_file(sample_size, numbers, interval, image_size=10):
@@ -820,7 +865,7 @@ def compile_results(dir):
     f = wb.add_format()
     f.set_align('right')
     f.set_align('vcenter')
-    ws.write_row(0, 0, ["Image size", "Layers", "Digits", "Instances", "Weight", "Threshold", "P", "Partial", "Trainable", "Result", "Memory (MB)", "Sim time (min)"], title_f)
+    ws.write_row(0, 0, ["Image size", "Layers", "Digits", "Instances", "Weight", "Threshold", "P", "Partial", "Trainable", "Avg SR (spike/s)", "Memory (MB)", "Sim time (min)", "Result"], title_f)
     for row, sim in enumerate(os.listdir(dir)):
         img = re.findall("img-(\d+)", sim)[0]
         layers = re.findall("layers-(\d+)", sim)[0]
@@ -831,9 +876,30 @@ def compile_results(dir):
         p = re.findall("p-(\d+\.\d+)", sim)[0]
         par = re.findall("par-([a-z,A-Z]+)_", sim)[0]
         train = re.findall("train-([a-z,A-Z]+)", sim)[0]
-        ws.write_row(row + 1, 0, [img, layers, num, inst, w, th, p, par, train], f)
-        ws.insert_image(row + 1, 9, os.path.join(dir, sim, "spikes.png"), {'x_scale': 0.7, 'y_scale': 0.7})
-        ws.set_column(9, 9, 20)
+        if os.path.exists(os.path.join(dir, sim, "neuron_data.json")):
+            neuron_data = json.load(open(os.path.join(dir, sim, "neuron_data.json")))
+            avg_SR = 0
+            for id in neuron_data:
+                if neuron_data[id]["type"] == "<class 'Population.Population.RS'>":
+                    spikes = len(neuron_data[id]["spikes"])
+                    SR = spikes/(neuron_data[id]["duration"]/1000)
+                    avg_SR += SR
+            avg_SR = round(avg_SR/len(neuron_data),1)
+        else:
+            avg_SR = "n/a"
+        if os.path.exists(os.path.join(dir, sim, "SimStats.txt")):
+            simstats = open(os.path.join(dir, sim, "SimStats.txt")).read()
+            memory = re.findall("usage: (.+)MB", simstats)[0]
+            duration = re.findall("time: (.+)min", simstats)[0]
+        else:
+            memory = "n/a"
+            duration = "n/a"
+        ws.write_row(row + 1, 0, [img, layers, num, inst, w, th, p, par, train, avg_SR, memory, duration], f)
+        if os.path.exists(os.path.join(dir, sim, "spikes.png")):
+            ws.insert_image(row + 1, 12, os.path.join(dir, sim, "spikes.png"), {'x_scale': 0.7, 'y_scale': 0.5})
+        else:
+            ws.write_row(row + 1, 12, "n/a")
+        ws.set_column(12, 12, 20)
         ws.set_row(row + 1, 200)
     wb.close()
 

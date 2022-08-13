@@ -38,10 +38,12 @@ class Population:
         self.DT = None
         self.ID = 0
         self.dir = None
+        self.name = None
         self.progress = None
         self.PG_duration = None
         self.PG_match_th = None
         self.save_delays = None
+        self.output_layer = None
         self.neurons = {}
         self.synapses = []
         for population in populations:
@@ -83,6 +85,9 @@ class Population:
                     d = 1
                 self.create_synapse(inp.ID, ij, w=w, d=d, trainable=trainable)
         return inp
+
+    def create_linear_regression_layer(self):
+        pass
 
     def add_neuron(self, neuron):
         self.neurons[neuron.ID] = neuron
@@ -557,18 +562,16 @@ class Population:
             show_process=True, save_raster=True, save_topology=True, save_delays=True, n_classes=2, raster_legend=True):
         date = datetime.now().strftime("%d-%B-%Y_%H-%M-%S")
         if self.dir is None:
-            if name is not None:
-                self.dir = os.path.join(path, name)
+            self.name = name
+            if self.name is not None:
+                self.dir = os.path.join(path, self.name)
+                cnt = 0
+                while os.path.exists(self.dir):
+                    cnt += 1
+                    self.name = f"{name}_{cnt}"
+                    self.dir = os.path.join(path, self.name)
             else:
                 self.dir = os.path.join(path, date)
-            cnt = 1
-            while os.path.exists(self.dir):
-                if name:
-                    self.dir = os.path.join(path, name)
-                else:
-                    self.dir = os.path.join(path, name)
-                name = f"{name}_{cnt}"
-                cnt += 1
             os.makedirs(self.dir, exist_ok=True)
         if self.progress is not None:
             self.T = self.progress
@@ -621,13 +624,19 @@ class Population:
             self.plot_topology()
         if save_delays:
             self.plot_delays()
+        self.save_PG_data()
         stop = time.time()
         with open(os.path.join(self.dir, "SimStats.txt"), 'w') as f:
             f.writelines(f"Maximum memory usage: {np.round(max_mem,1)}MB")
             f.writelines(f"\nElapsed time: {round((stop - tot_start) / 60, 1)}min")
         if show_process:
-            print(f"\nSimulation finished: {name}")
+            print(f"\nSimulation finished: {self.name}")
             print(f"\nElapsed time: {round((stop - tot_start) / 60, 1)}min")
+
+    def save_PG_data(self):
+        data = self.poly_group_history
+        with open(os.path.join(self.dir, "PG_data.json"), "w") as file:
+            json.dump(data, file)
 
     def save_neuron_data(self):
         data = {}
