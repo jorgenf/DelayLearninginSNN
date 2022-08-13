@@ -12,19 +12,17 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 img = [10, 12, 15]
 layers = [1,2,3]
-num = [[0, 8, 0]]
-inst = [20]
+t_inst = [20]
 w = [4, 6, 8]
 th = [0.7]
 p = [0.05, 0.1, 0.2]
-par = [True, False]
-train = [True, False]
+par = [True]
 seed = [1]
 
-params = [img, layers, num, inst, w, th, p, par, train, seed]
+params = [img, layers, t_inst, w, th, p, par, seed]
 combos = list(itertools.product(*params))
 combos = combos[:int(len(combos)/2)]
-
+print(len(combos))
 def run_training_phase(img, layers, t_inst, w, th, p, par, seed):
     interval = 200
     rng = np.random.default_rng(seed)
@@ -64,11 +62,10 @@ def run_0_8_0(img, layers, num, inst, w, th, p, par, train, seed):
 
 
 
-#if __name__ == '__main__':
-#    with mp.Pool(30) as p:
-#        p.starmap(do_it, combos)
-
 if __name__ == '__main__':
-    run_training_phase(15,1, 20, 4, 0.7, 0.05, True, 1)
+    with mp.Pool(16) as p:
+        p.starmap(run_training_phase, combos)
+
+
 
 
