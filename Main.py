@@ -14,7 +14,7 @@ img = [10, 12, 15]
 layers = [1,2,3]
 t_inst = [20]
 w = [4, 6, 8]
-th = [0.7]
+th = [0.7, 0.8]
 p = [0.05, 0.1, 0.2]
 par = [True]
 seed = [1]
@@ -22,11 +22,13 @@ seed = [1]
 params = [img, layers, t_inst, w, th, p, par, seed]
 combos = list(itertools.product(*params))
 combos = combos[:int(len(combos)/2)]
-print(len(combos))
 def run_training_phase(img, layers, t_inst, w, th, p, par, seed):
     interval = 200
     rng = np.random.default_rng(seed)
     name = f"TrainingPhase_img-{img}_layers-{layers}_num-{[0,1]}_inst-{t_inst}_w-{w}_th-{th}_p-{p}_par-{par}"
+    if name in os.listdir("network_plots"):
+        if len(os.listdir(os.path.join("network_plots", name))) == 7:
+            return None
     input = Data.create_mnist_sequence_input([0 for _ in range(10)] + [1 for _ in range(10)] +
         [rng.integers(0, 2) for _ in range(t_inst)] + [0 for _ in range(10)] + [1 for _ in range(10)], interval, [10, 20,  t_inst + 20, t_inst + 30, t_inst + 40], img)
     pop = Population((img**2*layers, Population.RS))
@@ -63,7 +65,7 @@ def run_0_8_0(img, layers, num, inst, w, th, p, par, train, seed):
 
 
 if __name__ == '__main__':
-    with mp.Pool(16) as p:
+    with mp.Pool(30) as p:
         p.starmap(run_training_phase, combos)
 
 
