@@ -539,14 +539,15 @@ class Population:
                 poly = {}
                 for inp in inputs:
                     poly[inp.ID] = inp.poly_group[max(inp.poly_group.keys())]
+
                 highest_match = 0
                 highest_match_ID = None
                 for poly_ID in self.poly_groups:
                     match, unique = Data.compare_poly(poly, self.poly_groups[poly_ID])
-                    if unique:
-                        if match / unique > highest_match:
-                            highest_match = match / unique
-                            highest_match_ID = poly_ID
+
+                    if match / unique > highest_match:
+                        highest_match = match / unique
+                        highest_match_ID = poly_ID
                 if highest_match < self.PG_match_th:
                     if max(max_keys) not in [tmpx["pattern_start"] for tmpx in self.poly_group_history]:
                         self.poly_groups[poly_index] = poly
@@ -624,7 +625,8 @@ class Population:
             self.plot_topology()
         if save_delays:
             self.plot_delays()
-        self.save_PG_data()
+        if record_PG:
+            self.save_PG_data()
         stop = time.time()
         with open(os.path.join(self.dir, "SimStats.txt"), 'w') as f:
             f.writelines(f"Maximum memory usage: {np.round(max_mem,1)}MB")
@@ -634,7 +636,9 @@ class Population:
             print(f"\nElapsed time: {round((stop - tot_start) / 60, 1)}min")
 
     def save_PG_data(self):
-        data = self.poly_group_history
+        data = {}
+        data["pg_history_data"] = self.poly_group_history
+        data["poly_group"] = [i.poly_group for i in self.neurons if type(i) == self.Input]
         with open(os.path.join(self.dir, "PG_data.json"), "w") as file:
             json.dump(data, file)
 

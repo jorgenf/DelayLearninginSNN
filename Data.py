@@ -18,6 +18,7 @@ from PIL import Image
 import cv2
 import os
 import xlsxwriter
+from collections import Counter
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 
@@ -705,6 +706,10 @@ def compare_poly(new, old):
     global match, old_unique
     match = 0
     old_unique = sum([str(old[x]).count(':') for x in old.keys()])
+    new_unique = sum([str(new[x]).count(':') for x in new.keys()])
+    if old_unique == 0 and new_unique == 0:
+        return 1, 1
+    unique = np.mean([old_unique, new_unique])
     def compare(new, old):
         global match
         if isinstance(new, dict) and isinstance(old, dict):
@@ -715,13 +720,14 @@ def compare_poly(new, old):
     inputs_intersect = set.intersection(set(new.keys()), set(old.keys()))
     for ii in inputs_intersect:
         compare(new[ii], old[ii])
-    return match, old_unique
+    return match, unique
 
 
 def old_compare_poly(l1, l2):
     global match, old_unique
     match = 0
     old_unique = 0
+    print(l1, l2)
     def compare(l1, l2):
         global match, old_unique
         if isinstance(l1, dict) and isinstance(l2, dict):
@@ -756,6 +762,7 @@ def create_class_diagram(file=None, cls=None):
 
 
 def create_mnist_input(sample_size, numbers, interval, image_size=10):
+    raise Exception("Må fikses. Gir flere input per input node på samme tid.")
     from keras.datasets import mnist
     (train_X, train_y), (test_X, test_y) = mnist.load_data()
     img = []
@@ -865,7 +872,7 @@ def compile_results(dir):
     f = wb.add_format()
     f.set_align('right')
     f.set_align('vcenter')
-    ws.write_row(0, 0, ["Image size", "Layers", "Digits", "Instances", "Weight", "Threshold", "P", "Partial", "Trainable", "Avg SR (spike/s)", "Memory (MB)", "Sim time (min)", "Result"], title_f)
+    ws.write_row(0, 0, ["Image size", "Layers", "Digits", "Instances", "Weight", "Threshold", "P", "Static acc.", "Stat. acc. 1", "Stat. acc. 2", "Plastic acc.", "Plast. acc.1", "Plast. acc. 2", "Avg SR (spike/s)", "Memory (MB)", "Sim time (min)", "Result"], title_f)
     for row, sim in enumerate(os.listdir(dir)):
         img = re.findall("img-(\d+)", sim)[0]
         layers = re.findall("layers-(\d+)", sim)[0]
@@ -874,8 +881,6 @@ def compile_results(dir):
         w = re.findall("w-(\d+)", sim)[0]
         th = re.findall("th-(\d+\.\d+)", sim)[0]
         p = re.findall("p-(\d+\.\d+)", sim)[0]
-        par = re.findall("par-([a-z,A-Z]+)_", sim)[0]
-        train = re.findall("train-([a-z,A-Z]+)", sim)[0]
         if os.path.exists(os.path.join(dir, sim, "neuron_data.json")):
             neuron_data = json.load(open(os.path.join(dir, sim, "neuron_data.json")))
             avg_SR = 0
@@ -894,12 +899,53 @@ def compile_results(dir):
         else:
             memory = "n/a"
             duration = "n/a"
-        ws.write_row(row + 1, 0, [img, layers, num, inst, w, th, p, par, train, avg_SR, memory, duration], f)
-        if os.path.exists(os.path.join(dir, sim, "spikes.png")):
-            ws.insert_image(row + 1, 12, os.path.join(dir, sim, "spikes.png"), {'x_scale': 0.7, 'y_scale': 0.5})
+        if os.path.exists(os.path.join(dir, sim, "PG_data.json")):
+            acc_stats = json.load(open(os.path.join(dir, sim, "PG_data.json")))
+            s_acc = [x["poly_index"] for x in acc_stats[:20]]
+            s_acc = np.round(max(Counter(s_acc).values())/0.2,1)
+
+            s1 = [x["poly_index"] for x in acc_stats[:10]]
+            s_acc_1_mc = Counter(s1).most_common()[0]
+            s_acc_1 = np.round(max(Counter(s1).values())/0.1,1)
+
+            s2 = [x["poly_index"] for x in acc_stats[10:20]]
+            s_acc_2_mc = Counter(s2).most_common()[0]
+            s_acc_2 = np.round(max(Counter(s2).values())/0.1,1)
+
+            if s_acc_1_mc == s_acc_2_mc:
+                s_acc_1 = "n/s"
+                s_acc_2 = "n/s"
+                s_acc = "n/s"
+
+            p_acc =[x["poly_index"] for x in acc_stats[40:60]]
+            p_acc = np.round(max(Counter(p_acc).values())/0.2,1)
+
+            p1 = [x["poly_index"] for x in acc_stats[40:50]]
+            p_acc_1_mc = Counter(p1).most_common()[0][0]
+            p_acc_1 = np.round(max(Counter(p1).values())/0.1,1)
+
+            p2 = [x["poly_index"] for x in acc_stats[50:60]]
+            p_acc_2_mc = Counter(p2).most_common()[0][0]
+            p_acc_2 = np.round(max(Counter(p2).values())/0.1,1)
+
+            if p_acc_1_mc == p_acc_2_mc:
+                p_acc_1 = "n/s"
+                p_acc_2 = "n/s"
+                p_acc = "n/s"
+
         else:
-            ws.write_row(row + 1, 12, "n/a")
-        ws.set_column(12, 12, 20)
+            s_acc = "n/a"
+            s_acc_1 = "n/a"
+            s_acc_2 = "n/a"
+            p_acc = "n/a"
+            p_acc_1 = "n/a"
+            p_acc_2 = "n/a"
+        ws.write_row(row + 1, 0, [img, layers, num, inst, w, th, p, s_acc, s_acc_1, s_acc_2, p_acc, p_acc_1, p_acc_2, avg_SR, memory, duration], f)
+        if os.path.exists(os.path.join(dir, sim, "spikes.png")):
+            ws.insert_image(row + 1, 18, os.path.join(dir, sim, "spikes.png"), {'x_scale': 0.7, 'y_scale': 0.5})
+        else:
+            ws.write_row(row + 1, 18, "n/a")
+        ws.set_column(18, 18, 20)
         ws.set_row(row + 1, 200)
     wb.close()
 
