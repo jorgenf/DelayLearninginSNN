@@ -15,6 +15,7 @@ import Constants
 import Data
 import matplotlib.colors
 import psutil
+import sys
 
 sns.set()
 
@@ -41,7 +42,7 @@ class Population:
         self.name = None
         self.progress = None
         self.PG_duration = None
-        self.PG_match_th = None
+        self.pg_match_th = None
         self.save_delays = None
         self.output_layer = None
         self.neurons = {}
@@ -56,10 +57,7 @@ class Population:
                 self.neurons[neuron.ID] = neuron
         self.duration = 0
         self.structure = False
-        self.poly_groups = {}
-        self.poly_group_history = []
-        self.poly_ID_counts = {}
-        self.registered_inputs = []
+        self.pgs = {}
 
     def update(self, record_PG):
         for neuron in self.neurons:
@@ -458,29 +456,27 @@ class Population:
         sub.set_yticks(range(len(self.neurons)))
         sub.set_yticklabels([x if type(self.neurons[x]) != self.Input else f"{x} (Input)" for x in self.neurons])
         sub.yaxis.set_major_locator(plt.MaxNLocator(20))
-        count = Counter([tpg["poly_index"] for tpg in self.poly_group_history])
+        count = {}
+        for i, pg in self.pgs.items():
+            count[i] = len(pg["pps"])
         sorted_count = dict(sorted(count.items(), key=lambda item: item[1], reverse=True))
         if plot_pg:
-            for key, value in zip(sorted_count.keys(), sorted_count.values()):
-                self.poly_ID_counts[key] = value
-            sorted_poly_group_history = sorted(self.poly_group_history,
-                                               key=lambda x: list(sorted_count.keys()).index(x['poly_index']))
-            for pg in sorted_poly_group_history:
-                pg_start = pg["pattern_start"]
-                if duration is None or (duration is not None and pg_start + self.PG_duration < duration[1]):
-                    pg_ID = pg["poly_index"]
-                    linewidth = max(2, int(np.ceil(len(self.neurons) / 100) + 1))
-                    sub.hlines(y=-0.5, xmin=pg_start, xmax=pg_start + self.PG_duration, linewidth=linewidth,
-                               color=Constants.COLORS[list(sorted_count.keys()).index(pg_ID)])
+            for i, pg in self.pgs.items():
+                for pp in pg['pps']:
+                    pg_start = pp["pattern_start"]
+                    if duration is None or (duration is not None and pg_start + self.PG_duration < duration[1]):
+                        linewidth = max(2, int(np.ceil(len(self.neurons) / 100) + 1))
+                        sub.hlines(y=-0.5, xmin=pg_start, xmax=pg_start + self.PG_duration, linewidth=linewidth,
+                                   color=Constants.COLORS[list(sorted_count.keys()).index(i)])
             if legend:
                 max_keys = list(sorted_count.keys())[0: classes if classes is not None else 2]
                 patches = []
                 for uid in max_keys:
                     patches.append(mpatches.Patch(color=Constants.COLORS[list(sorted_count.keys()).index(uid)],
-                                                  label=f'ID={uid} ({self.poly_ID_counts[uid]})'))
-                if len(list(self.poly_ID_counts.values())) > (classes if classes is not None else 2):
+                                                  label=f'ID={uid} ({len(self.pgs[uid]["pps"])})'))
+                if len(self.pgs) > (classes if classes is not None else 2):
                     patches.append(mpatches.Patch(color='none',
-                                                  label=f'Others ({sum(list(self.poly_ID_counts.values())[classes if classes is not None else 2:])})'))
+                                                  label=f'Others ({sum(list(sorted_count.values())[classes if classes is not None else 2:])})'))
                 if len(patches) > 0:
                     if len(patches) <= 12:
                         plt.legend(handles=patches, ncol=1, loc="best", title="PG IDs")
@@ -526,37 +522,72 @@ class Population:
         os.system(f"ffmpeg -y -r {fps} -i {self.dir}/t%10d.png -vcodec libx264 {self.dir}/output.mp4")
         os.system(f"ffmpeg -y -r {fps} -i {self.dir}/t%10d.png -vcodec msmpeg4 {self.dir}/output.wmv")
 
-    def build_poly_groups(self, poly_index):
+    def build_pgs(self, min_threshold=None):
+        if min_threshold is not None:
+            self.pg_match_th = min_threshold
+        self.pgs = {}
+        tmp_pp = self.build_pps()
+        tmp_pg = {}
+        for i, pp in enumerate(tmp_pp):
+            tmp_pg[i] = {'canonical': pp['pattern'], 'pps':[pp]}
+        threshold = 95
+        removed = []
+        while threshold >= self.pg_match_th:
+            threshold = max(threshold, self.pg_match_th)
+            for i, pg_i in tmp_pg.items():
+                if pg_i in removed:
+                    continue
+                for j, pg_j in tmp_pg.items():
+                    if pg_i is pg_j or pg_j in removed:
+                        continue
+                    match, unique, canonical = self.compare_poly(pg_i["canonical"], pg_j["canonical"])
+                    match_prcnt = match / unique
+                    if match_prcnt > self.pg_match_th:
+                        pg_i['pps'] += (pg_j['pps'])
+                        pg_i['canonical'] = canonical
+                        removed.append(pg_j)
+            threshold -= 5
+        for ind, pg in tmp_pg.items():
+            if pg not in removed:
+                self.pgs[str(ind)] = pg
+
+    def build_pps(self):
         inputs = [self.neurons[neuron] for neuron in self.neurons if isinstance(self.neurons[neuron], self.Input)]
-        if all(len(inputs[x].poly_group.keys()) == len(inputs[x - 1].poly_group.keys()) and all(
-                [inputs[x].poly_group.keys(), inputs[x - 1].poly_group.keys()]) for x in
-               range(1, len(inputs))):
-            max_keys = [max(inp.poly_group.keys()) for inp in inputs]
-            poly_id_t = [(inp.ID, max(inp.poly_group.keys())) for inp in inputs]
-            if all(self.T - mk >= self.PG_duration for mk in max_keys) and all(
-                    pkv not in self.registered_inputs for pkv in poly_id_t):
-                [self.registered_inputs.append(pkv) for pkv in poly_id_t]
-                poly = {}
-                for inp in inputs:
-                    poly[inp.ID] = inp.poly_group[max(inp.poly_group.keys())]
+        n_pp = len(inputs[0].polychronous_pattern)
+        tmp_pp = [{'pattern': {}, "pattern_start": sys.maxsize} for _ in range(n_pp)]
+        for inp in inputs:
+            for i, pp_per_inp_k in enumerate(inp.polychronous_pattern.keys()):
+                tmp_pp[i]['pattern_start'] = min(pp_per_inp_k, tmp_pp[i]['pattern_start'])
+                tmp_pp[i]['pattern'][inp.ID] = inp.polychronous_pattern[pp_per_inp_k]
+        return tmp_pp
 
-                highest_match = 0
-                highest_match_ID = None
-                for poly_ID in self.poly_groups:
-                    match, unique = Data.compare_poly(poly, self.poly_groups[poly_ID])
+    def compare_poly(self, new, old):
+        canonical = {}
+        match = 0
+        old_unique = sum([str(old[x]).count(':') for x in old.keys()])
+        new_unique = sum([str(new[x]).count(':') for x in new.keys()])
+        if old_unique == 0 and new_unique == 0:
+            return 1, 1, {}
+        unique = np.mean([old_unique, new_unique])
 
-                    if match / unique > highest_match:
-                        highest_match = match / unique
-                        highest_match_ID = poly_ID
-                if highest_match < self.PG_match_th:
-                    if max(max_keys) not in [tmpx["pattern_start"] for tmpx in self.poly_group_history]:
-                        self.poly_groups[poly_index] = poly
-                        self.poly_group_history.append({"pattern_start": max(max_keys), "poly_index": poly_index})
-                        return 1
-                elif max(max_keys) not in [tmpx["pattern_start"] for tmpx in self.poly_group_history]:
-                    self.poly_group_history.append({"pattern_start": max(max_keys), "poly_index": highest_match_ID})
-                    return 0
-        return 0
+        def compare(new, old, c):
+            match = 0
+            if isinstance(new, dict) and isinstance(old, dict):
+                intersect = set.intersection(set(new.keys()), set(old.keys()))
+                match += len(intersect)
+                for k in intersect:
+                    c[k] = {}
+                    match += compare(new[k], old[k], c[k])
+                return match
+            else:
+                return match
+
+        inputs_intersect = set.intersection(set(new.keys()), set(old.keys()))
+        for ii in inputs_intersect:
+            canonical[ii] = {}
+            match += compare(new[ii], old[ii], canonical[ii])
+        return match, unique, canonical
+
 
     def run(self, duration, dt=0.1, path="./network_plots", name=None, save_neuron_data=True, save_synapse_data=True, save_pre_model=True,
             save_post_model=False, record_topology=False, record_PG=True, PG_duration=200, PG_match_th=0.6,
@@ -584,18 +615,15 @@ class Population:
         self.DT = dt
         self.duration = duration
         self.PG_duration = PG_duration
-        self.PG_match_th = PG_match_th
+        self.pg_match_th = PG_match_th
         self.save_delays = save_delays
         tot_start = time.time()
         if save_pre_model:
             Data.save_model(self, os.path.join(self.dir, "pre_sim_model.pkl"))
-        poly_index = 0
         max_mem = 0
         while self.T < self.duration:
             start = time.time()
             self.update(record_PG)
-            if record_PG:
-                poly_index += self.build_poly_groups(poly_index)
             if record_topology:
                 fig = self.plot_topology()
                 fig.title(f"Time={self.T}ms")
@@ -619,14 +647,15 @@ class Population:
             self.save_synapse_data()
         if save_post_model:
             Data.save_model(self, os.path.join(self.dir, "post_sim_model.pkl"))
-        if save_raster:
-            self.plot_raster(classes=n_classes, legend=raster_legend)
         if save_topology:
             self.plot_topology()
         if save_delays:
             self.plot_delays()
         if record_PG:
+            self.build_pgs()
             self.save_PG_data()
+        if save_raster:
+            self.plot_raster(classes=n_classes, legend=raster_legend)
         stop = time.time()
         with open(os.path.join(self.dir, "SimStats.txt"), 'w') as f:
             f.writelines(f"Maximum memory usage: {np.round(max_mem,1)}MB")
@@ -636,9 +665,7 @@ class Population:
             print(f"\nElapsed time: {round((stop - tot_start) / 60, 1)}min")
 
     def save_PG_data(self):
-        data = {}
-        data["pg_history_data"] = self.poly_group_history
-        data["poly_group"] = [i.poly_group for i in self.neurons if type(i) == self.Input]
+        data = self.pgs
         with open(os.path.join(self.dir, "PG_data.json"), "w") as file:
             json.dump(data, file)
 
@@ -724,7 +751,7 @@ class Population:
             self.spike_times = spike_times
             self.p = p
             self.down = []
-            self.poly_group = {}
+            self.polychronous_pattern = {}
             if seed:
                 self.rng = np.random.default_rng(seed)
             else:
@@ -734,8 +761,8 @@ class Population:
             if self.spike_times and self.pop.T in self.spike_times:
                 [syn.add_spike() for syn in self.down]
                 self.spikes.append(self.pop.T)
-                if self.pop.T not in self.poly_group.keys():
-                    self.poly_group[self.pop.T] = {}
+                if self.pop.T not in self.polychronous_pattern.keys():
+                    self.polychronous_pattern[self.pop.T] = {}
             elif self.rng.random() < self.p and not self.spike_times:
                 [syn.add_spike() for syn in self.down]
                 self.spikes.append(self.pop.T)
@@ -760,7 +787,7 @@ class Population:
             self.up = []
             self.down = []
             self.inputs = []
-            self.poly_group = {}
+            self.polychronous_pattern = {}
 
         def update(self, neurons, record_pg):
             for syn in self.up:
@@ -792,8 +819,8 @@ class Population:
                 [syn.add_spike() for syn in self.down]
                 self.inputs.clear()
                 syn_list = []
-                if self.pop.T not in self.poly_group.keys():
-                    self.poly_group[self.pop.T] = {}
+                if self.pop.T not in self.polychronous_pattern.keys():
+                    self.polychronous_pattern[self.pop.T] = {}
                 for syn in self.up:
                     spikes = [s for s in neurons[str(syn.i)].spikes if s + Constants.MAX_DELAY > self.pop.T]
                     if spikes:
@@ -814,7 +841,7 @@ class Population:
                             min_pre_index = pre_spikes.index(max(pre_spikes))
                             min_pre_t = pre_spike_t[min_pre_index]
                             if record_pg:
-                                neurons[str(syn.i)].poly_group[min_pre_t][self.ID] = self.poly_group[self.pop.T]
+                                neurons[str(syn.i)].polychronous_pattern[min_pre_t][self.ID] = self.polychronous_pattern[self.pop.T]
                         elif post_spikes:
                             min_post = min(post_spikes)
                             syn.G(min_post)

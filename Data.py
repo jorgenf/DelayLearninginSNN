@@ -702,25 +702,7 @@ def get_input_times(polygroup):
         else:
             yield v
 
-def compare_poly(new, old):
-    global match, old_unique
-    match = 0
-    old_unique = sum([str(old[x]).count(':') for x in old.keys()])
-    new_unique = sum([str(new[x]).count(':') for x in new.keys()])
-    if old_unique == 0 and new_unique == 0:
-        return 1, 1
-    unique = np.mean([old_unique, new_unique])
-    def compare(new, old):
-        global match
-        if isinstance(new, dict) and isinstance(old, dict):
-            intersect = set.intersection(set(new.keys()), set(old.keys()))
-            match += len(intersect)
-            for k in intersect:
-                compare(new[k], old[k])
-    inputs_intersect = set.intersection(set(new.keys()), set(old.keys()))
-    for ii in inputs_intersect:
-        compare(new[ii], old[ii])
-    return match, unique
+
 
 
 def old_compare_poly(l1, l2):
@@ -862,7 +844,6 @@ def save_image(matrix, out_dir):
 
 def compile_results(dir):
     workbook_name = "CompiledResults.xlsx"
-    #if workbook_name not in os.listdir(os.path.join(dir, "..")):
     wb = xlsxwriter.Workbook(workbook_name)
     ws = wb.add_worksheet()
     title_f = wb.add_format()
@@ -872,12 +853,13 @@ def compile_results(dir):
     f = wb.add_format()
     f.set_align('right')
     f.set_align('vcenter')
-    ws.write_row(0, 0, ["Image size", "Layers", "Digits", "Instances", "Weight", "Threshold", "P", "Static acc.", "Stat. acc. 1", "Stat. acc. 2", "Plastic acc.", "Plast. acc.1", "Plast. acc. 2", "Avg SR (spike/s)", "Memory (MB)", "Sim time (min)", "Result"], title_f)
+    ws.write_row(0, 0, ["Image size", "Layers", "Digits", "Train inst.", "Test inst.", "Weight", "Threshold", "P", "Static acc.", "Stat. acc. 1", "Stat. acc. 2", "Plastic acc.", "Plast. acc.1", "Plast. acc. 2", "Avg SR (spike/s)", "Memory (MB)", "Sim time (min)", "Result"], title_f)
     for row, sim in enumerate(os.listdir(dir)):
         img = re.findall("img-(\d+)", sim)[0]
         layers = re.findall("layers-(\d+)", sim)[0]
         num = re.findall("num-(\[.+\])", sim)[0]
-        inst = re.findall("inst-(\d+)", sim)[0]
+        train_inst = re.findall("train_inst-(\d+)", sim)[0]
+        test_inst = re.findall("test_inst-(\d+)", sim)[0]
         w = re.findall("w-(\d+)", sim)[0]
         th = re.findall("th-(\d+\.\d+)", sim)[0]
         p = re.findall("p-(\d+\.\d+)", sim)[0]
@@ -901,38 +883,39 @@ def compile_results(dir):
             duration = "n/a"
         if os.path.exists(os.path.join(dir, sim, "PG_data.json")):
             acc_stats = json.load(open(os.path.join(dir, sim, "PG_data.json")))
-            s_acc = [x["poly_index"] for x in acc_stats[:20]]
-            s_acc = np.round(max(Counter(s_acc).values())/0.2,1)
+            pps = []
+            for i,pg in acc_stats.items():
+                for pp in pg['pps']:
+                    pps.append((i, pp['pattern_start']))
 
-            s1 = [x["poly_index"] for x in acc_stats[:10]]
-            s_acc_1_mc = Counter(s1).most_common()[0]
-            s_acc_1 = np.round(max(Counter(s1).values())/0.1,1)
+            pps.sort(key=lambda x: x[1])
+            pps = [x[0] for x in pps]
 
-            s2 = [x["poly_index"] for x in acc_stats[10:20]]
-            s_acc_2_mc = Counter(s2).most_common()[0]
-            s_acc_2 = np.round(max(Counter(s2).values())/0.1,1)
+
+
+            s_acc_1_mc = Counter(pps[:10]).most_common()[0]
+            s_acc_1 = np.round(max(Counter(pps[:10]).values())/0.1,1)
+            s_acc_2_mc = Counter(pps[10:20]).most_common()[0]
+            s_acc_2 = np.round(max(Counter(pps[10:20]).values())/0.1,1)
+            s_acc = np.round((s_acc_1 + s_acc_2) / 2, 1)
 
             if s_acc_1_mc == s_acc_2_mc:
                 s_acc_1 = "n/s"
                 s_acc_2 = "n/s"
                 s_acc = "n/s"
 
-            p_acc =[x["poly_index"] for x in acc_stats[40:60]]
-            p_acc = np.round(max(Counter(p_acc).values())/0.2,1)
 
-            p1 = [x["poly_index"] for x in acc_stats[40:50]]
-            p_acc_1_mc = Counter(p1).most_common()[0][0]
-            p_acc_1 = np.round(max(Counter(p1).values())/0.1,1)
 
-            p2 = [x["poly_index"] for x in acc_stats[50:60]]
-            p_acc_2_mc = Counter(p2).most_common()[0][0]
-            p_acc_2 = np.round(max(Counter(p2).values())/0.1,1)
+            p_acc_1_mc = Counter(pps[40:50]).most_common()[0][0]
+            p_acc_1 = np.round(max(Counter(pps[40:50]).values())/0.1,1)
+            p_acc_2_mc = Counter(pps[50:60]).most_common()[0][0]
+            p_acc_2 = np.round(max(Counter(pps[50:60]).values())/0.1,1)
+            p_acc = np.round((p_acc_1 + p_acc_2) / 2, 1)
 
             if p_acc_1_mc == p_acc_2_mc:
                 p_acc_1 = "n/s"
                 p_acc_2 = "n/s"
                 p_acc = "n/s"
-
         else:
             s_acc = "n/a"
             s_acc_1 = "n/a"
@@ -940,7 +923,7 @@ def compile_results(dir):
             p_acc = "n/a"
             p_acc_1 = "n/a"
             p_acc_2 = "n/a"
-        ws.write_row(row + 1, 0, [img, layers, num, inst, w, th, p, s_acc, s_acc_1, s_acc_2, p_acc, p_acc_1, p_acc_2, avg_SR, memory, duration], f)
+        ws.write_row(row + 1, 0, [img, layers, num, train_inst, test_inst, w, th, p, s_acc, s_acc_1, s_acc_2, p_acc, p_acc_1, p_acc_2, avg_SR, memory, duration], f)
         if os.path.exists(os.path.join(dir, sim, "spikes.png")):
             ws.insert_image(row + 1, 18, os.path.join(dir, sim, "spikes.png"), {'x_scale': 0.7, 'y_scale': 0.5})
         else:
@@ -948,4 +931,5 @@ def compile_results(dir):
         ws.set_column(18, 18, 20)
         ws.set_row(row + 1, 200)
     wb.close()
+
 
