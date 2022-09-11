@@ -47,6 +47,7 @@ class Population:
         self.output_layer = None
         self.neurons = {}
         self.synapses = []
+        self.total_sim_time = 0
         for population in populations:
             for n in range(population[0]):
                 if len(population) == 3:
@@ -659,7 +660,9 @@ class Population:
         stop = time.time()
         with open(os.path.join(self.dir, "SimStats.txt"), 'w') as f:
             f.writelines(f"Maximum memory usage: {np.round(max_mem,1)}MB")
-            f.writelines(f"\nElapsed time: {round((stop - tot_start) / 60, 1)}min")
+            self.total_sim_time += round((stop - tot_start) / 60, 1)
+            self.total_sim_time = round(self.total_sim_time, 1)
+            f.writelines(f"\nElapsed time: {self.total_sim_time}min")
         if show_process:
             print(f"\nSimulation finished: {self.name}")
             print(f"\nElapsed time: {round((stop - tot_start) / 60, 1)}min")

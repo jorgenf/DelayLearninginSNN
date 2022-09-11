@@ -842,8 +842,8 @@ def save_image(matrix, out_dir):
     im = im.convert("L")
     im.save(pth)
 
-def compile_results(dir):
-    workbook_name = "CompiledResults.xlsx"
+def compile_results(dir, name):
+    workbook_name = f"{name}.xlsx"
     wb = xlsxwriter.Workbook(workbook_name)
     ws = wb.add_worksheet()
     title_f = wb.add_format()
@@ -853,8 +853,15 @@ def compile_results(dir):
     f = wb.add_format()
     f.set_align('right')
     f.set_align('vcenter')
-    ws.write_row(0, 0, ["Image size", "Layers", "Digits", "Train inst.", "Test inst.", "Weight", "Threshold", "P", "Static acc.", "Stat. acc. 1", "Stat. acc. 2", "Plastic acc.", "Plast. acc.1", "Plast. acc. 2", "Avg SR (spike/s)", "Memory (MB)", "Sim time (min)", "Result"], title_f)
+    ws.write_row(0, 0, ["Image size", "Layers", "Digits", "Train inst.", "Test inst.", "Weight", "Threshold", "P", "Seed", "Pre acc.", "Pre acc. 1", "Pre acc. 2", "Post acc.", "Post acc.1", "Post acc. 2", "Avg SR (spike/s)", "Memory (MB)", "Sim time (min)", "Result"], title_f)
+    s_acc_mean = []
+    s_acc1_mean = []
+    s_acc2_mean = []
+    p_acc_mean = []
+    p_acc1_mean = []
+    p_acc2_mean = []
     for row, sim in enumerate(os.listdir(dir)):
+        print(sim)
         img = re.findall("img-(\d+)", sim)[0]
         layers = re.findall("layers-(\d+)", sim)[0]
         num = re.findall("num-(\[.+\])", sim)[0]
@@ -863,6 +870,7 @@ def compile_results(dir):
         w = re.findall("w-(\d+)", sim)[0]
         th = re.findall("th-(\d+\.\d+)", sim)[0]
         p = re.findall("p-(\d+\.\d+)", sim)[0]
+        seed = re.findall("seed-(\d+)", sim)[0]
         if os.path.exists(os.path.join(dir, sim, "neuron_data.json")):
             neuron_data = json.load(open(os.path.join(dir, sim, "neuron_data.json")))
             avg_SR = 0
@@ -884,27 +892,30 @@ def compile_results(dir):
         if os.path.exists(os.path.join(dir, sim, "PG_data.json")):
             acc_stats = json.load(open(os.path.join(dir, sim, "PG_data.json")))
             pps = []
+
             for i,pg in acc_stats.items():
                 for pp in pg['pps']:
                     pps.append((i, pp['pattern_start']))
-
             pps.sort(key=lambda x: x[1])
             pps = [x[0] for x in pps]
-
-
-
             s_acc_1_mc = Counter(pps[:10]).most_common()[0]
             s_acc_1 = np.round(max(Counter(pps[:10]).values())/0.1,1)
             s_acc_2_mc = Counter(pps[10:20]).most_common()[0]
             s_acc_2 = np.round(max(Counter(pps[10:20]).values())/0.1,1)
             s_acc = np.round((s_acc_1 + s_acc_2) / 2, 1)
 
+
             if s_acc_1_mc == s_acc_2_mc:
                 s_acc_1 = "n/s"
                 s_acc_2 = "n/s"
                 s_acc = "n/s"
-
-
+                s_acc_mean.append(0)
+                s_acc1_mean.append(0)
+                s_acc2_mean.append(0)
+            else:
+                s_acc_mean.append(s_acc)
+                s_acc1_mean.append(s_acc_1)
+                s_acc2_mean.append(s_acc_2)
 
             p_acc_1_mc = Counter(pps[40:50]).most_common()[0][0]
             p_acc_1 = np.round(max(Counter(pps[40:50]).values())/0.1,1)
@@ -912,10 +923,18 @@ def compile_results(dir):
             p_acc_2 = np.round(max(Counter(pps[50:60]).values())/0.1,1)
             p_acc = np.round((p_acc_1 + p_acc_2) / 2, 1)
 
+
             if p_acc_1_mc == p_acc_2_mc:
                 p_acc_1 = "n/s"
                 p_acc_2 = "n/s"
                 p_acc = "n/s"
+                p_acc_mean.append(0)
+                p_acc1_mean.append(0)
+                p_acc2_mean.append(0)
+            else:
+                p_acc_mean.append(p_acc)
+                p_acc1_mean.append(p_acc_1)
+                p_acc2_mean.append(p_acc_2)
         else:
             s_acc = "n/a"
             s_acc_1 = "n/a"
@@ -923,13 +942,16 @@ def compile_results(dir):
             p_acc = "n/a"
             p_acc_1 = "n/a"
             p_acc_2 = "n/a"
-        ws.write_row(row + 1, 0, [img, layers, num, train_inst, test_inst, w, th, p, s_acc, s_acc_1, s_acc_2, p_acc, p_acc_1, p_acc_2, avg_SR, memory, duration], f)
+        ws.write_row(row + 1, 0, [img, layers, num, train_inst, test_inst, w, th, p, seed, s_acc, s_acc_1, s_acc_2, p_acc, p_acc_1, p_acc_2, avg_SR, memory, duration], f)
         if os.path.exists(os.path.join(dir, sim, "spikes.png")):
             ws.insert_image(row + 1, 18, os.path.join(dir, sim, "spikes.png"), {'x_scale': 0.7, 'y_scale': 0.5})
         else:
             ws.write_row(row + 1, 18, "n/a")
         ws.set_column(18, 18, 20)
         ws.set_row(row + 1, 200)
+    ws.write_row(len(os.listdir(dir))+1, 0, ["Mean"])
+    ws.write_row(len(os.listdir(dir))+1, 9, [np.mean(s_acc_mean), np.mean(s_acc1_mean), np.mean(s_acc2_mean), np.mean(p_acc_mean), np.mean(p_acc1_mean), np.mean(p_acc2_mean)])
     wb.close()
+
 
 

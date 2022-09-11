@@ -10,30 +10,31 @@ import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 
-img = [10, 12, 15]
-layers = [1,2,3]
+img = [10, 12]
+layers = [2]
 train_inst = [20]
 test_inst = [10]
-w = [4, 6, 8]
+w = [6]
 th = [0.7]
-p = [0.05, 0.1, 0.2]
+p = [0.1]
 par = [True]
-seed = [1]
+seed = [x for x in range(50, 100)]
 
 params = [img, layers, train_inst, test_inst, w, th, p, par, seed]
 combos = list(itertools.product(*params))
-combos = combos[:int(len(combos)/2)]
+#combos = combos[int(len(combos)/2):]
 def run_training_phase(img, layers, train_inst, test_inst, w, th, p, par, seed):
     interval = 200
     rng = np.random.default_rng(seed)
-    name = f"TrainingPhase_img-{img}_layers-{layers}_num-{[0,1]}_train_inst-{train_inst}_test_inst-{test_inst}_w-{w}_th-{th}_p-{p}_par-{par}"
-    if name in os.listdir("network_plots"):
-        if len(os.listdir(os.path.join("network_plots", name))) == 7:
-            return None
+    name = f"TrainingPhase_img-{img}_layers-{layers}_num-{[0,1]}_train_inst-{train_inst}_test_inst-{test_inst}_w-{w}_th-{th}_p-{p}_par-{par}_seed-{seed}"
+    #if name in os.listdir("network_plots"):
+    #    name += 1
+    #    if len(os.listdir(os.path.join("network_plots", name))) == 7:
+    #        return None
     input = Data.create_mnist_sequence_input([0 for _ in range(test_inst)] + [1 for _ in range(test_inst)] +
                                              [rng.integers(0, 2) for _ in range(train_inst)] + [0 for _ in range(test_inst)] + [1 for _ in range(test_inst)], interval, [test_inst, 2*test_inst, train_inst + (2*test_inst), train_inst + (3*test_inst), train_inst + (4*test_inst)], img)
     pop = Population((img**2*layers, Population.RS))
-    pop.create_feed_forward_connections(d=list(range(1,40)), n_layers=layers, w=w, p=p, partial=par, trainable=False, seed=1)
+    pop.create_feed_forward_connections(d=list(range(1,40)), n_layers=layers, w=w, p=p, partial=par, trainable=False, seed=seed)
     for id, i in enumerate(input):
         ij = [ij for ij in range(img**2) if rng.random() < p]
         pop.create_input(i, j=ij, wj=w, dj=[rng.integers(1,40) for x in range(len(ij))], trainable=False)
@@ -66,7 +67,7 @@ def run_0_8_0(img, layers, num, inst, w, th, p, par, train, seed):
 
 
 #if __name__ == '__main__':
-#    with mp.Pool(31) as p:
+#    with mp.Pool(16) as p:
 #        p.starmap(run_training_phase, combos)
 
 #Data.compile_results("network_plots")
@@ -92,4 +93,33 @@ print(match2/unique2)
 print(canonical2)
 '''
 
-Data.compile_results("network_plots")
+
+import re
+ddir = "G:/multiple runs of 12by12 th0.9"
+
+#Data.compile_results(r"G:\multiple runs of 12by12 th0.9", '12by12th0.9')
+#Data.compile_results(r"G:\multiple runs of 12by12 th0.8", '12by12th0.8')
+#Data.compile_results(r"G:\multiple runs of 12by12 th0.7", '12by12th0.7')
+#Data.compile_results(r"G:\multiple runs of 10by10 th0.9", '10by10th0.9')
+#Data.compile_results(r"G:\multiple runs of 10by10 th0.8", '10by10th0.8')
+#Data.compile_results(r"G:\multiple runs of 10by10 th0.7", '10by10th0.7')
+'''
+for dir in os.listdir(ddir):
+    print(dir)
+    #if re.search('img-10', dir):
+
+
+    m = Data.load_model(os.path.join(os.path.join(ddir,dir),"post_sim_model.pkl"))
+    m.dir = os.path.join(ddir, dir)
+    m.build_pgs(min_threshold=0.9)
+    m.save_PG_data()
+    m.plot_raster()
+    Data.save_model(m, os.path.join(ddir,os.path.join(dir, "post_sim_model.pkl")))
+    os.rename(os.path.join(ddir,dir), os.path.join(ddir, dir.replace('th-0.8', 'th-0.9')))
+
+'''
+
+#Data.compile_results(r"G:\multiple runs of 10by10 th0.8")
+
+
+#Data.compile_results(r"G:\multiple runs of 10by10 th0.8")
