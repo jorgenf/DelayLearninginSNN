@@ -10,29 +10,43 @@ import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 
-img = [10, 12]
+img = [10]
 layers = [2]
 train_inst = [20]
-test_inst = [10]
+train_digits = [[0,1]]
+test_inst = [25]
+test_digits = [[0,1,2]]
 w = [6]
 th = [0.7]
 p = [0.1]
 par = [True]
-seed = [x for x in range(50, 100)]
+seed = [x for x in range(100)]
 
-params = [img, layers, train_inst, test_inst, w, th, p, par, seed]
+params = [img, layers, train_inst, train_digits, test_inst, test_digits, w, th, p, par, seed]
 combos = list(itertools.product(*params))
 #combos = combos[int(len(combos)/2):]
-def run_training_phase(img, layers, train_inst, test_inst, w, th, p, par, seed):
+
+
+
+def run_training_phase(img, layers, train_inst, train_digits, test_inst, test_digits, w, th, p, par, seed):
     interval = 200
     rng = np.random.default_rng(seed)
-    name = f"TrainingPhase_img-{img}_layers-{layers}_num-{[0,1]}_train_inst-{train_inst}_test_inst-{test_inst}_w-{w}_th-{th}_p-{p}_par-{par}_seed-{seed}"
-    #if name in os.listdir("network_plots"):
-    #    name += 1
-    #    if len(os.listdir(os.path.join("network_plots", name))) == 7:
-    #        return None
-    input = Data.create_mnist_sequence_input([0 for _ in range(test_inst)] + [1 for _ in range(test_inst)] +
-                                             [rng.integers(0, 2) for _ in range(train_inst)] + [0 for _ in range(test_inst)] + [1 for _ in range(test_inst)], interval, [test_inst, 2*test_inst, train_inst + (2*test_inst), train_inst + (3*test_inst), train_inst + (4*test_inst)], img)
+    name = f"TrainingPhase_img-{img}_layers-{layers}_train_inst-{train_inst}_traindigits-{train_digits}_test_inst-{test_inst}_testdigits-{test_digits}_w-{w}_th-{th}_p-{p}_par-{par}_seed-{seed}"
+
+    test = [y for y in test_digits for x in range(test_inst)]
+    train = [np.random.choice(train_digits) for x in range(train_inst)]
+    pattern = test + train + test
+    counter = 0
+    sequence = [test_inst for x in range(len(test_digits))] + [train_inst] + [test_inst for x in
+                                                                              range(len(test_digits))]
+    breaks = []
+    for step in sequence:
+        breaks.append(counter + step)
+        counter += step
+    input = Data.create_mnist_sequence_input(pattern, interval, breaks, img)
+
+    #input = Data.create_mnist_sequence_input([0 for _ in range(test_inst)] + [1 for _ in range(test_inst)] +
+    #                                         [rng.integers(0, 2) for _ in range(train_inst)] + [0 for _ in range(test_inst)] + [1 for _ in range(test_inst)], interval, [test_inst, 2*test_inst, train_inst + (2*test_inst), train_inst + (3*test_inst), train_inst + (4*test_inst)], img)
     pop = Population((img**2*layers, Population.RS))
     pop.create_feed_forward_connections(d=list(range(1,40)), n_layers=layers, w=w, p=p, partial=par, trainable=False, seed=seed)
     for id, i in enumerate(input):
@@ -66,11 +80,20 @@ def run_0_8_0(img, layers, num, inst, w, th, p, par, train, seed):
 
 
 
-#if __name__ == '__main__':
-#    with mp.Pool(16) as p:
-#        p.starmap(run_training_phase, combos)
 
-#Data.compile_results("network_plots")
+'''
+if __name__ == '__main__':
+    while True:
+        now = datetime.now()
+        if now.strftime("%H:%M") == "23:06":
+            print(now.strftime("%H:%M:%S"))
+            with mp.Pool(30) as p:
+                p.starmap(run_training_phase, combos)
+            break
+'''
+
+
+Data.compile_results("G:/reversed testing order", 'reversed_order')
 
 #run_training_phase(2, 1, 2, 2, 16, 0.7, 1, True, 1)
 #m = Data.load_model(r"C:\Users\jorge\PycharmProjects\MasterThesis\network_plots\TrainingPhase_img-12_layers-2_num-[0, 1]_train_inst-20_test_inst-10_w-6_th-0.7_p-0.05_par-True\post_sim_model.pkl")
@@ -94,10 +117,10 @@ print(canonical2)
 '''
 
 
-import re
-ddir = "G:/multiple runs of 12by12 th0.9"
+#import re
+#ddir = "G:/multiple runs of 12by12 th0.9"
 
-#Data.compile_results(r"G:\multiple runs of 12by12 th0.9", '12by12th0.9')
+#Data.compile_results(r"G:\multiple runs of 10by10 th0.9", '10by10th0.9')
 #Data.compile_results(r"G:\multiple runs of 12by12 th0.8", '12by12th0.8')
 #Data.compile_results(r"G:\multiple runs of 12by12 th0.7", '12by12th0.7')
 #Data.compile_results(r"G:\multiple runs of 10by10 th0.9", '10by10th0.9')

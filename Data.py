@@ -860,6 +860,8 @@ def compile_results(dir, name):
     p_acc_mean = []
     p_acc1_mean = []
     p_acc2_mean = []
+    memory_mean = []
+    duration_mean = []
     for row, sim in enumerate(os.listdir(dir)):
         print(sim)
         img = re.findall("img-(\d+)", sim)[0]
@@ -885,7 +887,9 @@ def compile_results(dir, name):
         if os.path.exists(os.path.join(dir, sim, "SimStats.txt")):
             simstats = open(os.path.join(dir, sim, "SimStats.txt")).read()
             memory = re.findall("usage: (.+)MB", simstats)[0]
+            memory_mean.append(float(memory))
             duration = re.findall("time: (.+)min", simstats)[0]
+            duration_mean.append(float(duration))
         else:
             memory = "n/a"
             duration = "n/a"
@@ -951,6 +955,7 @@ def compile_results(dir, name):
         ws.set_row(row + 1, 200)
     ws.write_row(len(os.listdir(dir))+1, 0, ["Mean"])
     ws.write_row(len(os.listdir(dir))+1, 9, [np.mean(s_acc_mean), np.mean(s_acc1_mean), np.mean(s_acc2_mean), np.mean(p_acc_mean), np.mean(p_acc1_mean), np.mean(p_acc2_mean)])
+    ws.write_row(len(os.listdir(dir))+1, 16, [np.mean(memory_mean), np.mean(duration_mean)])
     wb.close()
 
 
