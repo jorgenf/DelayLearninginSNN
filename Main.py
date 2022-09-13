@@ -93,7 +93,7 @@ if __name__ == '__main__':
 '''
 
 
-Data.compile_results("G:/reversed testing order", 'reversed_order')
+Data.compile_results("G:/introducing unseen digit in testing", 'unseen_digit_test', 3, 25, 20)
 
 #run_training_phase(2, 1, 2, 2, 16, 0.7, 1, True, 1)
 #m = Data.load_model(r"C:\Users\jorge\PycharmProjects\MasterThesis\network_plots\TrainingPhase_img-12_layers-2_num-[0, 1]_train_inst-20_test_inst-10_w-6_th-0.7_p-0.05_par-True\post_sim_model.pkl")
