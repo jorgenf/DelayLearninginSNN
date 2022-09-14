@@ -842,7 +842,7 @@ def save_image(matrix, out_dir):
     im = im.convert("L")
     im.save(pth)
 
-def compile_results(dir, name):
+def compile_results(dir, name, n_test_digits, n_test_inst, n_train_inst):
     workbook_name = f"{name}.xlsx"
     wb = xlsxwriter.Workbook(workbook_name)
     ws = wb.add_worksheet()
@@ -853,22 +853,25 @@ def compile_results(dir, name):
     f = wb.add_format()
     f.set_align('right')
     f.set_align('vcenter')
-    ws.write_row(0, 0, ["Image size", "Layers", "Digits", "Train inst.", "Test inst.", "Weight", "Threshold", "P", "Seed", "Pre acc.", "Pre acc. 1", "Pre acc. 2", "Post acc.", "Post acc.1", "Post acc. 2", "Avg SR (spike/s)", "Memory (MB)", "Sim time (min)", "Result"], title_f)
-    s_acc_mean = []
-    s_acc1_mean = []
-    s_acc2_mean = []
-    p_acc_mean = []
-    p_acc1_mean = []
-    p_acc2_mean = []
+    ws.write_row(0, 0, ["Image size", "Layers", "Train inst.", "Train digits", "Test inst.", "Test digits", "Weight", "Threshold", "P", "Seed", "Avg SR (spike/s)", "Memory (MB)", "Sim time (min)"], title_f)
+
     memory_mean = []
     duration_mean = []
+    mean_acc = [[0] for _ in range(2*n_test_digits + 2)]
+    pre_acc = []
+    post_acc = []
     for row, sim in enumerate(os.listdir(dir)):
         print(sim)
+        pre_acc.clear()
+        post_acc.clear()
+        pre_mc = []
+        post_mc = []
         img = re.findall("img-(\d+)", sim)[0]
         layers = re.findall("layers-(\d+)", sim)[0]
-        num = re.findall("num-(\[.+\])", sim)[0]
         train_inst = re.findall("train_inst-(\d+)", sim)[0]
+        train_digits = re.findall("traindigits-(\[.+\])_test", sim)[0]
         test_inst = re.findall("test_inst-(\d+)", sim)[0]
+        test_digits = re.findall("testdigits-(\[.+\])", sim)[0]
         w = re.findall("w-(\d+)", sim)[0]
         th = re.findall("th-(\d+\.\d+)", sim)[0]
         p = re.findall("p-(\d+\.\d+)", sim)[0]
@@ -901,62 +904,53 @@ def compile_results(dir, name):
                 for pp in pg['pps']:
                     pps.append((i, pp['pattern_start']))
             pps.sort(key=lambda x: x[1])
+
             pps = [x[0] for x in pps]
-            s_acc_1_mc = Counter(pps[:10]).most_common()[0]
-            s_acc_1 = np.round(max(Counter(pps[:10]).values())/0.1,1)
-            s_acc_2_mc = Counter(pps[10:20]).most_common()[0]
-            s_acc_2 = np.round(max(Counter(pps[10:20]).values())/0.1,1)
-            s_acc = np.round((s_acc_1 + s_acc_2) / 2, 1)
 
+            pre_mc.clear()
+            post_mc.clear()
 
-            if s_acc_1_mc == s_acc_2_mc:
-                s_acc_1 = "n/s"
-                s_acc_2 = "n/s"
-                s_acc = "n/s"
-                s_acc_mean.append(0)
-                s_acc1_mean.append(0)
-                s_acc2_mean.append(0)
-            else:
-                s_acc_mean.append(s_acc)
-                s_acc1_mean.append(s_acc_1)
-                s_acc2_mean.append(s_acc_2)
+            for c in range(0, n_test_inst*n_test_digits, n_test_inst):
+                mc = Counter(pps[c:c + n_test_inst]).most_common(1)[0]
 
-            p_acc_1_mc = Counter(pps[40:50]).most_common()[0][0]
-            p_acc_1 = np.round(max(Counter(pps[40:50]).values())/0.1,1)
-            p_acc_2_mc = Counter(pps[50:60]).most_common()[0][0]
-            p_acc_2 = np.round(max(Counter(pps[50:60]).values())/0.1,1)
-            p_acc = np.round((p_acc_1 + p_acc_2) / 2, 1)
+                pre_acc.append(np.round(mc[1] / n_test_inst, 2))
+                pre_mc.append(mc[0])
 
+            for c in range(n_test_inst*n_test_digits + n_train_inst, n_test_inst*n_test_digits*2 + n_train_inst, n_test_inst):
+                mc = Counter(pps[c:c+n_test_inst]).most_common(1)[0]
 
-            if p_acc_1_mc == p_acc_2_mc:
-                p_acc_1 = "n/s"
-                p_acc_2 = "n/s"
-                p_acc = "n/s"
-                p_acc_mean.append(0)
-                p_acc1_mean.append(0)
-                p_acc2_mean.append(0)
-            else:
-                p_acc_mean.append(p_acc)
-                p_acc1_mean.append(p_acc_1)
-                p_acc2_mean.append(p_acc_2)
-        else:
-            s_acc = "n/a"
-            s_acc_1 = "n/a"
-            s_acc_2 = "n/a"
-            p_acc = "n/a"
-            p_acc_1 = "n/a"
-            p_acc_2 = "n/a"
-        ws.write_row(row + 1, 0, [img, layers, num, train_inst, test_inst, w, th, p, seed, s_acc, s_acc_1, s_acc_2, p_acc, p_acc_1, p_acc_2, avg_SR, memory, duration], f)
+                post_acc.append(np.round(mc[1]/n_test_inst,2))
+                post_mc.append(mc[0])
+
+        ws.write_row(row + 1, 0, [img, layers, train_inst, train_digits, test_inst, test_digits, w, th, p, seed, avg_SR, memory, duration], f)
+        acc = np.round(np.mean(pre_acc),2) if len(pre_mc)==len(set(pre_mc)) else "n/s"
+        mean_acc[0].append(acc if isinstance(acc, float) else 0)
+        ws.write_row(row + 1, 13, [acc], f)
+        col = 14
+        for pre, mc in zip(pre_acc, pre_mc):
+            acc = pre if pre_mc.count(mc) == 1 else "n/s"
+            mean_acc[col - 14].append(acc if isinstance(acc, float) else 0)
+            ws.write_row(row + 1, col, [acc], f)
+            col += 1
+        acc = np.round(np.mean(post_acc),2) if len(post_mc) == len(set(post_mc)) else "n/s"
+        mean_acc[col - 14].append(acc if isinstance(acc, float) else 0)
+        ws.write_row(row + 1, col, [acc], f)
+        col += 1
+        for post, mc in zip(post_acc, post_mc):
+            acc = post if post_mc.count(mc) == 1 else "n/s"
+            mean_acc[col - 14].append(acc if isinstance(acc, float) else 0)
+            ws.write_row(row + 1, col, [acc], f)
+            col += 1
+
         if os.path.exists(os.path.join(dir, sim, "spikes.png")):
-            ws.insert_image(row + 1, 18, os.path.join(dir, sim, "spikes.png"), {'x_scale': 0.7, 'y_scale': 0.5})
+            ws.insert_image(row + 1, col, os.path.join(dir, sim, "spikes.png"), {'x_scale': 0.7, 'y_scale': 0.5})
         else:
-            ws.write_row(row + 1, 18, "n/a")
-        ws.set_column(18, 18, 20)
+            ws.write_row(row + 1, col, "n/a")
+        ws.set_column(col, col, 20)
         ws.set_row(row + 1, 200)
+    ws.write_row(0, 13, ["Pre total"] + [f"Pre {x}" for x in range(len(pre_acc))] + ["Post total"] + [f"Post {y}" for y in range(len(post_acc))] + ["Raster plot"], title_f)
     ws.write_row(len(os.listdir(dir))+1, 0, ["Mean"])
-    ws.write_row(len(os.listdir(dir))+1, 9, [np.mean(s_acc_mean), np.mean(s_acc1_mean), np.mean(s_acc2_mean), np.mean(p_acc_mean), np.mean(p_acc1_mean), np.mean(p_acc2_mean)])
-    ws.write_row(len(os.listdir(dir))+1, 16, [np.mean(memory_mean), np.mean(duration_mean)])
+    ws.write_row(len(os.listdir(dir))+1, 13, [np.round(np.mean(x),2) for x in mean_acc])
+    ws.write_row(len(os.listdir(dir))+1, 11, [np.mean(memory_mean), np.mean(duration_mean)])
     wb.close()
-
-
 

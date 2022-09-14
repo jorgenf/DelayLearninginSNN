@@ -15,12 +15,12 @@ layers = [2]
 train_inst = [20]
 train_digits = [[0,1]]
 test_inst = [25]
-test_digits = [[0,1,2]]
+test_digits = [[0,1]]
 w = [6]
 th = [0.7]
 p = [0.1]
 par = [True]
-seed = [x for x in range(100)]
+seed = [x for x in range(500)]
 
 params = [img, layers, train_inst, train_digits, test_inst, test_digits, w, th, p, par, seed]
 combos = list(itertools.product(*params))
@@ -45,25 +45,31 @@ def run_training_phase(img, layers, train_inst, train_digits, test_inst, test_di
         counter += step
     input = Data.create_mnist_sequence_input(pattern, interval, breaks, img)
 
-    #input = Data.create_mnist_sequence_input([0 for _ in range(test_inst)] + [1 for _ in range(test_inst)] +
-    #                                         [rng.integers(0, 2) for _ in range(train_inst)] + [0 for _ in range(test_inst)] + [1 for _ in range(test_inst)], interval, [test_inst, 2*test_inst, train_inst + (2*test_inst), train_inst + (3*test_inst), train_inst + (4*test_inst)], img)
     pop = Population((img**2*layers, Population.RS))
     pop.create_feed_forward_connections(d=list(range(1,40)), n_layers=layers, w=w, p=p, partial=par, trainable=False, seed=seed)
     for id, i in enumerate(input):
         ij = [ij for ij in range(img**2) if rng.random() < p]
         pop.create_input(i, j=ij, wj=w, dj=[rng.integers(1,40) for x in range(len(ij))], trainable=False)
+    #print(input)
 
-    pop.run(21*interval, path='network_plots/', name=name, record_PG=True,
-            save_post_model=True, PG_duration=100, PG_match_th=th, save_delays=False, save_synapse_data=False,
+    training_change = [test_inst*len(test_digits), test_inst*len(test_digits) + train_inst]
+    durations = []
+
+    for i, l in enumerate(list(map(list, zip(*input)))):
+        if i in training_change:
+            durations.append(min(l)-1)
+
+    pop.run(durations[0], path='network_plots/', name=name, record_PG=True,
+            save_post_model=True, PG_duration=100, PG_match_th=th, save_delays=True, save_synapse_data=False,
             save_neuron_data=True)
     for syn in pop.synapses:
         syn.trainable = True
-    pop.run((train_inst + 1) * interval, path='network_plots/', name=name, record_PG=True,
-            save_post_model=True, PG_duration=100, PG_match_th=th, save_delays=False, save_synapse_data=False,
+    pop.run(durations[1]- durations[0], path='network_plots/', name=name, record_PG=True,
+            save_post_model=True, PG_duration=100, PG_match_th=th, save_delays=True, save_synapse_data=False,
             save_neuron_data=True)
     for syn in pop.synapses:
         syn.trainable = False
-    pop.run(max([max(x) for x in input]) + interval - (train_inst * interval + 20 * interval), path='network_plots/', name=name, record_PG=True, save_post_model=True, PG_duration=100, PG_match_th=th, save_delays=False, save_synapse_data=False, save_neuron_data=True)
+    pop.run(max([max(x) for x in input]) + interval - durations[1], path='network_plots/', name=name, record_PG=True, save_post_model=True, PG_duration=100, PG_match_th=th, save_delays=True, save_synapse_data=False, save_neuron_data=True)
 
 
 
@@ -93,9 +99,9 @@ if __name__ == '__main__':
 '''
 
 
-Data.compile_results("G:/introducing unseen digit in testing", 'unseen_digit_test', 3, 25, 20)
+#Data.compile_results("G:/introducing unseen digit in testing", 'unseen_digit_test', 3, 25, 20)
 
-#run_training_phase(2, 1, 2, 2, 16, 0.7, 1, True, 1)
+run_training_phase(img=4, layers=3, train_inst=20, train_digits=[0,1], test_inst=25, test_digits=[0,1,2], w=6, th=0.7, p=0.3, par=True, seed=1)
 #m = Data.load_model(r"C:\Users\jorge\PycharmProjects\MasterThesis\network_plots\TrainingPhase_img-12_layers-2_num-[0, 1]_train_inst-20_test_inst-10_w-6_th-0.7_p-0.05_par-True\post_sim_model.pkl")
 #m.build_pgs()
 #m.plot_raster()
@@ -126,23 +132,29 @@ print(canonical2)
 #Data.compile_results(r"G:\multiple runs of 10by10 th0.9", '10by10th0.9')
 #Data.compile_results(r"G:\multiple runs of 10by10 th0.8", '10by10th0.8')
 #Data.compile_results(r"G:\multiple runs of 10by10 th0.7", '10by10th0.7')
-'''
+
+
+ddir = "G:/introducing unseen digit in testing th0.5"
+param = []
 for dir in os.listdir(ddir):
+    param.append((ddir, dir))
+def change_threshold(ddir, dir):
     print(dir)
-    #if re.search('img-10', dir):
-
-
     m = Data.load_model(os.path.join(os.path.join(ddir,dir),"post_sim_model.pkl"))
     m.dir = os.path.join(ddir, dir)
-    m.build_pgs(min_threshold=0.9)
+    m.build_pgs(min_threshold=0.5)
     m.save_PG_data()
     m.plot_raster()
     Data.save_model(m, os.path.join(ddir,os.path.join(dir, "post_sim_model.pkl")))
-    os.rename(os.path.join(ddir,dir), os.path.join(ddir, dir.replace('th-0.8', 'th-0.9')))
+    os.rename(os.path.join(ddir,dir), os.path.join(ddir, dir.replace('th-0.6', 'th-0.5')))
 
-'''
+#if __name__ == '__main__':
+#
+#   with mp.Pool(30) as p:
+#        p.starmap(change_threshold, param)
 
-#Data.compile_results(r"G:\multiple runs of 10by10 th0.8")
+
+#Data.compile_results("G:/introducing unseen digit in testing th0.5", 'unseen_digit_test_th0.5', 3, 25, 20)
 
 
 #Data.compile_results(r"G:\multiple runs of 10by10 th0.8")
