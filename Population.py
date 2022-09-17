@@ -405,7 +405,7 @@ class Population:
         plt.savefig(os.path.join(self.dir, "network.png"))
         return plt
 
-    def plot_delays(self):
+    def plot_delays(self, legend=True):
         fig, sub = plt.subplots()
         handles = []
         ls = ["solid", "dashed", "dotted", "dashdot"]
@@ -416,7 +416,8 @@ class Population:
         sub.set_ylabel("Delay (ms)")
         sub.set_ylim(0, MAX_DELAY)
         sub.set_yticks(np.arange(0, MAX_DELAY + 1, 2))
-        sub.legend(handles, bbox_to_anchor=(1, 1), prop={"size": 8}, ncol=2)
+        if legend:
+            sub.legend(handles, bbox_to_anchor=(1, 1), prop={"size": 8}, ncol=2)
         fig.tight_layout()
         fig.savefig(os.path.join(self.dir, "delays.png"))
         plt.close()

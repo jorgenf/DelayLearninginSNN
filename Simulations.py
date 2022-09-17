@@ -717,7 +717,7 @@ def run_xnxi_async(dir, t, n, i, delay_seed, input_seed, freq_list = [], delay_l
 
 
 def refractory_period(L, interval, offset):
-    pop = Population((1, RS), path="network_plots/", name="TEST", save_data=False)
+    pop = Population((1, RS), path="network_plots_2/", name="TEST", save_data=False)
     pop.create_input(spike_times=[0], dj=0.1, wj=32, j=[0])
     pop.create_input(spike_times=[interval], dj=0.1, wj=16, j=[0])
     pop.create_input(spike_times=[interval + offset], dj=0.1, wj=16, j=[0])
