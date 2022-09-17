@@ -20,7 +20,7 @@ w = [6]
 th = [0.7]
 p = [0.1]
 par = [True]
-seed = [range(500)]
+seed = list(range(500))
 
 params = [img, layers, train_inst, train_digits, test_inst, test_digits, w, th, p, par, seed]
 combos = list(itertools.product(*params))
