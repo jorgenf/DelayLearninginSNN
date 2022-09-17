@@ -10,26 +10,26 @@ import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 
-img = [5, 5]
+img = [10]
 layers = [2]
 train_inst = [20]
 train_digits = [[0,1]]
 test_inst = [25]
-test_digits = [[0,1,2]]
+test_digits = [[0,1]]
 w = [6]
 th = [0.7]
-p = [0.2]
+p = [0.1]
 par = [True]
-seed = [1]
+seed = [list(range(500))]
 
 params = [img, layers, train_inst, train_digits, test_inst, test_digits, w, th, p, par, seed]
 combos = list(itertools.product(*params))
-#combos = combos[30:]
+combos = combos[:250]
 
 
 
 def run_training_phase(img, layers, train_inst, train_digits, test_inst, test_digits, w, th, p, par, seed):
-    save_delays = True
+    save_delays = False
     interval = 200
     rng = np.random.default_rng(seed)
     name = f"TrainingPhase_img-{img}_layers-{layers}_train_inst-{train_inst}_traindigits-{train_digits}_test_inst-{test_inst}_testdigits-{test_digits}_w-{w}_th-{th}_p-{p}_par-{par}_seed-{seed}"
@@ -60,17 +60,17 @@ def run_training_phase(img, layers, train_inst, train_digits, test_inst, test_di
         if i in training_change:
             durations.append(min(l)-1)
 
-    pop.run(durations[0], path='network_plots_2/', name=name, record_PG=True,
+    pop.run(durations[0], path='network_plots/', name=name, record_PG=True,
             save_post_model=True, PG_duration=100, PG_match_th=th, save_delays=save_delays, save_synapse_data=False,
             save_neuron_data=True)
     for syn in pop.synapses:
         syn.trainable = True
-    pop.run(durations[1] - durations[0], path='network_plots_2/', name=name, record_PG=True,
+    pop.run(durations[1] - durations[0], path='network_plots/', name=name, record_PG=True,
             save_post_model=True, PG_duration=100, PG_match_th=th, save_delays=save_delays, save_synapse_data=False,
             save_neuron_data=True)
     for syn in pop.synapses:
         syn.trainable = False
-    pop.run(max([max(x) for x in input]) + interval - durations[1], path='network_plots_2/', name=name, record_PG=True, save_post_model=True, PG_duration=100, PG_match_th=th, save_delays=save_delays, save_synapse_data=False, save_neuron_data=True)
+    pop.run(max([max(x) for x in input]) + interval - durations[1], path='network_plots/', name=name, record_PG=True, save_post_model=True, PG_duration=100, PG_match_th=th, save_delays=save_delays, save_synapse_data=False, save_neuron_data=True)
 
 
 
@@ -82,26 +82,16 @@ def run_0_8_0(img, layers, num, inst, w, th, p, par, train, seed):
     for id, i in enumerate(input):
         ij = [ij for ij in range(img**2) if np.random.random() < p]
         pop.create_input(i, j=ij, wj=w, dj=[np.random.randint(1,40) for x in range(len(ij))], trainable=train)
-    pop.run(max([max(inp) for inp in input]) + 100, path='network_plots_2/', name=name, record_PG=True, save_post_model=False, PG_duration=100, PG_match_th=th, save_delays=False, save_synapse_data=False, save_neuron_data=True)
+    pop.run(max([max(inp) for inp in input]) + 100, path='network_plots/', name=name, record_PG=True, save_post_model=False, PG_duration=100, PG_match_th=th, save_delays=False, save_synapse_data=False, save_neuron_data=True)
 
 
-
-
-
-'''
-if __name__ == '__main__':
-    while True:
-        now = datetime.now()
-        print("\r", now.strftime("%H:%M:%S"),end="")
-        if now.strftime("%H:%M") == "22:37":
-            print(now.strftime("%H:%M:%S"))
-            with mp.Pool(30) as p:
-                p.starmap(run_training_phase, combos)
-            break
-'''
 if __name__ == '__main__':
     with mp.Pool(30) as p:
         p.starmap(run_training_phase, combos)
+
+
+
+
 
 #file1 =  json.load(open(r"C:\Users\jorge\PycharmProjects\MasterThesis\network_plots\TrainingPhase_img-5_layers-2_train_inst-20_traindigits-[0, 1]_test_inst-25_testdigits-[0, 1, 2]_w-6_th-0.7_p-0.1_par-True_seed-1\neuron_data.json"))#
 
