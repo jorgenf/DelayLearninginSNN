@@ -34,10 +34,8 @@ def run_training_phase(img, layers, train_inst, train_digits, test_inst, test_di
     rng = np.random.default_rng(seed)
     static_rng = np.random.default_rng(1)
     name = f"TrainingPhase_img-{img}_layers-{layers}_train_inst-{train_inst}_traindigits-{train_digits}_test_inst-{test_inst}_testdigits-{test_digits}_w-{w}_th-{th}_p-{p}_par-{par}_seed-{seed}"
-
     test = [y for y in test_digits for x in range(test_inst)]
     train = [static_rng.choice(train_digits) for x in range(train_inst)]
-    pattern = test + train + test
     counter = 0
     sequence = [test_inst for x in range(len(test_digits))] + [train_inst] + [test_inst for x in
                                                                               range(len(test_digits))]
@@ -45,7 +43,7 @@ def run_training_phase(img, layers, train_inst, train_digits, test_inst, test_di
     for step in sequence:
         breaks.append(counter + step)
         counter += step
-    input = Data.create_mnist_sequence_input(pattern, interval, breaks, img)
+    input = Data.create_mnist_sequence_input(train, test, interval, breaks, img)
 
     pop = Population((img**2*layers, Population.RS))
     pop.create_feed_forward_connections(d=list(range(1,40)), n_layers=layers, w=w, p=p, partial=par, trainable=False, seed=seed)
@@ -91,9 +89,21 @@ if __name__ == '__main__':
         p.starmap(run_training_phase, combos)
 
 
+#m2 = json.load(open(r"C:\Users\jorge\PycharmProjects\MasterThesis\network_plots\TrainingPhase_img-5_layers-2_train_inst-20_traindigits-[0, 1]_test_inst-25_testdigits-[0, 1, 2]_w-6_th-0.7_p-0.1_par-True_seed-1\neuron_data.json"))
+#d = Data.load_model(r"C:\Users\jorge\PycharmProjects\MasterThesis\network_plots\TrainingPhase_img-5_layers-2_train_inst-20_traindigits-[0, 1]_test_inst-25_testdigits-[0, 1, 2]_w-6_th-0.7_p-0.1_par-True_seed-0\post_sim_model.pkl")
 
+#d.plot_raster(duration=(950,1050),legend=False, plot_pg=False)
+#d.plot_raster(duration=(20750,20850),legend=False, plot_pg=False)
 
-
+#m1 = json.load(open(r"C:\Users\jorge\PycharmProjects\MasterThesis\network_plots\TrainingPhase_img-5_layers-2_train_inst-20_traindigits-[0, 1]_test_inst-25_testdigits-[0, 1, 2]_w-6_th-0.7_p-0.1_par-True_seed-0\neuron_data.json"))
+'''
+for n in list(m1.keys())[-25:]:
+    spike = m1[n]["spikes"]
+    for i in range(75):
+        print(spike[i], spike[i+95])
+        if spike[i] + 19800 != spike[i+95]:
+            print(n)
+'''
 #file1 =  json.load(open(r"C:\Users\jorge\PycharmProjects\MasterThesis\network_plots\TrainingPhase_img-5_layers-2_train_inst-20_traindigits-[0, 1]_test_inst-25_testdigits-[0, 1, 2]_w-6_th-0.7_p-0.1_par-True_seed-1\neuron_data.json"))#
 
 #file2 =  json.load(open(r"C:\Users\jorge\PycharmProjects\MasterThesis\network_plots\TrainingPhase_img-5_layers-2_train_inst-20_traindigits-[0, 1]_test_inst-25_testdigits-[0, 1, 2]_w-6_th-0.7_p-0.1_par-True_seed-1_1\neuron_data.json"))

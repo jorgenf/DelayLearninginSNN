@@ -441,8 +441,11 @@ class Population:
         fig.savefig(os.path.join(self.dir, "mean_delays.png"))
         plt.close()
 
-    def plot_raster(self, duration=None, classes=None, plot_pg=True, legend=True):
+    def plot_raster(self, duration=None, classes=None, plot_pg=True, legend=True, size=None):
         fig, sub = plt.subplots()
+        if size is not None:
+            fig.set_figwidth(size[0])
+            fig.set_figheight(size[1])
         if duration is not None:
             spikes = []
             for n in self.neurons:

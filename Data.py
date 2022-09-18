@@ -782,30 +782,48 @@ def create_random_mnist_input(sample_size, numbers, interval, image_size=10):
     return input
 
 
-def create_mnist_sequence_input(sequence, interval, breaks, image_size=10):
+def create_mnist_sequence_input(train_sequence, test_sequence, interval, breaks, image_size=10):
     from keras.datasets import mnist
     (train_X, train_y), (test_X, test_y) = mnist.load_data()
-    img = []
-    seq = sequence.copy()
+
+    #TEST
+    test_img = []
+    test_seq = test_sequence.copy()
     for x, y in zip(train_X, train_y):
-        if not seq:
+        if not test_seq:
             break
-        elif seq[0] == y:
-            img.append([np.round(cv2.resize(x, (image_size, image_size)) * 4 / 25.5, 1)])
-            seq.pop(0)
-    i = img[0][0].size
-    input = [[] for _ in range(i)]
+        elif test_seq[0] == y:
+            img = np.array(np.round(cv2.resize(x, (image_size, image_size)) * 4 / 25.5, 1))
+            flattened_img = img.flatten()
+            test_img.append(flattened_img)
+            test_seq.pop(0)
+
+    #TRAIN
+    train_img = []
+    train_seq = train_sequence.copy()
+    for x, y in zip(train_X, train_y):
+        if not train_seq:
+            break
+        elif train_seq[0] == y:
+            img = np.array(np.round(cv2.resize(x, (image_size, image_size)) * 4 / 25.5, 1))
+            flattened_img = img.flatten()
+            train_img.append(flattened_img)
+            train_seq.pop(0)
+
+    img_list = test_img + train_img + test_img
+    input = [[] for _ in range(image_size**2)]
     intv = 0
-    for j, inst in enumerate(img):
-        for samp in inst:
-            flt = samp.flatten()
-            for inp in range(i):
-                input[inp].append(flt[inp] + intv)
+    for j, inst in enumerate(img_list):
+        for inp, pixl in zip(input, inst):
+            inp.append(pixl + intv)
         if j + 1 in breaks:
             intv += 2*interval
         else:
             intv += interval
     return input
+
+
+
 
 def create_mnist_input_from_file(sample_size, numbers, interval, image_size=10):
     from mlxtend.data import loadlocal_mnist
