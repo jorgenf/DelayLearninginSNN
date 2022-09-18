@@ -15,16 +15,16 @@ layers = [2]
 train_inst = [20]
 train_digits = [[0,1]]
 test_inst = [25]
-test_digits = [[0,1]]
+test_digits = [[0,1,2]]
 w = [6]
 th = [0.7]
 p = [0.1]
 par = [True]
-seed = list(range(500))
+seed = list(range(100))
 
 params = [img, layers, train_inst, train_digits, test_inst, test_digits, w, th, p, par, seed]
 combos = list(itertools.product(*params))
-combos = combos[:250]
+#combos = combos[:250]
 
 
 
@@ -32,10 +32,11 @@ def run_training_phase(img, layers, train_inst, train_digits, test_inst, test_di
     save_delays = False
     interval = 200
     rng = np.random.default_rng(seed)
+    static_rng = np.random.default_rng(1)
     name = f"TrainingPhase_img-{img}_layers-{layers}_train_inst-{train_inst}_traindigits-{train_digits}_test_inst-{test_inst}_testdigits-{test_digits}_w-{w}_th-{th}_p-{p}_par-{par}_seed-{seed}"
 
     test = [y for y in test_digits for x in range(test_inst)]
-    train = [rng.choice(train_digits) for x in range(train_inst)]
+    train = [static_rng.choice(train_digits) for x in range(train_inst)]
     pattern = test + train + test
     counter = 0
     sequence = [test_inst for x in range(len(test_digits))] + [train_inst] + [test_inst for x in
