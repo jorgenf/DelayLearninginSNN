@@ -84,9 +84,9 @@ def run_0_8_0(img, layers, num, inst, w, th, p, par, train, seed):
     pop.run(max([max(inp) for inp in input]) + 100, path='network_plots/', name=name, record_PG=True, save_post_model=False, PG_duration=100, PG_match_th=th, save_delays=False, save_synapse_data=False, save_neuron_data=True)
 
 
-if __name__ == '__main__':
-    with mp.Pool(30) as p:
-        p.starmap(run_training_phase, combos)
+#if __name__ == '__main__':
+#    with mp.Pool(30) as p:
+#        p.starmap(run_training_phase, combos)
 
 
 #m2 = json.load(open(r"C:\Users\jorge\PycharmProjects\MasterThesis\network_plots\TrainingPhase_img-5_layers-2_train_inst-20_traindigits-[0, 1]_test_inst-25_testdigits-[0, 1, 2]_w-6_th-0.7_p-0.1_par-True_seed-1\neuron_data.json"))
@@ -95,15 +95,17 @@ if __name__ == '__main__':
 #d.plot_raster(duration=(950,1050),legend=False, plot_pg=False)
 #d.plot_raster(duration=(20750,20850),legend=False, plot_pg=False)
 
-#m1 = json.load(open(r"C:\Users\jorge\PycharmProjects\MasterThesis\network_plots\TrainingPhase_img-5_layers-2_train_inst-20_traindigits-[0, 1]_test_inst-25_testdigits-[0, 1, 2]_w-6_th-0.7_p-0.1_par-True_seed-0\neuron_data.json"))
+#m1 = json.load(open(r"C:\Users\jorge\PycharmProjects\MasterThesis\network_plots\TrainingPhase_img-10_layers-2_train_inst-20_traindigits-[0, 1]_test_inst-25_testdigits-[0, 1, 2]_w-6_th-0.7_p-0.1_par-True_seed-99\neuron_data.json"))
 '''
-for n in list(m1.keys())[-25:]:
+for n in list(m1.keys())[-100:]:
     spike = m1[n]["spikes"]
     for i in range(75):
-        print(spike[i], spike[i+95])
+        #print(spike[i], spike[i+95])
         if spike[i] + 19800 != spike[i+95]:
             print(n)
 '''
+
+#Data.compile_results("network_plots", "unseen_digit_th0.7", 3, 25, 20)
 #file1 =  json.load(open(r"C:\Users\jorge\PycharmProjects\MasterThesis\network_plots\TrainingPhase_img-5_layers-2_train_inst-20_traindigits-[0, 1]_test_inst-25_testdigits-[0, 1, 2]_w-6_th-0.7_p-0.1_par-True_seed-1\neuron_data.json"))#
 
 #file2 =  json.load(open(r"C:\Users\jorge\PycharmProjects\MasterThesis\network_plots\TrainingPhase_img-5_layers-2_train_inst-20_traindigits-[0, 1]_test_inst-25_testdigits-[0, 1, 2]_w-6_th-0.7_p-0.1_par-True_seed-1_1\neuron_data.json"))
@@ -117,7 +119,7 @@ for n in list(m1.keys())[-25:]:
 #                print(file2[k2][kk2])
 
 
-#Data.compile_results("G:/introducing unseen digit in testing", 'unseen_digit_test', 3, 25, 20)
+
 
 #run_training_phase(img=4, layers=3, train_inst=20, train_digits=[0,1], test_inst=25, test_digits=[0,1,2], w=6, th=0.7, p=0.3, par=True, seed=1)
 #m = Data.load_model(r"C:\Users\jorge\PycharmProjects\MasterThesis\network_plots\TrainingPhase_img-12_layers-2_num-[0, 1]_train_inst-20_test_inst-10_w-6_th-0.7_p-0.05_par-True\post_sim_model.pkl")
@@ -125,54 +127,29 @@ for n in list(m1.keys())[-25:]:
 #m.plot_raster()
 #m.save_PG_data()
 
-'''
-l1 = {'4': {'3':{}}, '5': {}, '6': {'1':{}}, '7': {'1':{'2':{'4':{}}}}}
-l2 = {'4': {'1':{}}, '5': {'1':{'2':{}}}, '6': {'1':{}}, '7': {'1':{}}}
-l3 = {'4': {'1': {}}, '5': {'1': {'2': {}}}, '6': {'1': {'2':{'4':{}}}}, '7': {'1': {'2':{}}}}
-match, unique, canonical = Data.compare_poly(l1, l3)
-print(match, unique)
-print(match/unique)
 
 
-match2, unique2, canonical2 = Data.compare_poly_2(l1, l3)
-print(match2, unique2)
-print(match2/unique2)
-print(canonical2)
-'''
 
+Data.compile_results("G:/USABLE RESULTS/unseen digit 0.8", "unseen_digit_th0.8", 3, 25, 20)
+Data.compile_results("G:/USABLE RESULTS/unseen digit 0.9", "unseen_digit_th0.9", 3, 25, 20)
 
-#import re
-#ddir = "G:/multiple runs of 12by12 th0.9"
-
-#Data.compile_results(r"G:\multiple runs of 10by10 th0.9", '10by10th0.9')
-#Data.compile_results(r"G:\multiple runs of 12by12 th0.8", '12by12th0.8')
-#Data.compile_results(r"G:\multiple runs of 12by12 th0.7", '12by12th0.7')
-#Data.compile_results(r"G:\multiple runs of 10by10 th0.9", '10by10th0.9')
-#Data.compile_results(r"G:\multiple runs of 10by10 th0.8", '10by10th0.8')
-#Data.compile_results(r"G:\multiple runs of 10by10 th0.7", '10by10th0.7')
-
-'''
-ddir = "G:/introducing unseen digit in testing th0.5"
-param = []
-for dir in os.listdir(ddir):
-    param.append((ddir, dir))
+#ddir = "G:/USABLE RESULTS/unseen digit 0.9"
+#param = []
+#for dir in os.listdir(ddir):
+#    param.append((ddir, dir))
 def change_threshold(ddir, dir):
     print(dir)
     m = Data.load_model(os.path.join(os.path.join(ddir,dir),"post_sim_model.pkl"))
     m.dir = os.path.join(ddir, dir)
-    m.build_pgs(min_threshold=0.5)
+    m.build_pgs(min_threshold=0.9)
     m.save_PG_data()
     m.plot_raster()
     Data.save_model(m, os.path.join(ddir,os.path.join(dir, "post_sim_model.pkl")))
-    os.rename(os.path.join(ddir,dir), os.path.join(ddir, dir.replace('th-0.6', 'th-0.5')))
-'''
+    os.rename(os.path.join(ddir,dir), os.path.join(ddir, dir.replace('th-0.7', 'th-0.9')))
+
 #if __name__ == '__main__':
 #
 #   with mp.Pool(30) as p:
 #        p.starmap(change_threshold, param)
 
 
-#Data.compile_results("G:/introducing unseen digit in testing th0.5", 'unseen_digit_test_th0.5', 3, 25, 20)
-
-
-#Data.compile_results(r"G:\multiple runs of 10by10 th0.8")

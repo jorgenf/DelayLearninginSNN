@@ -972,3 +972,28 @@ def compile_results(dir, name, n_test_digits, n_test_inst, n_train_inst):
     ws.write_row(len(os.listdir(dir))+1, 11, [np.mean(memory_mean), np.mean(duration_mean)])
     wb.close()
 
+def simplify_neuron_data(dir):
+    for sim in os.listdir(dir):
+        with open(os.path.join(dir, sim, "neuron_data.json")) as f:
+            data = json.load(f)
+            simplified_data = {}
+            for id in data.keys():
+                simplified_data[id] = data[id]["spikes"]
+            output_file = open(os.path.join(dir, sim, "simplified_neuron_data.json"), 'w')
+            json.dump(simplified_data, output_file)
+            output_file.close()
+
+def simplify_PG_data(dir):
+    for sim in os.listdir(dir):
+        with open(os.path.join(dir, sim, "PG_data.json")) as f:
+            data = json.load(f)
+            simplified_data = []
+            for pg_id in data.keys():
+                for pp in data[pg_id]["pps"]:
+                    simplified_data.append((pp["pattern_start"], pg_id))
+            sorted_simplified_data = sorted(simplified_data, key=lambda x : x[0])
+            sorted_ids = [x[1] for x in sorted_simplified_data]
+            output_file = open(os.path.join(dir, sim, "simplified_pg_data.json"), 'w')
+            json.dump(sorted_ids, output_file)
+            output_file.close()
+
