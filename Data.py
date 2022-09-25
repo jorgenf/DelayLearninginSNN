@@ -1,6 +1,8 @@
 import itertools
 import os
 import json
+import shutil
+
 import matplotlib.colors
 import Population as Pop
 import numpy as np
@@ -274,6 +276,7 @@ def save_model(object, dir):
 
 
 def load_model(dir):
+    print("Loading: ", dir)
     with open(os.path.join(dir), 'rb') as file:
         model = pickle.load(file)
         new_dir = os.path.split(dir)[0]
@@ -878,7 +881,8 @@ def compile_results(dir, name, n_test_digits, n_test_inst, n_train_inst):
     mean_acc = [[0] for _ in range(2*n_test_digits + 2)]
     pre_acc = []
     post_acc = []
-    for row, sim in enumerate(os.listdir(dir)):
+    dirlist = [d for d in os.listdir(dir) if "TrainingPhase" in d]
+    for row, sim in enumerate(dirlist):
         print(sim)
         pre_acc.clear()
         post_acc.clear()
@@ -967,33 +971,77 @@ def compile_results(dir, name, n_test_digits, n_test_inst, n_train_inst):
         ws.set_column(col, col, 20)
         ws.set_row(row + 1, 200)
     ws.write_row(0, 13, ["Pre total"] + [f"Pre {x}" for x in range(len(pre_acc))] + ["Post total"] + [f"Post {y}" for y in range(len(post_acc))] + ["Raster plot"], title_f)
-    ws.write_row(len(os.listdir(dir))+1, 0, ["Mean"])
-    ws.write_row(len(os.listdir(dir))+1, 13, [np.round(np.mean(x),2) for x in mean_acc])
-    ws.write_row(len(os.listdir(dir))+1, 11, [np.mean(memory_mean), np.mean(duration_mean)])
+    ws.write_row(len(dirlist)+1, 0, ["Mean"])
+    ws.write_row(len(dirlist)+1, 13, [np.round(np.mean(x),2) for x in mean_acc])
+    ws.write_row(len(dirlist)+1, 11, [np.mean(memory_mean), np.mean(duration_mean)])
     wb.close()
 
 def simplify_neuron_data(dir):
     for sim in os.listdir(dir):
-        with open(os.path.join(dir, sim, "neuron_data.json")) as f:
-            data = json.load(f)
-            simplified_data = {}
-            for id in data.keys():
-                simplified_data[id] = data[id]["spikes"]
-            output_file = open(os.path.join(dir, sim, "simplified_neuron_data.json"), 'w')
-            json.dump(simplified_data, output_file)
-            output_file.close()
+        print("Simplifying neuron data: ", sim)
+        if os.path.isdir(os.path.join(dir, sim)):
+            with open(os.path.join(dir, sim, "neuron_data.json")) as f:
+                data = json.load(f)
+                simplified_data = {}
+                for id in data.keys():
+                    simplified_data[id] = data[id]["spikes"]
+                output_file = open(os.path.join(dir, sim, "simplified_neuron_data.json"), 'w')
+                json.dump(simplified_data, output_file)
+                output_file.close()
 
 def simplify_PG_data(dir):
     for sim in os.listdir(dir):
-        with open(os.path.join(dir, sim, "PG_data.json")) as f:
-            data = json.load(f)
-            simplified_data = []
-            for pg_id in data.keys():
-                for pp in data[pg_id]["pps"]:
-                    simplified_data.append((pp["pattern_start"], pg_id))
-            sorted_simplified_data = sorted(simplified_data, key=lambda x : x[0])
-            sorted_ids = [x[1] for x in sorted_simplified_data]
-            output_file = open(os.path.join(dir, sim, "simplified_pg_data.json"), 'w')
-            json.dump(sorted_ids, output_file)
-            output_file.close()
+        print("Simplifying PG data: ", sim)
+        if os.path.isdir(os.path.join(dir, sim)):
+            with open(os.path.join(dir, sim, "PG_data.json")) as f:
+                data = json.load(f)
+                simplified_data = []
+                for pg_id in data.keys():
+                    for pp in data[pg_id]["pps"]:
+                        simplified_data.append((pp["pattern_start"], pg_id))
+                sorted_simplified_data = sorted(simplified_data, key=lambda x : x[0])
+                sorted_ids = [x[1] for x in sorted_simplified_data]
+                output_file = open(os.path.join(dir, sim, "simplified_pg_data.json"), 'w')
+                json.dump(sorted_ids, output_file)
+                output_file.close()
 
+def change_threshold(ddir, dir, th_from, th_to):
+    if os.path.isdir(os.path.join(ddir, dir.replace(f'th-{th_from}', f'th-{th_to}'))):
+        return
+    m = load_model(os.path.join(os.path.join(ddir,dir),"post_sim_model.pkl"))
+    m.dir = os.path.join(ddir, dir)
+    m.build_pgs(min_threshold=th_to)
+    m.save_PG_data()
+    m.plot_raster()
+    save_model(m, os.path.join(ddir,os.path.join(dir, "post_sim_model.pkl")))
+    os.rename(os.path.join(ddir,dir), os.path.join(ddir, dir.replace(f'th-{th_from}', f'th-{th_to}')))
+
+def copy_rename_neuron_data(dir):
+    new_dir = os.path.join(dir, f"neuron_data_{os.path.split(dir)[1]}")
+    if not os.path.isdir(new_dir):
+        os.mkdir(new_dir)
+    for sim in os.listdir(dir):
+        print("Copy/rename neuron data: ", sim)
+        if sim == os.path.split(new_dir)[1] or os.path.splitext(sim)[1] == ".xlsx":
+            continue
+        print(sim)
+        seed = re.findall('seed-(\d+)', sim)[0]
+        dest = os.path.join(new_dir, f"neuron_data_{seed}.json")
+        src = os.path.join(dir, sim, "simplified_neuron_data.json")
+        if not os.path.isfile(dest):
+            shutil.copy(src, dest)
+
+def copy_rename_pg_data(dir):
+    new_dir = os.path.join(dir, f"pg_data_{os.path.split(dir)[1]}")
+    if not os.path.isdir(new_dir):
+        os.mkdir(new_dir)
+    for sim in os.listdir(dir):
+        print("Copy/rename PG data: ", sim)
+        if not sim.startswith("TrainingPhase"):
+            continue
+        print(sim)
+        seed = re.findall('seed-(\d+)', sim)[0]
+        dest = os.path.join(new_dir, f"pg_data_{seed}.json")
+        src = os.path.join(dir, sim, "simplified_pg_data.json")
+        if not os.path.isfile(dest):
+            shutil.copy(src, dest)
