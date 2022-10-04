@@ -1,1 +1,5 @@
-/network_plots_2/
+/network_plots/
+/DLSNN_env/
+/_pycache_/
+/build/
+/pybind11/

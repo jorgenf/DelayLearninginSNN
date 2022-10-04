@@ -8,7 +8,11 @@ import multiprocessing as mp
 import itertools
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+import update_states
 
+
+res = update_states.update_v(12, 1, 4, 0.1)
+print(res)
 
 img = [10]
 layers = [2]
@@ -130,8 +134,8 @@ for n in list(m1.keys())[-100:]:
 
 
 
-Data.compile_results("G:/USABLE RESULTS/unseen digit 0.8", "unseen_digit_th0.8", 3, 25, 20)
-Data.compile_results("G:/USABLE RESULTS/unseen digit 0.9", "unseen_digit_th0.9", 3, 25, 20)
+#Data.compile_results("G:/USABLE RESULTS/unseen digit 0.8", "unseen_digit_th0.8", 3, 25, 20)
+#Data.compile_results("G:/USABLE RESULTS/unseen digit 0.9", "unseen_digit_th0.9", 3, 25, 20)
 
 #ddir = "G:/USABLE RESULTS/unseen digit 0.9"
 #param = []

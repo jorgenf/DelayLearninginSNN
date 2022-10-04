@@ -16,6 +16,8 @@ import Data
 import matplotlib.colors
 import psutil
 import sys
+from numba import jit
+import Functions
 
 sns.set()
 
@@ -593,6 +595,7 @@ class Population:
             match += compare(new[ii], old[ii], canonical[ii])
         return match, unique, canonical
 
+    
 
     def run(self, duration, dt=0.1, path="./network_plots", name=None, save_neuron_data=True, save_synapse_data=True, save_pre_model=True,
             save_post_model=False, record_topology=False, record_PG=True, PG_duration=200, PG_match_th=0.6,
@@ -645,7 +648,6 @@ class Population:
             mem = psutil.Process(os.getpid()).memory_info().rss / 1024 ** 2
             if mem > max_mem:
                 max_mem = mem
-        print(f"\nMaximum memory usage: {np.round(max_mem,1)}MB")
         if save_neuron_data:
             self.save_neuron_data()
         if save_synapse_data:
@@ -668,8 +670,10 @@ class Population:
             self.total_sim_time = round(self.total_sim_time, 1)
             f.writelines(f"\nElapsed time: {self.total_sim_time}min")
         if show_process:
-            print(f"\nSimulation finished: {self.name}")
-            print(f"\nElapsed time: {round((stop - tot_start) / 60, 1)}min")
+            print("\n**************Simulation finished**************")
+            print(f"Simulation name: {self.name}")
+            print(f"Maximum memory usage: {np.round(max_mem,1)}MB")
+            print(f"Elapsed time: {round((stop - tot_start) / 60, 1)}min\n")
 
     def save_PG_data(self):
         data = self.pgs
@@ -797,6 +801,8 @@ class Population:
             self.polychronous_pattern = {}
 
         def update(self, neurons, record_pg):
+            Functions.full_update_states(self,neurons, record_pg, self.up, self.refractory)
+            '''
             for syn in self.up:
                 i = syn.get_spikes()
                 if not self.refractory:
@@ -809,10 +815,15 @@ class Population:
                 self.inputs = [x for x in self.inputs if x["counter"] > 0]
             else:
                 I = 0
+
             self.v += 0.5 * (0.04 * self.v ** 2 + 5 * self.v + 140 - self.u + I) * self.pop.DT
             self.v += 0.5 * (0.04 * self.v ** 2 + 5 * self.v + 140 - self.u + I) * self.pop.DT
             self.u += self.a * (self.b * self.v - self.u) * self.pop.DT
             self.v = min(self.th, self.v)
+
+            for i in range(1000):
+                self.v, self.u = Functions.update_states(self.v, self.u, self.a, self.b, I, self.pop.DT)
+                self.v = min(self.th, self.v)
             if self.pop.save_delays:
                 self.v_hist["t"].append(self.pop.T)
                 self.v_hist["v"].append(self.v)
@@ -857,6 +868,7 @@ class Population:
                     [syn[0].F(syn[1] - avg_delta_t) for syn in syn_list]
             else:
                 self.refractory = max(0, np.round(self.refractory - self.pop.DT, 1))
+            '''
 
     class FS(Neuron):
         def __init__(self, pop, ref_t):
