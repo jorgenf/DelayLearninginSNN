@@ -801,8 +801,6 @@ class Population:
             self.polychronous_pattern = {}
 
         def update(self, neurons, record_pg):
-            Functions.full_update_states(self,neurons, record_pg, self.up, self.refractory)
-            '''
             for syn in self.up:
                 i = syn.get_spikes()
                 if not self.refractory:
@@ -868,7 +866,7 @@ class Population:
                     [syn[0].F(syn[1] - avg_delta_t) for syn in syn_list]
             else:
                 self.refractory = max(0, np.round(self.refractory - self.pop.DT, 1))
-            '''
+           
 
     class FS(Neuron):
         def __init__(self, pop, ref_t):
